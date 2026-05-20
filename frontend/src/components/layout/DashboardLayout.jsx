@@ -6,6 +6,8 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  Settings2,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react'
@@ -20,6 +22,8 @@ const navItems = [
   { label: 'Allocations', to: '/allocations', icon: Home },
   { label: 'Payments', to: '/payments', icon: CreditCard },
   { label: 'Receipts', to: '/receipts', icon: ReceiptText },
+  { label: 'Realtors', to: '/realtors', icon: UserPlus },
+  { label: 'Settings', to: '/settings', icon: Settings2 },
 ]
 
 export function DashboardLayout() {
@@ -108,6 +112,27 @@ export function DashboardLayout() {
 
         <main className="px-4 py-6 md:px-6 lg:px-8">
           <Outlet />
+          <footer className="mt-10 rounded-3xl border border-line bg-panel/90 p-5 text-sm text-muted shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                Quick access: manage admin settings or track realtor clients and referrals.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <NavLink
+                  to="/settings"
+                  className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
+                >
+                  Settings
+                </NavLink>
+                <NavLink
+                  to="/realtors"
+                  className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
+                >
+                  Realtors
+                </NavLink>
+              </div>
+            </div>
+          </footer>
         </main>
       </div>
     </div>

@@ -8,6 +8,8 @@ import { LoginPage } from './pages/LoginPage.jsx'
 import { PaymentsPage } from './pages/PaymentsPage.jsx'
 import { PropertiesPage } from './pages/PropertiesPage.jsx'
 import { ReceiptsPage } from './pages/ReceiptsPage.jsx'
+import { RealtorsPage } from './pages/RealtorsPage.jsx'
+import { SettingsPage } from './pages/SettingsPage.jsx'
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/properties" element={<PropertiesPage />} />
           <Route path="/receipts" element={<ReceiptsPage />} />
+          <Route path="/realtors" element={<RealtorsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
