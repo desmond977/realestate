@@ -111,7 +111,19 @@ export function DashboardPage() {
 
   const weeklySales = summary?.weekly_sales_breakdown || []
   const weeklyMax = Math.max(...weeklySales.map((item) => item.amount), 1)
-  const targetProgress = summary?.monthly_target_progress ?? 0
+  const activeTargetType = savedTarget?.targetType || 'monthly'
+  const activeTargetLabel = activeTargetType === 'weekly' ? 'Weekly target' : 'Monthly target'
+  const activeTargetAmount =
+    savedTarget?.targetAmount ?? (activeTargetType === 'monthly' ? summary?.monthly_target ?? 0 : 0)
+  const weeklySalesTotal = weeklySales.reduce((sum, item) => sum + item.amount, 0)
+  const targetProgress = activeTargetAmount > 0
+    ? Math.min(
+        100,
+        Math.round(
+          ((activeTargetType === 'weekly' ? weeklySalesTotal : stats.revenue) / activeTargetAmount) * 100,
+        ),
+      )
+    : 0
 
   return (
     <div className="space-y-3 md:space-y-6">
@@ -152,13 +164,13 @@ export function DashboardPage() {
             <div className="flex flex-col gap-2 md:gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs md:text-sm font-medium uppercase tracking-[0.25em] text-brand">
-                  Monthly target
+                  {activeTargetLabel}
                 </p>
                 <h3 className="mt-2 md:mt-3 text-2xl md:text-3xl font-semibold text-ink">
-                  {formatMoney(summary?.monthly_target ?? 0)}
+                  {formatMoney(activeTargetAmount)}
                 </h3>
                 <p className="mt-1 md:mt-2 text-xs md:text-sm text-muted">
-                  Goal progress for this month across the sales pipeline.
+                  Goal progress for the active {activeTargetType} target across the sales pipeline.
                 </p>
                 {savedTarget ? (
                   <p className="mt-3 text-xs text-ink/80">
@@ -172,11 +184,21 @@ export function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-3 md:mt-6 rounded-full bg-canvas p-1">
+            <div className="mt-3 md:mt-6 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-ink">Progress</p>
+              <div className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white shadow-sm animate-floating">
+                {targetProgress}% reached
+              </div>
+            </div>
+
+            <div className="mt-3 md:mt-6 rounded-full bg-canvas p-1 relative">
               <div
                 className="h-2 md:h-3 rounded-full bg-brand transition-all duration-700 ease-out"
                 style={{ width: `${targetProgress}%` }}
               />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] md:text-xs font-semibold text-ink/80">
+                {targetProgress}% complete
+              </div>
             </div>
 
             <div className="mt-3 md:mt-6 grid gap-2 md:gap-4 sm:grid-cols-2">

@@ -45,7 +45,7 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonPath('data.allocation.amount_paid', 2500000)
             ->assertJsonPath('data.allocation.balance', 7500000)
             ->assertJsonPath('data.allocation.status', 'active')
-            ->assertJsonPath('data.allocation.property.status', 'reserved')
+            ->assertJsonPath('data.allocation.property.status', 'available')
             ->assertJsonCount(1, 'data.allocation.payments')
             ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001');
 
@@ -123,7 +123,7 @@ class AllocationPaymentApiTest extends TestCase
 
         $this->assertSame('completed', $allocation->status->value);
         $this->assertSame(0.0, (float) $allocation->balance);
-        $this->assertSame('sold', $property->status->value);
+        $this->assertSame('reserved', $property->status->value);
     }
 
     public function test_payment_cannot_exceed_outstanding_balance(): void
@@ -156,7 +156,7 @@ class AllocationPaymentApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Allocation cancelled successfully.')
             ->assertJsonPath('data.allocation.status', 'cancelled')
-            ->assertJsonPath('data.allocation.property.status', 'available');
+            ->assertJsonPath('data.allocation.property.status', 'reserved');
     }
 
     public function test_paid_allocation_cannot_be_cancelled(): void

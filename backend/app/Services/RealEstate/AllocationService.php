@@ -60,8 +60,6 @@ class AllocationService
                 'notes' => $payload['notes'] ?? null,
             ]);
 
-            $property->forceFill(['status' => PropertyStatus::Reserved])->save();
-
             if ($initialPaymentAmount > 0) {
                 $this->paymentService->recordForAllocation($allocation, [
                     'amount' => $initialPaymentAmount,
@@ -92,7 +90,6 @@ class AllocationService
             }
 
             $allocation->forceFill(['status' => AllocationStatus::Cancelled])->save();
-            $allocation->property->forceFill(['status' => PropertyStatus::Available])->save();
 
             return $allocation->fresh(['client', 'property']);
         });

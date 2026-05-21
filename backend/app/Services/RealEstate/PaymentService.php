@@ -74,10 +74,6 @@ class PaymentService
                     'status' => $newBalance <= 0 ? AllocationStatus::Completed : AllocationStatus::Active,
                 ])->save();
 
-                $allocation->property->forceFill([
-                    'status' => $newBalance <= 0 ? PropertyStatus::Sold : PropertyStatus::Reserved,
-                ])->save();
-
                 $this->receiptService->createForPayment($payment, $recorder);
             }
 

@@ -20,7 +20,11 @@ const emptyForm = {
   price: '',
   status: 'available',
   description: '',
+  land_size: '',
+  document_type: '',
   image: '',
+  image_url: '',
+  image_file: null,
 }
 
 function getApiError(error, fallback) {
@@ -148,13 +152,49 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-ink">Image path</span>
+              <span className="text-sm font-medium text-ink">Land size</span>
               <input
-                value={form.image}
-                onChange={(event) => updateField('image', event.target.value)}
+                value={form.land_size}
+                onChange={(event) => updateField('land_size', event.target.value)}
                 className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                placeholder="properties/example.jpg"
+                placeholder="500 SQM, 1 Plot, 2 Hectares"
               />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Document type</span>
+              <input
+                value={form.document_type}
+                onChange={(event) => updateField('document_type', event.target.value)}
+                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+                placeholder="C of O, Allocation Letter, Survey Plan"
+              />
+            </label>
+
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium text-ink">Property image</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null
+                  updateField('image_file', file)
+                  if (file) {
+                    updateField('image_url', URL.createObjectURL(file))
+                  }
+                }}
+                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              />
+              {form.image_url ? (
+                <div className="mt-4 flex items-center gap-4 rounded-3xl border border-line bg-canvas p-4">
+                  <img
+                    src={form.image_url}
+                    alt="Property preview"
+                    className="h-16 w-16 rounded-xl object-cover"
+                  />
+                  <p className="text-sm text-muted">Preview of the selected property image.</p>
+                </div>
+              ) : null}
             </label>
           </div>
 
@@ -211,7 +251,11 @@ export function PropertiesPage() {
         price: modal.property.price || '',
         status: modal.property.status || 'available',
         description: modal.property.description || '',
+        land_size: modal.property.land_size || '',
+        document_type: modal.property.document_type || '',
         image: modal.property.image || '',
+        image_url: modal.property.image_url || modal.property.image || '',
+        image_file: null,
       }
     }
 
@@ -265,11 +309,34 @@ export function PropertiesPage() {
     setNotice('')
 
     try {
+      const hasImageFile = payload.image_file instanceof File
+      const body = new FormData()
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (key === 'image_file' || key === 'image_url') {
+          return
+        }
+
+        if (key === 'image' && hasImageFile) {
+          return
+        }
+
+        if (value !== undefined && value !== null && value !== '') {
+          body.append(key, value)
+        }
+      })
+
+      if (hasImageFile) {
+        body.append('image', payload.image_file)
+      }
+
+      const config = hasImageFile ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}
+
       if (modal?.mode === 'edit') {
-        await api.patch(`/properties/${modal.property.id}`, payload)
+        await api.patch(`/properties/${modal.property.id}`, body, config)
         setNotice('Property updated successfully.')
       } else {
-        await api.post('/properties', payload)
+        await api.post('/properties', body, config)
         setNotice('Property created successfully.')
       }
 
@@ -410,6 +477,8 @@ export function PropertiesPage() {
                 <th className="px-4 py-3 font-semibold">Property</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
                 <th className="px-4 py-3 font-semibold">Location</th>
+                <th className="px-4 py-3 font-semibold">Land size</th>
+                <th className="px-4 py-3 font-semibold">Document</th>
                 <th className="px-4 py-3 font-semibold">Price</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
@@ -419,15 +488,28 @@ export function PropertiesPage() {
               {properties.map((property) => (
                 <tr key={property.id} className="border-t border-line">
                   <td className="max-w-[280px] px-4 py-3">
-                    <p className="font-medium text-ink">{property.title}</p>
-                    <p className="mt-1 truncate text-xs text-muted">
-                      {property.description || 'No description'}
-                    </p>
+                    <div className="flex items-start gap-3">
+                      {property.image_url ? (
+                        <img
+                          src={property.image_url}
+                          alt={property.title}
+                          className="h-14 w-20 rounded-xl object-cover"
+                        />
+                      ) : null}
+                      <div>
+                        <p className="font-medium text-ink">{property.title}</p>
+                        <p className="mt-1 truncate text-xs text-muted">
+                          {property.description || 'No description'}
+                        </p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 capitalize text-muted">
                     {property.type}
                   </td>
                   <td className="px-4 py-3 text-muted">{property.location}</td>
+                  <td className="px-4 py-3 text-muted">{property.land_size || '-'}</td>
+                  <td className="px-4 py-3 text-muted">{property.document_type || '-'}</td>
                   <td className="px-4 py-3 font-semibold text-ink">
                     {formatMoney(property.price)}
                   </td>

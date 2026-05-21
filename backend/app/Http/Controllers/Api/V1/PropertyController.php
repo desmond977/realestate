@@ -11,6 +11,7 @@ use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Enum;
 
 class PropertyController extends Controller
@@ -46,7 +47,13 @@ class PropertyController extends Controller
 
     public function store(StorePropertyRequest $request): JsonResponse
     {
-        $property = Property::query()->create($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $data['image'] = $request->file('image')->store('properties', 'public');
+        }
+
+        $property = Property::query()->create($data);
 
         return response()->json([
             'message' => 'Property created successfully.',
@@ -67,7 +74,17 @@ class PropertyController extends Controller
 
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
-        $property->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            if ($property->image && Storage::disk('public')->exists($property->image)) {
+                Storage::disk('public')->delete($property->image);
+            }
+
+            $data['image'] = $request->file('image')->store('properties', 'public');
+        }
+
+        $property->update($data);
 
         return response()->json([
             'message' => 'Property updated successfully.',

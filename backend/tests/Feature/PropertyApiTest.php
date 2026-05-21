@@ -6,6 +6,8 @@ use App\Enums\PropertyStatus;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -57,6 +59,8 @@ class PropertyApiTest extends TestCase
             'price' => 12500000,
             'status' => 'available',
             'description' => 'Dry land in a fast developing estate.',
+            'land_size' => '500 SQM',
+            'document_type' => 'C of O',
             'image' => 'properties/greenfield.jpg',
         ]);
 
@@ -64,7 +68,9 @@ class PropertyApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('message', 'Property created successfully.')
             ->assertJsonPath('data.property.title', 'Greenfield Estate Plot')
-            ->assertJsonPath('data.property.price', 12500000);
+            ->assertJsonPath('data.property.price', 12500000)
+            ->assertJsonPath('data.property.land_size', '500 SQM')
+            ->assertJsonPath('data.property.document_type', 'C of O');
 
         $this->assertDatabaseHas('properties', [
             'title' => 'Greenfield Estate Plot',
@@ -82,6 +88,30 @@ class PropertyApiTest extends TestCase
             'status' => 'unlisted',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['title', 'type', 'location', 'price', 'status']);
+    }
+
+    public function test_authenticated_user_can_upload_property_image(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->create('property.jpg', 100, 'image/jpeg');
+
+        $response = $this->post('/api/v1/properties', [
+            'title' => 'Upload Plot',
+            'type' => 'land',
+            'location' => 'Victoria Island',
+            'price' => 8000000,
+            'status' => 'available',
+            'description' => 'Image upload test.',
+            'land_size' => '1 Plot',
+            'document_type' => 'Survey Plan',
+            'image' => $file,
+        ]);
+
+        $response->assertCreated();
+        $this->assertNotNull($response->json('data.property.image'));
+        Storage::disk('public')->assertExists($response->json('data.property.image'));
     }
 
     public function test_authenticated_user_can_show_and_update_property(): void

@@ -22,6 +22,8 @@ class PropertyFactory extends Factory
             'price' => fake()->randomFloat(2, 5000000, 150000000),
             'status' => PropertyStatus::Available->value,
             'description' => fake()->paragraph(),
+            'land_size' => fake()->randomElement(['500 SQM', '1 Plot', '2 Hectares']),
+            'document_type' => fake()->randomElement(['C of O', 'Allocation Letter', 'Deed of Assignment', 'Receipt', 'Survey Plan']),
             'image' => null,
         ];
     }

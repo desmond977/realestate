@@ -20,6 +20,8 @@ class Property extends Model
         'status',
         'description',
         'image',
+        'land_size',
+        'document_type',
     ];
 
     protected $casts = [

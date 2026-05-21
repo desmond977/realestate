@@ -21,6 +21,9 @@ class DashboardController extends Controller
         return response()->json([
             'data' => [
                 'stats' => $summary['stats'],
+                'monthly_target' => $summary['monthly_target'],
+                'monthly_target_progress' => $summary['monthly_target_progress'],
+                'weekly_sales_breakdown' => $summary['weekly_sales_breakdown'],
                 'property_status_breakdown' => $summary['property_status_breakdown'],
                 'allocation_status_breakdown' => $summary['allocation_status_breakdown'],
                 'recent_payments' => PaymentResource::collection($summary['recent_payments']),
