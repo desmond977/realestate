@@ -49,11 +49,22 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function updateUser(profile) {
+    const response = await api.patch('/auth/me', profile)
+    const nextUser = response.data.data.user
+
+    localStorage.setItem('auth_user', JSON.stringify(nextUser))
+    setUser(nextUser)
+
+    return nextUser
+  }
+
   const value = useMemo(
     () => ({
       isAuthenticated: Boolean(token),
       login,
       logout,
+      updateUser,
       token,
       user,
     }),

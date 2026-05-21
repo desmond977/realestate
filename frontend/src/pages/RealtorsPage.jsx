@@ -1,7 +1,6 @@
 import { CalendarDays, ListChecks, Plus, Users } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { formatMoney } from '../utils/formatters'
 
 function buildStorageKey(userId) {
   return `estateops_realtors_${userId}`
@@ -36,23 +35,23 @@ const initialForm = {
 
 export function RealtorsPage() {
   const { user } = useAuth()
-  const [entries, setEntries] = useState([])
-  const [form, setForm] = useState(initialForm)
-  const [saved, setSaved] = useState(false)
-
   const storageKey = buildStorageKey(user?.id || 'anonymous')
-
-  useEffect(() => {
+  const [entries, setEntries] = useState(() => {
     const stored = localStorage.getItem(storageKey)
 
-    if (stored) {
-      try {
-        setEntries(JSON.parse(stored))
-      } catch {
-        localStorage.removeItem(storageKey)
-      }
+    if (!stored) {
+      return []
     }
-  }, [storageKey])
+
+    try {
+      return JSON.parse(stored)
+    } catch {
+      localStorage.removeItem(storageKey)
+      return []
+    }
+  })
+  const [form, setForm] = useState(initialForm)
+  const [saved, setSaved] = useState(false)
 
   const currentMonth = useMemo(() => getCurrentMonthLabel(), [])
 

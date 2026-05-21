@@ -24,13 +24,13 @@ class AuthTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath('data.user.email', 'ada@example.com')
-            ->assertJsonPath('data.user.role', 'admin')
+            ->assertJsonPath('data.user.role', 'staff')
             ->assertJsonPath('data.token_type', 'Bearer')
             ->assertJsonStructure(['data' => ['token']]);
 
         $this->assertDatabaseHas('users', [
             'email' => 'ada@example.com',
-            'role' => 'admin',
+            'role' => 'staff',
         ]);
     }
 
@@ -78,5 +78,31 @@ class AuthTest extends TestCase
         $this->postJson('/api/v1/auth/logout')
             ->assertOk()
             ->assertJsonPath('message', 'Logout successful.');
+    }
+
+    public function test_authenticated_user_can_update_profile(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Original Name',
+            'email' => 'original@example.com',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->patchJson('/api/v1/auth/me', [
+            'name' => 'Updated Name',
+            'email' => 'updated@example.com',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.user.name', 'Updated Name')
+            ->assertJsonPath('data.user.email', 'updated@example.com');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Updated Name',
+            'email' => 'updated@example.com',
+        ]);
     }
 }

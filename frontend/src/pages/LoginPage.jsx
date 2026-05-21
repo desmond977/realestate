@@ -1,5 +1,5 @@
 import { Building2, Lock, Mail } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
@@ -10,6 +10,26 @@ export function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [branding, setBranding] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('estateops_dashboard_settings')) || {}
+    } catch {
+      return {}
+    }
+  })
+
+  useEffect(() => {
+    function onSettings() {
+      try {
+        setBranding(JSON.parse(localStorage.getItem('estateops_dashboard_settings')) || {})
+      } catch {
+        setBranding({})
+      }
+    }
+
+    window.addEventListener('estateopsSettingsUpdated', onSettings)
+    return () => window.removeEventListener('estateopsSettingsUpdated', onSettings)
+  }, [])
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
@@ -39,13 +59,25 @@ export function LoginPage() {
       <section className="flex items-center px-6 py-10 sm:px-10 lg:px-16">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-lg bg-brand text-white">
-              <Building2 size={22} />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-ink">EstateOps</p>
-              <p className="text-sm text-muted">Real estate management</p>
-            </div>
+            {branding?.company_logo ? (
+              <div className="flex items-center gap-4">
+                <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-28 w-28 rounded-md object-contain" />
+                <div>
+                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'EstateOps'}</p>
+                  <p className="text-sm text-muted">Real estate management</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid h-28 w-28 place-items-center rounded-lg bg-brand text-white">
+                  <Building2 size={34} />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-ink">EstateOps</p>
+                  <p className="text-sm text-muted">Real estate management</p>
+                </div>
+              </>
+            )}
           </div>
 
           <h1 className="text-3xl font-semibold text-ink">Welcome back</h1>

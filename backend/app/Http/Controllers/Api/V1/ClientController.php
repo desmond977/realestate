@@ -7,12 +7,17 @@ use App\Http\Requests\Client\StoreClientRequest;
 use App\Http\Requests\Client\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\Client;
+use App\Services\RealEstate\ClientActivityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ClientController extends Controller
 {
+    public function __construct(private readonly ClientActivityService $clientActivityService)
+    {
+    }
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $validated = $request->validate([
@@ -27,7 +32,8 @@ class ClientController extends Controller
                         ->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('referred_by', 'like', "%{$search}%");
                 });
             })
             ->latest()
@@ -55,6 +61,13 @@ class ClientController extends Controller
             'data' => [
                 'client' => new ClientResource($client),
             ],
+        ]);
+    }
+
+    public function activity(Client $client): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->clientActivityService->overview($client),
         ]);
     }
 

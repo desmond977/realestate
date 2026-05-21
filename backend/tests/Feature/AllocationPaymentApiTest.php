@@ -45,7 +45,7 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonPath('data.allocation.amount_paid', 2500000)
             ->assertJsonPath('data.allocation.balance', 7500000)
             ->assertJsonPath('data.allocation.status', 'active')
-            ->assertJsonPath('data.allocation.property.status', 'available')
+            ->assertJsonPath('data.allocation.property.status', 'reserved')
             ->assertJsonCount(1, 'data.allocation.payments')
             ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001');
 
@@ -123,12 +123,12 @@ class AllocationPaymentApiTest extends TestCase
 
         $this->assertSame('completed', $allocation->status->value);
         $this->assertSame(0.0, (float) $allocation->balance);
-        $this->assertSame('reserved', $property->status->value);
+        $this->assertSame('sold', $property->status->value);
     }
 
     public function test_payment_cannot_exceed_outstanding_balance(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $allocation = Allocation::factory()->create([
             'total_amount' => 10000000,
             'amount_paid' => 9000000,
@@ -156,7 +156,7 @@ class AllocationPaymentApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Allocation cancelled successfully.')
             ->assertJsonPath('data.allocation.status', 'cancelled')
-            ->assertJsonPath('data.allocation.property.status', 'reserved');
+            ->assertJsonPath('data.allocation.property.status', 'available');
     }
 
     public function test_paid_allocation_cannot_be_cancelled(): void
@@ -170,5 +170,15 @@ class AllocationPaymentApiTest extends TestCase
         $this->deleteJson("/api/v1/allocations/{$allocation->id}")
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['allocation_id']);
+    }
+
+    public function test_staff_cannot_record_payments(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'staff']));
+
+        $this->postJson('/api/v1/payments', [
+            'allocation_id' => 1,
+            'amount' => 100000,
+        ])->assertForbidden();
     }
 }

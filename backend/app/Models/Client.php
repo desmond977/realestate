@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Client extends Model
@@ -18,6 +19,7 @@ class Client extends Model
         'phone',
         'address',
         'occupation',
+        'referred_by',
     ];
 
     protected $appends = [
@@ -32,6 +34,11 @@ class Client extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function receipts(): HasManyThrough
+    {
+        return $this->hasManyThrough(Receipt::class, Payment::class, 'client_id', 'payment_id');
     }
 
     public function getFullNameAttribute(): string

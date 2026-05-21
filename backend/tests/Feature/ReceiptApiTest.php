@@ -23,7 +23,7 @@ class ReceiptApiTest extends TestCase
 
     public function test_authenticated_user_can_list_receipts_with_search(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $client = Client::factory()->create([
             'first_name' => 'Ada',
             'last_name' => 'Okafor',
@@ -59,7 +59,7 @@ class ReceiptApiTest extends TestCase
 
     public function test_authenticated_user_can_show_receipt(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $receipt = Receipt::factory()->create([
             'receipt_number' => 'REC-SHOW-001',
         ]);

@@ -17,7 +17,7 @@ class AuthService
         return User::query()->create([
             'name' => $payload['name'],
             'email' => $payload['email'],
-            'role' => $payload['role'] ?? UserRole::Staff->value,
+            'role' => UserRole::Staff->value,
             'password' => $payload['password'],
         ]);
     }

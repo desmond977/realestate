@@ -7,28 +7,63 @@ import {
   Menu,
   ReceiptText,
   Settings2,
+  User,
   UserPlus,
   Users,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
+import { api } from '../../api/client'
 
 const navItems = [
-  { label: 'Dashboard', to: '/dashboard', icon: Gauge },
-  { label: 'Properties', to: '/properties', icon: Building2 },
-  { label: 'Clients', to: '/clients', icon: Users },
-  { label: 'Allocations', to: '/allocations', icon: Home },
-  { label: 'Payments', to: '/payments', icon: CreditCard },
-  { label: 'Receipts', to: '/receipts', icon: ReceiptText },
-  { label: 'Realtors', to: '/realtors', icon: UserPlus },
-  { label: 'Settings', to: '/settings', icon: Settings2 },
+  { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Profile', to: '/profile', icon: User, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'staff'] },
+  { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff'] },
+  { label: 'Allocations', to: '/allocations', icon: Home, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Payments', to: '/payments', icon: CreditCard, roles: ['admin', 'accountant'] },
+  { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'accountant'] },
+  { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Settings', to: '/settings', icon: Settings2, roles: ['admin'] },
 ]
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { logout, user } = useAuth()
+  const [branding, setBranding] = useState({})
+
+  useEffect(() => {
+    let active = true
+
+    async function loadSettings() {
+      try {
+        const response = await api.get('/settings/company')
+
+        if (active) {
+          setBranding(response.data.data.settings)
+        }
+      } catch {
+        if (active) {
+          setBranding({})
+        }
+      }
+    }
+
+    function onSettings() {
+      loadSettings()
+    }
+
+    loadSettings()
+    window.addEventListener('estateopsSettingsUpdated', onSettings)
+    return () => {
+      active = false
+      window.removeEventListener('estateopsSettingsUpdated', onSettings)
+    }
+  }, [])
+
+  const visibleNavItems = navItems.filter((item) => item.roles.includes(user?.role))
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -37,12 +72,15 @@ export function DashboardLayout() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-line px-5">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-brand">
-              EstateOps
-            </p>
-            <p className="text-xs text-muted">Management Console</p>
+          <div className="flex h-16 items-center justify-between border-b border-line px-5">
+          <div className="flex items-center">
+            {branding?.company_logo ? (
+              <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-24 w-24 rounded-sm object-contain" />
+            ) : (
+              <div className="grid h-24 w-24 place-items-center rounded-lg bg-brand text-white">
+                <svg viewBox="0 0 24 24" fill="none" width="32" height="32" xmlns="http://www.w3.org/2000/svg"><path d="M3 21V9a2 2 0 0 1 2-2h3v10H3zM14 7h5a2 2 0 0 1 2 2v12H14V7zM8 3h8v4H8V3z" fill="currentColor"/></svg>
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -55,7 +93,7 @@ export function DashboardLayout() {
         </div>
 
         <nav className="space-y-1 px-3 py-4">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -118,6 +156,12 @@ export function DashboardLayout() {
                 Quick access: manage admin settings or track realtor clients and referrals.
               </p>
               <div className="flex flex-wrap gap-2">
+                <NavLink
+                  to="/profile"
+                  className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
+                >
+                  Profile
+                </NavLink>
                 <NavLink
                   to="/settings"
                   className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"

@@ -29,7 +29,7 @@ export function DashboardPage() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [savedTarget, setSavedTarget] = useState(null)
+  const [settings, setSettings] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -61,14 +61,26 @@ export function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem('estateops_dashboard_settings')
+    let active = true
 
-    if (stored) {
+    async function loadSettings() {
       try {
-        setSavedTarget(JSON.parse(stored))
+        const response = await api.get('/settings/company')
+
+        if (active) {
+          setSettings(response.data.data.settings)
+        }
       } catch {
-        localStorage.removeItem('estateops_dashboard_settings')
+        if (active) {
+          setSettings(null)
+        }
       }
+    }
+
+    loadSettings()
+
+    return () => {
+      active = false
     }
   }, [])
 
@@ -111,10 +123,10 @@ export function DashboardPage() {
 
   const weeklySales = summary?.weekly_sales_breakdown || []
   const weeklyMax = Math.max(...weeklySales.map((item) => item.amount), 1)
-  const activeTargetType = savedTarget?.targetType || 'monthly'
+  const activeTargetType = settings?.target_type || 'monthly'
   const activeTargetLabel = activeTargetType === 'weekly' ? 'Weekly target' : 'Monthly target'
   const activeTargetAmount =
-    savedTarget?.targetAmount ?? (activeTargetType === 'monthly' ? summary?.monthly_target ?? 0 : 0)
+    settings?.target_amount ?? (activeTargetType === 'monthly' ? summary?.monthly_target ?? 0 : 0)
   const weeklySalesTotal = weeklySales.reduce((sum, item) => sum + item.amount, 0)
   const targetProgress = activeTargetAmount > 0
     ? Math.min(
@@ -172,10 +184,10 @@ export function DashboardPage() {
                 <p className="mt-1 md:mt-2 text-xs md:text-sm text-muted">
                   Goal progress for the active {activeTargetType} target across the sales pipeline.
                 </p>
-                {savedTarget ? (
+                {settings ? (
                   <p className="mt-3 text-xs text-ink/80">
-                    Active dashboard target: {savedTarget.targetType === 'weekly' ? 'Weekly' : 'Monthly'}{' '}
-                    {formatMoney(savedTarget.targetAmount)}
+                    Active dashboard target: {settings.target_type === 'weekly' ? 'Weekly' : 'Monthly'}{' '}
+                    {formatMoney(settings.target_amount)}
                   </p>
                 ) : null}
               </div>

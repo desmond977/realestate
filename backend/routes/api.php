@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AllocationController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\ClientController;
+use App\Http\Controllers\Api\V1\CompanySettingController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PropertyController;
@@ -27,16 +28,27 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
+            Route::patch('me', [AuthController::class, 'update']);
             Route::post('logout', [AuthController::class, 'logout']);
         });
     });
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('dashboard', DashboardController::class);
-        Route::apiResource('allocations', AllocationController::class)->only(['index', 'store', 'show', 'destroy']);
-        Route::apiResource('clients', ClientController::class);
-        Route::apiResource('payments', PaymentController::class)->only(['index', 'store', 'show']);
-        Route::apiResource('properties', PropertyController::class);
-        Route::apiResource('receipts', ReceiptController::class)->only(['index', 'show']);
+        Route::get('dashboard', DashboardController::class)->middleware('role:admin,staff,accountant');
+        Route::get('settings/company', [CompanySettingController::class, 'show'])->middleware('role:admin,staff,accountant');
+        Route::put('settings/company', [CompanySettingController::class, 'update'])->middleware('role:admin');
+
+        Route::apiResource('allocations', AllocationController::class)
+            ->only(['index', 'store', 'show', 'destroy'])
+            ->middleware('role:admin,staff,accountant');
+        Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware('role:admin,staff');
+        Route::apiResource('clients', ClientController::class)->middleware('role:admin,staff');
+        Route::apiResource('payments', PaymentController::class)
+            ->only(['index', 'store', 'show'])
+            ->middleware('role:admin,accountant');
+        Route::apiResource('properties', PropertyController::class)->middleware('role:admin,staff');
+        Route::apiResource('receipts', ReceiptController::class)
+            ->only(['index', 'show'])
+            ->middleware('role:admin,accountant');
     });
 });

@@ -1,6 +1,7 @@
 import {
   Building2,
   Edit3,
+  Image as ImageIcon,
   Loader2,
   Plus,
   Search,
@@ -495,7 +496,11 @@ export function PropertiesPage() {
                           alt={property.title}
                           className="h-14 w-20 rounded-xl object-cover"
                         />
-                      ) : null}
+                      ) : (
+                        <div className="flex h-14 w-20 items-center justify-center rounded-xl border border-line bg-canvas text-muted">
+                          <ImageIcon className="h-6 w-6" />
+                        </div>
+                      )}
                       <div>
                         <p className="font-medium text-ink">{property.title}</p>
                         <p className="mt-1 truncate text-xs text-muted">
