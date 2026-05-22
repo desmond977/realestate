@@ -9,6 +9,7 @@ use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\Realtor;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -32,6 +33,7 @@ class DashboardService
                 'reserved_properties' => Property::query()->where('status', PropertyStatus::Reserved)->count(),
                 'sold_properties' => Property::query()->where('status', PropertyStatus::Sold)->count(),
                 'total_clients' => Client::query()->count(),
+                'total_realtors' => Realtor::query()->count(),
                 'revenue' => $revenue,
                 'outstanding_balances' => (float) Allocation::query()
                     ->where('status', AllocationStatus::Active)
@@ -41,11 +43,11 @@ class DashboardService
             ],
             'monthly_target' => $monthlyTarget,
             'monthly_target_progress' => $this->targetProgress($revenue, $monthlyTarget),
-            'weekly_sales_breakdown' => $this->weeklySalesBreakdown(),
             'property_status_breakdown' => $this->propertyStatusBreakdown(),
             'allocation_status_breakdown' => $this->allocationStatusBreakdown(),
             'recent_payments' => $this->recentPayments(),
             'recent_allocations' => $this->recentAllocations(),
+            'top_realtors' => $this->topRealtors(),
         ];
     }
 
@@ -80,7 +82,7 @@ class DashboardService
     private function recentPayments(): Collection
     {
         return Payment::query()
-            ->with(['client', 'property', 'receipt'])
+            ->with(['client.realtor', 'realtor', 'property', 'receipt'])
             ->latest('paid_at')
             ->limit(5)
             ->get();
@@ -89,8 +91,31 @@ class DashboardService
     private function recentAllocations(): Collection
     {
         return Allocation::query()
-            ->with(['client', 'property'])
+            ->with(['client.realtor', 'realtor', 'property'])
             ->latest('allocated_at')
+            ->limit(5)
+            ->get();
+    }
+
+    private function topRealtors(): Collection
+    {
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+
+        return Realtor::query()
+            ->withSum(['payments as confirmed_revenue' => function ($query) {
+                $query->where('status', PaymentStatus::Confirmed);
+            }], 'amount')
+            ->withCount([
+                'clients',
+                'allocations',
+                'clients as monthly_clients_count' => function ($query) use ($startOfMonth, $endOfMonth) {
+                    $query->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+                },
+            ])
+            ->orderByDesc('monthly_clients_count')
+            ->orderByDesc('clients_count')
+            ->orderByDesc('confirmed_revenue')
             ->limit(5)
             ->get();
     }
@@ -102,30 +127,5 @@ class DashboardService
         }
 
         return min(100, (int) round(($revenue / $target) * 100));
-    }
-
-    private function weeklySalesBreakdown(): array
-    {
-        $today = Carbon::today();
-        $start = $today->copy()->subDays(6);
-
-        $salesByDate = Payment::query()
-            ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
-            ->where('status', PaymentStatus::Confirmed)
-            ->whereBetween('paid_at', [$start->startOfDay(), $today->endOfDay()])
-            ->groupBy('date')
-            ->pluck('total', 'date');
-
-        return collect(range(0, 6))
-            ->map(function (int $offset) use ($start, $salesByDate): array {
-                $date = $start->copy()->addDays($offset);
-                $key = $date->format('Y-m-d');
-
-                return [
-                    'label' => $date->format('D'),
-                    'amount' => (float) ($salesByDate[$key] ?? 0),
-                ];
-            })
-            ->all();
     }
 }

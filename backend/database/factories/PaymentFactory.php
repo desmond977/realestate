@@ -25,6 +25,7 @@ class PaymentFactory extends Factory
             'allocation_id' => Allocation::factory(),
             'property_id' => Property::factory(),
             'client_id' => Client::factory(),
+            'realtor_id' => null,
             'recorded_by' => User::factory(),
             'amount' => fake()->randomFloat(2, 100000, 10000000),
             'payment_type' => PaymentPlan::Installment->value,

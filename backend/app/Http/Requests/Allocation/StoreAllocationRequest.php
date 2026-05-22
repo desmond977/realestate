@@ -21,6 +21,7 @@ class StoreAllocationRequest extends FormRequest
         return [
             'property_id' => ['required', 'integer', 'exists:properties,id'],
             'client_id' => ['required', 'integer', 'exists:clients,id'],
+            'realtor_id' => ['nullable', 'integer', 'exists:realtors,id'],
             'total_amount' => ['required', 'numeric', 'min:0.01'],
             'payment_plan' => ['required', new Enum(PaymentPlan::class)],
             'allocated_at' => ['nullable', 'date'],

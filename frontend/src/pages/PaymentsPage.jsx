@@ -1,5 +1,7 @@
 import {
   CreditCard,
+  Download,
+  Eye,
   Loader2,
   Plus,
   ReceiptText,
@@ -8,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
 const emptyForm = {
@@ -45,6 +48,10 @@ function StatusBadge({ status }) {
       {status}
     </span>
   )
+}
+
+function realtorName(payment) {
+  return payment?.realtor?.full_name || payment?.client?.realtor?.full_name || 'Direct'
 }
 
 function PaymentModal({ allocations, submitting, onClose, onSubmit }) {
@@ -232,6 +239,9 @@ export function PaymentsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [receiptDocument, setReceiptDocument] = useState(null)
+  const [documentLoading, setDocumentLoading] = useState(false)
+  const [documentError, setDocumentError] = useState('')
 
   const loadPayments = useCallback(async (params) => {
     setLoading(true)
@@ -301,6 +311,26 @@ export function PaymentsPage() {
       setError(getApiError(err, 'Payment could not be recorded.'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function viewReceiptDocument(payment) {
+    if (!payment.receipt?.id) {
+      setError('Receipt is not available for this payment yet.')
+      return
+    }
+
+    setReceiptDocument(null)
+    setDocumentError('')
+    setDocumentLoading(true)
+
+    try {
+      const response = await api.get(`/receipts/${payment.receipt.id}/document`)
+      setReceiptDocument(response.data.data)
+    } catch (err) {
+      setDocumentError(getApiError(err, 'Receipt document could not be loaded.'))
+    } finally {
+      setDocumentLoading(false)
     }
   }
 
@@ -394,12 +424,14 @@ export function PaymentsPage() {
             <thead className="bg-canvas text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold">Client</th>
+                <th className="px-4 py-3 font-semibold">Realtor</th>
                 <th className="px-4 py-3 font-semibold">Property</th>
                 <th className="px-4 py-3 font-semibold">Amount</th>
                 <th className="px-4 py-3 font-semibold">Method</th>
                 <th className="px-4 py-3 font-semibold">Receipt</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Paid at</th>
+                <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -407,6 +439,9 @@ export function PaymentsPage() {
                 <tr key={payment.id} className="border-t border-line">
                   <td className="px-4 py-3 font-medium text-ink">
                     {payment.client?.full_name || 'Client'}
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {realtorName(payment)}
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {payment.property?.title || 'Property'}
@@ -431,12 +466,33 @@ export function PaymentsPage() {
                       ? new Date(payment.paid_at).toLocaleString()
                       : 'No date'}
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => viewReceiptDocument(payment)}
+                        disabled={!payment.receipt?.id}
+                        className="inline-flex items-center gap-1 rounded-md border border-brand/20 bg-brand/5 px-2.5 py-2 text-sm font-semibold text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Eye size={16} />
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => viewReceiptDocument(payment)}
+                        disabled={!payment.receipt?.id}
+                        className="rounded-md border border-line p-2 text-muted hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Download size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
 
               {!loading && payments.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-muted" colSpan="7">
+                  <td className="px-4 py-10 text-center text-muted" colSpan="9">
                     No payments found.
                   </td>
                 </tr>
@@ -459,6 +515,18 @@ export function PaymentsPage() {
           submitting={submitting}
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
+        />
+      ) : null}
+
+      {(receiptDocument || documentLoading || documentError) ? (
+        <ReceiptDocumentModal
+          document={receiptDocument}
+          loading={documentLoading}
+          error={documentError}
+          onClose={() => {
+            setReceiptDocument(null)
+            setDocumentError('')
+          }}
         />
       ) : null}
     </div>

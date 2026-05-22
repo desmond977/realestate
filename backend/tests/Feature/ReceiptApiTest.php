@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\Allocation;
 use App\Models\Receipt;
+use App\Models\Realtor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -75,5 +77,47 @@ class ReceiptApiTest extends TestCase
                     ],
                 ],
             ]);
+    }
+
+    public function test_authenticated_user_can_fetch_receipt_document(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $realtor = Realtor::factory()->create(['full_name' => 'Prime Realtor']);
+        $client = Client::factory()->create(['realtor_id' => $realtor->id]);
+        $property = Property::factory()->create([
+            'title' => 'Premium Plot',
+            'price' => 5000000,
+            'land_size' => '500 sqm',
+            'document_type' => 'C of O',
+        ]);
+        $allocation = Allocation::factory()->create([
+            'client_id' => $client->id,
+            'property_id' => $property->id,
+            'realtor_id' => $realtor->id,
+            'total_amount' => 5000000,
+            'amount_paid' => 2000000,
+            'balance' => 3000000,
+        ]);
+        $payment = Payment::factory()->create([
+            'allocation_id' => $allocation->id,
+            'client_id' => $client->id,
+            'property_id' => $property->id,
+            'realtor_id' => $realtor->id,
+            'amount' => 2000000,
+        ]);
+        $receipt = Receipt::factory()->create([
+            'payment_id' => $payment->id,
+            'receipt_number' => 'REC-DOC-001',
+        ]);
+
+        $this->getJson("/api/v1/receipts/{$receipt->id}/document")
+            ->assertOk()
+            ->assertJsonPath('data.receipt.number', 'REC-DOC-001')
+            ->assertJsonPath('data.client.full_name', $client->full_name)
+            ->assertJsonPath('data.realtor.full_name', 'Prime Realtor')
+            ->assertJsonPath('data.property.title', 'Premium Plot')
+            ->assertJsonPath('data.allocation.balance', 3000000)
+            ->assertJsonPath('data.installment_summary.progress_percentage', 40)
+            ->assertJsonCount(1, 'data.payment_history');
     }
 }

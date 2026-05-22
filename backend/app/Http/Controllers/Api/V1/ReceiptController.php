@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReceiptResource;
 use App\Models\Receipt;
+use App\Services\RealEstate\ReceiptDocumentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ReceiptController extends Controller
 {
+    public function __construct(private readonly ReceiptDocumentService $receiptDocumentService)
+    {
+    }
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $validated = $request->validate([
@@ -19,7 +24,7 @@ class ReceiptController extends Controller
         ]);
 
         $receipts = Receipt::query()
-            ->with(['payment.client', 'payment.property', 'issuer'])
+            ->with(['payment.client.realtor', 'payment.realtor', 'payment.property', 'payment.allocation', 'issuer'])
             ->when($validated['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query
@@ -47,9 +52,16 @@ class ReceiptController extends Controller
         return response()->json([
             'data' => [
                 'receipt' => new ReceiptResource(
-                    $receipt->load(['payment.client', 'payment.property', 'issuer'])
+                    $receipt->load(['payment.client.realtor', 'payment.realtor', 'payment.property', 'payment.allocation', 'issuer'])
                 ),
             ],
+        ]);
+    }
+
+    public function document(Receipt $receipt): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->receiptDocumentService->build($receipt),
         ]);
     }
 }

@@ -21,7 +21,8 @@ class ClientResource extends JsonResource
             'phone' => $this->phone,
             'address' => $this->address,
             'occupation' => $this->occupation,
-            'referred_by' => $this->referred_by,
+            'realtor_id' => $this->realtor_id,
+            'realtor' => new RealtorResource($this->whenLoaded('realtor')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

@@ -26,6 +26,7 @@ class ClientController extends Controller
         ]);
 
         $clients = Client::query()
+            ->with('realtor')
             ->when($validated['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query
@@ -33,7 +34,13 @@ class ClientController extends Controller
                         ->orWhere('last_name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('referred_by', 'like', "%{$search}%");
+                        ->orWhereHas('realtor', function ($query) use ($search) {
+                            $query
+                                ->where('full_name', 'like', "%{$search}%")
+                                ->orWhere('company_name', 'like', "%{$search}%")
+                                ->orWhere('phone', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
                 });
             })
             ->latest()
@@ -50,7 +57,7 @@ class ClientController extends Controller
         return response()->json([
             'message' => 'Client created successfully.',
             'data' => [
-                'client' => new ClientResource($client),
+                'client' => new ClientResource($client->load('realtor')),
             ],
         ], 201);
     }
@@ -59,7 +66,7 @@ class ClientController extends Controller
     {
         return response()->json([
             'data' => [
-                'client' => new ClientResource($client),
+                'client' => new ClientResource($client->load('realtor')),
             ],
         ]);
     }
@@ -78,7 +85,7 @@ class ClientController extends Controller
         return response()->json([
             'message' => 'Client updated successfully.',
             'data' => [
-                'client' => new ClientResource($client->fresh()),
+                'client' => new ClientResource($client->fresh()->load('realtor')),
             ],
         ]);
     }
@@ -91,4 +98,5 @@ class ClientController extends Controller
             'message' => 'Client deleted successfully.',
         ]);
     }
+
 }

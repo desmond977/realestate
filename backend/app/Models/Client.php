@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Client extends Model
@@ -19,7 +20,7 @@ class Client extends Model
         'phone',
         'address',
         'occupation',
-        'referred_by',
+        'realtor_id',
     ];
 
     protected $appends = [
@@ -29,6 +30,11 @@ class Client extends Model
     public function allocations(): HasMany
     {
         return $this->hasMany(Allocation::class);
+    }
+
+    public function realtor(): BelongsTo
+    {
+        return $this->belongsTo(Realtor::class);
     }
 
     public function payments(): HasMany

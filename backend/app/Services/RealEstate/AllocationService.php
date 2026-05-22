@@ -6,6 +6,7 @@ use App\Enums\AllocationStatus;
 use App\Enums\PaymentPlan;
 use App\Enums\PropertyStatus;
 use App\Models\Allocation;
+use App\Models\Client;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class AllocationService
     {
         return DB::transaction(function () use ($payload, $allocator) {
             $property = Property::query()->lockForUpdate()->findOrFail($payload['property_id']);
+            $client = Client::query()->lockForUpdate()->findOrFail($payload['client_id']);
 
             if ($property->status !== PropertyStatus::Available) {
                 throw ValidationException::withMessages([
@@ -47,9 +49,16 @@ class AllocationService
                 ]);
             }
 
+            $realtorId = $payload['realtor_id'] ?? $client->realtor_id;
+
+            if ($realtorId && (int) $client->realtor_id !== (int) $realtorId) {
+                $client->forceFill(['realtor_id' => $realtorId])->save();
+            }
+
             $allocation = Allocation::query()->create([
                 'property_id' => $property->id,
-                'client_id' => $payload['client_id'],
+                'client_id' => $client->id,
+                'realtor_id' => $realtorId,
                 'allocated_by' => $allocator?->id,
                 'total_amount' => $totalAmount,
                 'amount_paid' => 0,
@@ -73,7 +82,7 @@ class AllocationService
                 ], $allocator);
             }
 
-            return $allocation->fresh(['client', 'property', 'payments.receipt']);
+            return $allocation->fresh(['client.realtor', 'realtor', 'property', 'payments.receipt']);
         });
     }
 
@@ -94,7 +103,7 @@ class AllocationService
             $allocation->forceFill(['status' => AllocationStatus::Cancelled])->save();
             $allocation->property?->forceFill(['status' => PropertyStatus::Available])->save();
 
-            return $allocation->fresh(['client', 'property']);
+            return $allocation->fresh(['client.realtor', 'realtor', 'property']);
         });
     }
 }

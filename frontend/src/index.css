@@ -65,3 +65,31 @@ button {
 .animate-floating {
   animation: floatAround 3.5s ease-in-out infinite;
 }
+
+@media print {
+  body {
+    background: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible;
+  }
+
+  .receipt-print {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .receipt-actions {
+    display: none;
+  }
+}

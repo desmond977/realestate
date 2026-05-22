@@ -17,6 +17,7 @@ class Payment extends Model
         'allocation_id',
         'property_id',
         'client_id',
+        'realtor_id',
         'recorded_by',
         'amount',
         'payment_type',
@@ -47,6 +48,11 @@ class Payment extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function realtor(): BelongsTo
+    {
+        return $this->belongsTo(Realtor::class);
     }
 
     public function recorder(): BelongsTo

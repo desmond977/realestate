@@ -25,7 +25,7 @@ class PaymentService
     {
         return DB::transaction(function () use ($allocation, $payload, $recorder) {
             $allocation = Allocation::query()
-                ->with('property')
+                ->with(['property', 'realtor'])
                 ->lockForUpdate()
                 ->findOrFail($allocation->id);
 
@@ -54,6 +54,7 @@ class PaymentService
                 'allocation_id' => $allocation->id,
                 'property_id' => $allocation->property_id,
                 'client_id' => $allocation->client_id,
+                'realtor_id' => $allocation->realtor_id,
                 'recorded_by' => $recorder?->id,
                 'amount' => $amount,
                 'payment_type' => $payload['payment_type'] ?? $allocation->payment_plan->value,
@@ -81,7 +82,7 @@ class PaymentService
                 $this->receiptService->createForPayment($payment, $recorder);
             }
 
-            return $payment->load(['allocation', 'client', 'property', 'receipt']);
+            return $payment->load(['allocation.realtor', 'client.realtor', 'realtor', 'property', 'receipt']);
         });
     }
 }

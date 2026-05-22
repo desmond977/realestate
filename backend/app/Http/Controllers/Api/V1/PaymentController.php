@@ -24,14 +24,16 @@ class PaymentController extends Controller
             'allocation_id' => ['sometimes', 'integer', 'exists:allocations,id'],
             'client_id' => ['sometimes', 'integer', 'exists:clients,id'],
             'property_id' => ['sometimes', 'integer', 'exists:properties,id'],
+            'realtor_id' => ['sometimes', 'integer', 'exists:realtors,id'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
         $payments = Payment::query()
-            ->with(['client', 'property', 'receipt'])
+            ->with(['client.realtor', 'realtor', 'property', 'allocation', 'receipt'])
             ->when($validated['allocation_id'] ?? null, fn ($query, int $allocationId) => $query->where('allocation_id', $allocationId))
             ->when($validated['client_id'] ?? null, fn ($query, int $clientId) => $query->where('client_id', $clientId))
             ->when($validated['property_id'] ?? null, fn ($query, int $propertyId) => $query->where('property_id', $propertyId))
+            ->when($validated['realtor_id'] ?? null, fn ($query, int $realtorId) => $query->where('realtor_id', $realtorId))
             ->latest('paid_at')
             ->paginate($validated['per_page'] ?? 15)
             ->withQueryString();
@@ -59,7 +61,7 @@ class PaymentController extends Controller
         return response()->json([
             'data' => [
                 'payment' => new PaymentResource(
-                    $payment->load(['client', 'property', 'allocation', 'receipt.issuer', 'recorder'])
+                    $payment->load(['client', 'realtor', 'property', 'allocation', 'receipt.issuer', 'recorder'])
                 ),
             ],
         ]);

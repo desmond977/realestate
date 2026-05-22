@@ -20,9 +20,13 @@ class ClientActivityService
     public function overview(Client $client): array
     {
         $client->load([
+            'realtor',
+            'allocations.realtor',
             'allocations.property',
             'allocations.payments.receipt',
+            'allocations.payments.realtor',
             'payments.allocation.property',
+            'payments.realtor',
             'payments.property',
             'payments.receipt.issuer',
             'receipts.payment.property',

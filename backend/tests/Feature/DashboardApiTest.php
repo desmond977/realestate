@@ -10,6 +10,7 @@ use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\Realtor;
 use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +31,21 @@ class DashboardApiTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $client = Client::factory()->create();
+        $topRealtor = Realtor::factory()->create(['full_name' => 'Top Realtor']);
+        $secondRealtor = Realtor::factory()->create(['full_name' => 'Second Realtor']);
+        $client = Client::factory()->create(['realtor_id' => $topRealtor->id]);
+        Client::factory()->count(2)->create([
+            'realtor_id' => $topRealtor->id,
+            'created_at' => now()->subDays(2),
+        ]);
+        Client::factory()->create([
+            'realtor_id' => $secondRealtor->id,
+            'created_at' => now()->subDays(3),
+        ]);
+        Client::factory()->create([
+            'realtor_id' => $secondRealtor->id,
+            'created_at' => now()->subMonths(2),
+        ]);
         $availableProperty = Property::factory()->create(['status' => PropertyStatus::Available]);
         $reservedProperty = Property::factory()->create(['status' => PropertyStatus::Reserved]);
         $soldProperty = Property::factory()->create(['status' => PropertyStatus::Sold]);
@@ -88,12 +103,14 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.stats.available_properties', 1)
             ->assertJsonPath('data.stats.reserved_properties', 1)
             ->assertJsonPath('data.stats.sold_properties', 1)
-            ->assertJsonPath('data.stats.total_clients', 1)
+            ->assertJsonPath('data.stats.total_clients', 5)
             ->assertJsonPath('data.stats.revenue', 3000000)
             ->assertJsonPath('data.stats.outstanding_balances', 7000000)
             ->assertJsonPath('data.stats.active_allocations', 1)
             ->assertJsonPath('data.stats.completed_allocations', 1)
             ->assertJsonPath('data.property_status_breakdown.0.status', 'available')
+            ->assertJsonPath('data.top_realtors.0.full_name', 'Top Realtor')
+            ->assertJsonPath('data.top_realtors.0.monthly_clients_count', 3)
             ->assertJsonPath('data.recent_payments.0.receipt.receipt_number', 'REC-DASHBOARD-001')
             ->assertJsonCount(3, 'data.property_status_breakdown')
             ->assertJsonCount(3, 'data.allocation_status_breakdown');

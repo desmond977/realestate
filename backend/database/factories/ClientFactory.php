@@ -21,7 +21,7 @@ class ClientFactory extends Factory
             'phone' => fake()->phoneNumber(),
             'address' => fake()->address(),
             'occupation' => fake()->jobTitle(),
-            'referred_by' => fake()->optional()->name(),
+            'realtor_id' => null,
         ];
     }
 }

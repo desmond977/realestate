@@ -25,6 +25,7 @@ class AllocationFactory extends Factory
         return [
             'property_id' => Property::factory(),
             'client_id' => Client::factory(),
+            'realtor_id' => null,
             'allocated_by' => User::factory(),
             'total_amount' => $totalAmount,
             'amount_paid' => $amountPaid,

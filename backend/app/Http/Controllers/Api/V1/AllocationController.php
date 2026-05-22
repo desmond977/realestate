@@ -24,14 +24,16 @@ class AllocationController extends Controller
         $validated = $request->validate([
             'client_id' => ['sometimes', 'integer', 'exists:clients,id'],
             'property_id' => ['sometimes', 'integer', 'exists:properties,id'],
+            'realtor_id' => ['sometimes', 'integer', 'exists:realtors,id'],
             'status' => ['sometimes', new Enum(AllocationStatus::class)],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
         $allocations = Allocation::query()
-            ->with(['client', 'property'])
+            ->with(['client.realtor', 'realtor', 'property', 'payments.receipt'])
             ->when($validated['client_id'] ?? null, fn ($query, int $clientId) => $query->where('client_id', $clientId))
             ->when($validated['property_id'] ?? null, fn ($query, int $propertyId) => $query->where('property_id', $propertyId))
+            ->when($validated['realtor_id'] ?? null, fn ($query, int $realtorId) => $query->where('realtor_id', $realtorId))
             ->when($validated['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->latest()
             ->paginate($validated['per_page'] ?? 15)
@@ -57,7 +59,7 @@ class AllocationController extends Controller
         return response()->json([
             'data' => [
                 'allocation' => new AllocationResource(
-                    $allocation->load(['client', 'property', 'payments.receipt', 'allocator'])
+                    $allocation->load(['client.realtor', 'realtor', 'property', 'payments.receipt', 'allocator'])
                 ),
             ],
         ]);

@@ -5,6 +5,7 @@ import {
   Home,
   Landmark,
   Loader2,
+  Trophy,
   Users,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -23,6 +24,11 @@ const emptyStats = {
   outstanding_balances: 0,
   active_allocations: 0,
   completed_allocations: 0,
+  total_realtors: 0,
+}
+
+function realtorName(record) {
+  return record?.realtor?.full_name || record?.client?.realtor?.full_name || 'Direct'
 }
 
 export function DashboardPage() {
@@ -108,7 +114,7 @@ export function DashboardPage() {
       {
         label: 'Clients',
         value: stats.total_clients,
-        helper: 'Active and registered',
+        helper: `${stats.total_realtors} linked realtors`,
         icon: Users,
       },
       {
@@ -121,18 +127,20 @@ export function DashboardPage() {
     [stats],
   )
 
-  const weeklySales = summary?.weekly_sales_breakdown || []
-  const weeklyMax = Math.max(...weeklySales.map((item) => item.amount), 1)
+  const topRealtors = summary?.top_realtors || []
+  const topMonthlyClients = Math.max(
+    ...topRealtors.map((realtor) => realtor.monthly_clients_count || 0),
+    1,
+  )
   const activeTargetType = settings?.target_type || 'monthly'
   const activeTargetLabel = activeTargetType === 'weekly' ? 'Weekly target' : 'Monthly target'
   const activeTargetAmount =
     settings?.target_amount ?? (activeTargetType === 'monthly' ? summary?.monthly_target ?? 0 : 0)
-  const weeklySalesTotal = weeklySales.reduce((sum, item) => sum + item.amount, 0)
   const targetProgress = activeTargetAmount > 0
     ? Math.min(
         100,
         Math.round(
-          ((activeTargetType === 'weekly' ? weeklySalesTotal : stats.revenue) / activeTargetAmount) * 100,
+          (stats.revenue / activeTargetAmount) * 100,
         ),
       )
     : 0
@@ -234,35 +242,62 @@ export function DashboardPage() {
           <div className="rounded-lg md:rounded-[24px] border border-line bg-panel p-3 md:p-6 shadow-sm">
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
-                <p className="text-xs md:text-sm font-medium text-ink">Weekly sales</p>
+                <p className="text-xs md:text-sm font-medium text-ink">Realtor leaderboard</p>
                 <p className="mt-1 text-xs md:text-sm text-muted">
-                  Confirmed payment volume over the last 7 days.
+                  Ranked by clients added this month.
                 </p>
               </div>
-              <span className="rounded-full bg-brand/10 px-2 py-1 md:px-3 md:py-1 text-xs font-semibold text-brand">
-                {weeklySales.length} days
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 md:px-3 md:py-1 text-xs font-semibold text-brand">
+                <Trophy size={14} />
+                Monthly
               </span>
             </div>
 
-            <div className="mt-3 md:mt-6 space-y-2 md:space-y-4">
-              {weeklySales.map((entry) => {
-                const width = weeklyMax ? (entry.amount / weeklyMax) * 100 : 0
+            <div className="mt-3 md:mt-6 space-y-2 md:space-y-3">
+              {topRealtors.map((realtor, index) => {
+                const monthlyClients = realtor.monthly_clients_count || 0
+                const width = topMonthlyClients ? (monthlyClients / topMonthlyClients) * 100 : 0
 
                 return (
-                  <div key={entry.label} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-muted">
-                      <span>{entry.label}</span>
-                      <span className="text-xs">{formatMoney(entry.amount)}</span>
+                  <div key={realtor.id} className="rounded-xl border border-line bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md text-xs font-bold ${
+                          index === 0 ? 'bg-brand text-white' : 'bg-canvas text-muted'
+                        }`}>
+                          #{index + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink">{realtor.full_name}</p>
+                          <p className="mt-1 text-xs text-muted">
+                            {realtor.company_name || 'Independent realtor'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-ink">{monthlyClients}</p>
+                        <p className="text-xs text-muted">clients</p>
+                      </div>
                     </div>
-                    <div className="h-2 md:h-3 overflow-hidden rounded-full bg-canvas">
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-canvas">
                       <div
                         className="h-full rounded-full bg-brand transition-all duration-500"
                         style={{ width: `${width}%` }}
                       />
                     </div>
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted">
+                      <span>{realtor.clients_count ?? 0} total clients</span>
+                      <span>{formatMoney(realtor.confirmed_revenue || 0)} revenue</span>
+                    </div>
                   </div>
                 )
               })}
+
+              {!loading && topRealtors.length === 0 ? (
+                <div className="rounded-xl bg-canvas p-4 text-sm text-muted">
+                  No realtor client activity yet this month.
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -339,7 +374,7 @@ export function DashboardPage() {
                 <thead className="text-xs uppercase text-muted">
                   <tr className="border-b border-line">
                     <th className="py-2 md:py-3 pr-2 md:pr-4 font-semibold">Client</th>
-                    <th className="py-2 md:py-3 pr-2 md:pr-4 font-semibold hidden sm:table-cell">Property</th>
+                    <th className="py-2 md:py-3 pr-2 md:pr-4 font-semibold hidden sm:table-cell">Realtor</th>
                     <th className="py-2 md:py-3 pr-2 md:pr-4 font-semibold">Amount</th>
                     <th className="py-2 md:py-3 font-semibold hidden md:table-cell">Status</th>
                   </tr>
@@ -351,7 +386,7 @@ export function DashboardPage() {
                         {payment.client?.full_name || 'Client'}
                       </td>
                       <td className="py-2 md:py-3 pr-2 md:pr-4 text-muted hidden sm:table-cell text-xs md:text-sm">
-                        {payment.property?.title || 'Property'}
+                        {realtorName(payment)}
                       </td>
                       <td className="py-2 md:py-3 pr-2 md:pr-4 font-semibold text-ink text-xs md:text-sm">
                         {formatMoney(payment.amount)}

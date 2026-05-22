@@ -17,6 +17,7 @@ class Allocation extends Model
     protected $fillable = [
         'property_id',
         'client_id',
+        'realtor_id',
         'allocated_by',
         'total_amount',
         'amount_paid',
@@ -44,6 +45,11 @@ class Allocation extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function realtor(): BelongsTo
+    {
+        return $this->belongsTo(Realtor::class);
     }
 
     public function allocator(): BelongsTo

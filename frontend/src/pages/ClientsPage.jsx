@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
 const emptyForm = {
@@ -25,7 +26,11 @@ const emptyForm = {
   phone: '',
   address: '',
   occupation: '',
-  referred_by: '',
+  realtor_id: '',
+}
+
+function realtorName(entity) {
+  return entity?.realtor?.full_name || 'Direct client'
 }
 
 function getApiError(error, fallback) {
@@ -104,7 +109,7 @@ function ActivityStat({ label, value, icon: Icon }) {
   )
 }
 
-function ActivityModal({ client, activity, loading, error, onClose }) {
+function ActivityModal({ client, activity, loading, error, onClose, onViewReceipt }) {
   const summary = activity?.summary || {}
   const details = activity?.client || client
 
@@ -170,8 +175,8 @@ function ActivityModal({ client, activity, loading, error, onClose }) {
                   <h4 className="text-sm font-semibold text-ink">Profile</h4>
                   <div className="mt-4 grid gap-3 text-sm">
                     <div className="rounded-md bg-canvas p-3">
-                      <p className="text-xs uppercase text-muted">Referred by</p>
-                      <p className="mt-1 font-medium text-ink">{details.referred_by || 'Not specified'}</p>
+                      <p className="text-xs uppercase text-muted">Realtor</p>
+                      <p className="mt-1 font-medium text-ink">{realtorName(details)}</p>
                     </div>
                     <div className="rounded-md bg-canvas p-3">
                       <p className="text-xs uppercase text-muted">Occupation</p>
@@ -366,6 +371,14 @@ function ActivityModal({ client, activity, loading, error, onClose }) {
                           {formatMoney(receipt.payment?.amount || receipt.metadata?.amount || 0)}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => onViewReceipt(receipt)}
+                        className="mt-3 inline-flex items-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-2.5 py-1.5 text-xs font-semibold text-brand"
+                      >
+                        <ReceiptText size={14} />
+                        View receipt
+                      </button>
                     </div>
                   ))}
                   {!activity.receipts?.length ? (
@@ -373,12 +386,13 @@ function ActivityModal({ client, activity, loading, error, onClose }) {
                   ) : null}
                 </div>
                 <div className="mt-4 hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[520px] text-left text-sm">
+                  <table className="w-full min-w-[620px] text-left text-sm">
                     <thead className="text-xs uppercase text-muted">
                       <tr className="border-b border-line">
                         <th className="py-2 pr-3">Receipt</th>
                         <th className="py-2 pr-3">Amount</th>
-                        <th className="py-2">Issued</th>
+                        <th className="py-2 pr-3">Issued</th>
+                        <th className="py-2 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -390,6 +404,16 @@ function ActivityModal({ client, activity, loading, error, onClose }) {
                           </td>
                           <td className="py-3 text-muted">
                             {receipt.issued_at ? new Date(receipt.issued_at).toLocaleString() : '-'}
+                          </td>
+                          <td className="py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => onViewReceipt(receipt)}
+                              className="inline-flex items-center gap-1 rounded-md border border-brand/20 bg-brand/5 px-2.5 py-1.5 text-xs font-semibold text-brand"
+                            >
+                              <ReceiptText size={14} />
+                              View
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -408,7 +432,7 @@ function ActivityModal({ client, activity, loading, error, onClose }) {
   )
 }
 
-function ClientModal({ mode, initialValues, onClose, onSubmit, submitting }) {
+function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitting }) {
   const [form, setForm] = useState(initialValues)
 
   function updateField(field, value) {
@@ -502,16 +526,24 @@ function ClientModal({ mode, initialValues, onClose, onSubmit, submitting }) {
             </label>
 
             <label className="block md:col-span-2">
-              <span className="text-sm font-medium text-ink">Referred by</span>
-              <input
-                value={form.referred_by}
+              <span className="text-sm font-medium text-ink">Realtor</span>
+              <select
+                value={form.realtor_id}
                 onChange={(event) =>
-                  updateField('referred_by', event.target.value)
+                  updateField('realtor_id', event.target.value)
                 }
                 className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                placeholder="Realtor or agent name"
-              />
+              >
+                <option value="">No linked realtor</option>
+                {realtors.map((realtor) => (
+                  <option key={realtor.id} value={realtor.id}>
+                    {realtor.full_name}
+                    {realtor.company_name ? ` - ${realtor.company_name}` : ''}
+                  </option>
+                ))}
+              </select>
             </label>
+
           </div>
 
           <label className="block">
@@ -557,10 +589,14 @@ export function ClientsPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [modal, setModal] = useState(null)
+  const [realtors, setRealtors] = useState([])
   const [activityClient, setActivityClient] = useState(null)
   const [activity, setActivity] = useState(null)
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityError, setActivityError] = useState('')
+  const [receiptDocument, setReceiptDocument] = useState(null)
+  const [documentLoading, setDocumentLoading] = useState(false)
+  const [documentError, setDocumentError] = useState('')
 
   const modalInitialValues = useMemo(() => {
     if (modal?.client) {
@@ -571,12 +607,24 @@ export function ClientsPage() {
         phone: modal.client.phone || '',
         address: modal.client.address || '',
         occupation: modal.client.occupation || '',
-        referred_by: modal.client.referred_by || '',
+        realtor_id: modal.client.realtor_id || '',
       }
     }
 
     return emptyForm
   }, [modal])
+
+  const loadRealtors = useCallback(async () => {
+    try {
+      const response = await api.get('/realtors', {
+        params: { per_page: 100, status: 'active' },
+      })
+
+      setRealtors(response.data.data)
+    } catch {
+      setRealtors([])
+    }
+  }, [])
 
   const loadClients = useCallback(async (params) => {
     setLoading(true)
@@ -602,10 +650,11 @@ export function ClientsPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       loadClients(query)
+      loadRealtors()
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [loadClients, query])
+  }, [loadClients, loadRealtors, query])
 
   function applyFilters(event) {
     event.preventDefault()
@@ -673,6 +722,21 @@ export function ClientsPage() {
       setActivityError(getApiError(err, 'Client activity could not be loaded.'))
     } finally {
       setActivityLoading(false)
+    }
+  }
+
+  async function viewReceiptDocument(receipt) {
+    setReceiptDocument(null)
+    setDocumentError('')
+    setDocumentLoading(true)
+
+    try {
+      const response = await api.get(`/receipts/${receipt.id}/document`)
+      setReceiptDocument(response.data.data)
+    } catch (err) {
+      setDocumentError(getApiError(err, 'Receipt document could not be loaded.'))
+    } finally {
+      setDocumentLoading(false)
     }
   }
 
@@ -795,7 +859,7 @@ export function ClientsPage() {
 
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="min-w-0 truncate rounded-md border border-accent/20 bg-accent/10 px-2.5 py-1.5 text-xs font-semibold text-accent">
-                      {client.referred_by || 'Direct client'}
+                      {realtorName(client)}
                     </span>
                     <div className="flex shrink-0 gap-2">
                       <button
@@ -835,7 +899,7 @@ export function ClientsPage() {
                 <th className="px-4 py-3 font-semibold tracking-wide">Client</th>
                 <th className="px-4 py-3 font-semibold">Contact</th>
                 <th className="px-4 py-3 font-semibold">Occupation</th>
-                <th className="px-4 py-3 font-semibold">Referred by</th>
+                <th className="px-4 py-3 font-semibold">Realtor</th>
                 <th className="px-4 py-3 font-semibold">Address</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
@@ -867,7 +931,7 @@ export function ClientsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex max-w-[180px] rounded-md border border-accent/20 bg-accent/10 px-2.5 py-1.5 text-xs font-semibold text-accent">
-                      {client.referred_by || 'Direct client'}
+                      {realtorName(client)}
                     </span>
                   </td>
                   <td className="max-w-[260px] px-4 py-3">
@@ -934,6 +998,7 @@ export function ClientsPage() {
           onClose={() => setModal(null)}
           onSubmit={handleSubmit}
           submitting={submitting}
+          realtors={realtors}
         />
       ) : null}
 
@@ -943,10 +1008,23 @@ export function ClientsPage() {
           activity={activity}
           loading={activityLoading}
           error={activityError}
+          onViewReceipt={viewReceiptDocument}
           onClose={() => {
             setActivityClient(null)
             setActivity(null)
             setActivityError('')
+          }}
+        />
+      ) : null}
+
+      {(receiptDocument || documentLoading || documentError) ? (
+        <ReceiptDocumentModal
+          document={receiptDocument}
+          loading={documentLoading}
+          error={documentError}
+          onClose={() => {
+            setReceiptDocument(null)
+            setDocumentError('')
           }}
         />
       ) : null}

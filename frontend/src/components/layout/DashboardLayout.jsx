@@ -19,13 +19,16 @@ import { api } from '../../api/client'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Profile', to: '/profile', icon: User, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'staff'] },
   { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff'] },
   { label: 'Allocations', to: '/allocations', icon: Home, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Payments', to: '/payments', icon: CreditCard, roles: ['admin', 'accountant'] },
   { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'accountant'] },
   { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
+]
+
+const utilityNavItems = [
+  { label: 'Profile', to: '/profile', icon: User, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Settings', to: '/settings', icon: Settings2, roles: ['admin'] },
 ]
 
@@ -64,15 +67,16 @@ export function DashboardLayout() {
   }, [])
 
   const visibleNavItems = navItems.filter((item) => item.roles.includes(user?.role))
+  const visibleUtilityItems = utilityNavItems.filter((item) => item.roles.includes(user?.role))
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-72 border-r border-line bg-panel transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-line bg-panel transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-          <div className="flex h-16 items-center justify-between border-b border-line px-5">
+          <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <div className="flex items-center">
             {branding?.company_logo ? (
               <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-24 w-24 rounded-sm object-contain" />
@@ -92,7 +96,7 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        <nav className="space-y-1 px-3 py-4">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
@@ -111,6 +115,34 @@ export function DashboardLayout() {
             </NavLink>
           ))}
         </nav>
+
+        <div className="shrink-0 border-t border-line bg-panel px-3 py-4">
+          <div className="mb-3 rounded-lg border border-line bg-canvas p-3">
+            <p className="text-xs font-medium text-muted">Signed in</p>
+            <p className="mt-1 truncate text-sm font-semibold text-ink">{user?.name || 'User'}</p>
+            <p className="mt-1 text-xs capitalize text-muted">{user?.role || 'staff'}</p>
+          </div>
+
+          <nav className="space-y-1">
+            {visibleUtilityItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-brand text-white'
+                      : 'text-muted hover:bg-canvas hover:text-ink'
+                  }`
+                }
+                onClick={() => setSidebarOpen(false)}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
       </aside>
 
       {sidebarOpen ? (

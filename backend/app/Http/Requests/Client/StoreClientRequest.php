@@ -23,7 +23,7 @@ class StoreClientRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'occupation' => ['nullable', 'string', 'max:150'],
-            'referred_by' => ['nullable', 'string', 'max:150'],
+            'realtor_id' => ['nullable', 'integer', 'exists:realtors,id'],
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AllocationResource;
 use App\Http\Resources\PaymentResource;
+use App\Http\Resources\RealtorResource;
 use App\Services\Dashboard\DashboardService;
 use Illuminate\Http\JsonResponse;
 
@@ -23,11 +24,11 @@ class DashboardController extends Controller
                 'stats' => $summary['stats'],
                 'monthly_target' => $summary['monthly_target'],
                 'monthly_target_progress' => $summary['monthly_target_progress'],
-                'weekly_sales_breakdown' => $summary['weekly_sales_breakdown'],
                 'property_status_breakdown' => $summary['property_status_breakdown'],
                 'allocation_status_breakdown' => $summary['allocation_status_breakdown'],
                 'recent_payments' => PaymentResource::collection($summary['recent_payments']),
                 'recent_allocations' => AllocationResource::collection($summary['recent_allocations']),
+                'top_realtors' => RealtorResource::collection($summary['top_realtors']),
             ],
         ]);
     }

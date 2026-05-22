@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\ReceiptController;
+use App\Http\Controllers\Api\V1\RealtorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -43,10 +44,14 @@ Route::prefix('v1')->group(function () {
             ->middleware('role:admin,staff,accountant');
         Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware('role:admin,staff');
         Route::apiResource('clients', ClientController::class)->middleware('role:admin,staff');
+        Route::get('realtors/{realtor}/analytics', [RealtorController::class, 'analytics'])->middleware('role:admin,staff');
+        Route::apiResource('realtors', RealtorController::class)->middleware('role:admin,staff');
         Route::apiResource('payments', PaymentController::class)
             ->only(['index', 'store', 'show'])
             ->middleware('role:admin,accountant');
         Route::apiResource('properties', PropertyController::class)->middleware('role:admin,staff');
+        Route::get('receipts/{receipt}/document', [ReceiptController::class, 'document'])
+            ->middleware('role:admin,staff,accountant');
         Route::apiResource('receipts', ReceiptController::class)
             ->only(['index', 'show'])
             ->middleware('role:admin,accountant');

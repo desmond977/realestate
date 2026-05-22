@@ -10,6 +10,7 @@ use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\Realtor;
 use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,7 +36,7 @@ class ClientApiTest extends TestCase
             'last_name' => 'Okafor',
             'email' => 'ada@example.com',
             'phone' => '08030000001',
-            'referred_by' => 'Agent Ada',
+            'realtor_id' => Realtor::factory()->create(['full_name' => 'Agent Ada'])->id,
         ]);
 
         Client::factory()->create([
@@ -43,7 +44,7 @@ class ClientApiTest extends TestCase
             'last_name' => 'Bello',
             'email' => 'tunde@example.com',
             'phone' => '08030000002',
-            'referred_by' => null,
+            'realtor_id' => null,
         ]);
 
         $response = $this->getJson('/api/v1/clients?search=Agent');
@@ -53,12 +54,13 @@ class ClientApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.full_name', 'Ada Okafor')
             ->assertJsonPath('data.0.email', 'ada@example.com')
-            ->assertJsonPath('data.0.referred_by', 'Agent Ada');
+            ->assertJsonPath('data.0.realtor.full_name', 'Agent Ada');
     }
 
     public function test_authenticated_user_can_create_client(): void
     {
         Sanctum::actingAs(User::factory()->create());
+        $realtor = Realtor::factory()->create(['full_name' => 'Grace Realtor']);
 
         $response = $this->postJson('/api/v1/clients', [
             'first_name' => 'Chioma',
@@ -67,7 +69,7 @@ class ClientApiTest extends TestCase
             'phone' => '08030000003',
             'address' => '12 Marina Road, Lagos',
             'occupation' => 'Architect',
-            'referred_by' => 'Grace Realtor',
+            'realtor_id' => $realtor->id,
         ]);
 
         $response
@@ -75,12 +77,13 @@ class ClientApiTest extends TestCase
             ->assertJsonPath('message', 'Client created successfully.')
             ->assertJsonPath('data.client.full_name', 'Chioma Nwosu')
             ->assertJsonPath('data.client.email', 'chioma@example.com')
-            ->assertJsonPath('data.client.referred_by', 'Grace Realtor');
+            ->assertJsonPath('data.client.realtor_id', $realtor->id)
+            ->assertJsonPath('data.client.realtor.full_name', 'Grace Realtor');
 
         $this->assertDatabaseHas('clients', [
             'email' => 'chioma@example.com',
             'phone' => '08030000003',
-            'referred_by' => 'Grace Realtor',
+            'realtor_id' => $realtor->id,
         ]);
     }
 
@@ -110,15 +113,17 @@ class ClientApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.client.full_name', 'Old Name');
 
+        $realtor = Realtor::factory()->create(['full_name' => 'Updated Agent']);
+
         $this->patchJson("/api/v1/clients/{$client->id}", [
             'first_name' => 'New',
             'email' => 'new@example.com',
-            'referred_by' => 'Updated Agent',
+            'realtor_id' => $realtor->id,
         ])->assertOk()
             ->assertJsonPath('message', 'Client updated successfully.')
             ->assertJsonPath('data.client.full_name', 'New Name')
             ->assertJsonPath('data.client.email', 'new@example.com')
-            ->assertJsonPath('data.client.referred_by', 'Updated Agent');
+            ->assertJsonPath('data.client.realtor.full_name', 'Updated Agent');
     }
 
     public function test_update_client_rejects_duplicate_email_except_current_client(): void
@@ -155,11 +160,13 @@ class ClientApiTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'staff']));
 
-        $client = Client::factory()->create(['referred_by' => 'Referral Partner']);
+        $realtor = Realtor::factory()->create(['full_name' => 'Referral Partner']);
+        $client = Client::factory()->create(['realtor_id' => $realtor->id]);
         $property = Property::factory()->create(['status' => PropertyStatus::Reserved]);
         $allocation = Allocation::factory()->create([
             'client_id' => $client->id,
             'property_id' => $property->id,
+            'realtor_id' => $realtor->id,
             'total_amount' => 10000000,
             'amount_paid' => 4000000,
             'balance' => 6000000,
@@ -170,6 +177,7 @@ class ClientApiTest extends TestCase
             'allocation_id' => $allocation->id,
             'client_id' => $client->id,
             'property_id' => $property->id,
+            'realtor_id' => $realtor->id,
             'amount' => 4000000,
             'status' => PaymentStatus::Confirmed,
         ]);
@@ -181,7 +189,7 @@ class ClientApiTest extends TestCase
 
         $this->getJson("/api/v1/clients/{$client->id}/activity")
             ->assertOk()
-            ->assertJsonPath('data.client.referred_by', 'Referral Partner')
+            ->assertJsonPath('data.client.realtor.full_name', 'Referral Partner')
             ->assertJsonPath('data.summary.allocated_properties', 1)
             ->assertJsonPath('data.summary.total_amount_paid', 4000000)
             ->assertJsonPath('data.summary.outstanding_balance', 6000000)

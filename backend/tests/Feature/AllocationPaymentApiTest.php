@@ -8,6 +8,7 @@ use App\Enums\PropertyStatus;
 use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Property;
+use App\Models\Realtor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -27,7 +28,8 @@ class AllocationPaymentApiTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $property = Property::factory()->create(['status' => PropertyStatus::Available]);
-        $client = Client::factory()->create();
+        $realtor = Realtor::factory()->create(['full_name' => 'Central Agent']);
+        $client = Client::factory()->create(['realtor_id' => $realtor->id]);
 
         $response = $this->postJson('/api/v1/allocations', [
             'property_id' => $property->id,
@@ -43,6 +45,8 @@ class AllocationPaymentApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('message', 'Allocation created successfully.')
             ->assertJsonPath('data.allocation.amount_paid', 2500000)
+            ->assertJsonPath('data.allocation.realtor_id', $realtor->id)
+            ->assertJsonPath('data.allocation.realtor.full_name', 'Central Agent')
             ->assertJsonPath('data.allocation.balance', 7500000)
             ->assertJsonPath('data.allocation.status', 'active')
             ->assertJsonPath('data.allocation.property.status', 'reserved')
@@ -52,6 +56,7 @@ class AllocationPaymentApiTest extends TestCase
         $this->assertDatabaseHas('payments', [
             'transaction_reference' => 'TXN-INITIAL-001',
             'amount' => 2500000,
+            'realtor_id' => $realtor->id,
         ]);
 
         $this->assertDatabaseHas('receipts', [
@@ -75,6 +80,34 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonValidationErrors(['initial_payment_amount']);
     }
 
+    public function test_allocation_can_link_selected_realtor_to_client_and_payment(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create(['status' => PropertyStatus::Available]);
+        $client = Client::factory()->create(['realtor_id' => null]);
+        $realtor = Realtor::factory()->create(['full_name' => 'Allocation Realtor']);
+
+        $response = $this->postJson('/api/v1/allocations', [
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'realtor_id' => $realtor->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'initial_payment_amount' => 1000000,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.allocation.realtor_id', $realtor->id)
+            ->assertJsonPath('data.allocation.realtor.full_name', 'Allocation Realtor')
+            ->assertJsonPath('data.allocation.payments.0.realtor_id', $realtor->id);
+
+        $this->assertDatabaseHas('clients', [
+            'id' => $client->id,
+            'realtor_id' => $realtor->id,
+        ]);
+    }
+
     public function test_reserved_or_sold_property_cannot_be_allocated_again(): void
     {
         Sanctum::actingAs(User::factory()->create());
@@ -94,10 +127,12 @@ class AllocationPaymentApiTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $property = Property::factory()->create(['status' => PropertyStatus::Reserved]);
-        $client = Client::factory()->create();
+        $realtor = Realtor::factory()->create(['full_name' => 'Final Agent']);
+        $client = Client::factory()->create(['realtor_id' => $realtor->id]);
         $allocation = Allocation::factory()->create([
             'property_id' => $property->id,
             'client_id' => $client->id,
+            'realtor_id' => $realtor->id,
             'total_amount' => 10000000,
             'amount_paid' => 7500000,
             'balance' => 2500000,
@@ -116,6 +151,8 @@ class AllocationPaymentApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('message', 'Payment recorded successfully.')
             ->assertJsonPath('data.payment.amount', 2500000)
+            ->assertJsonPath('data.payment.realtor_id', $realtor->id)
+            ->assertJsonPath('data.payment.realtor.full_name', 'Final Agent')
             ->assertJsonPath('data.payment.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001');
 
         $allocation->refresh();

@@ -1,13 +1,21 @@
 import {
+  CalendarDays,
+  CreditCard,
+  Download,
+  Eye,
   Home,
   Loader2,
   Plus,
+  ReceiptText,
   Search,
   Trash2,
+  UserPlus,
+  Users,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
 const allocationStatuses = ['active', 'completed', 'cancelled']
@@ -16,6 +24,7 @@ const paymentPlans = ['installment', 'full']
 const emptyForm = {
   property_id: '',
   client_id: '',
+  realtor_id: '',
   total_amount: '',
   payment_plan: 'installment',
   allocated_at: '',
@@ -55,9 +64,18 @@ function StatusBadge({ status }) {
   )
 }
 
+function realtorName(allocation) {
+  return allocation?.realtor?.full_name || allocation?.client?.realtor?.full_name || 'Direct'
+}
+
+function allocationReceipt(allocation) {
+  return allocation?.payments?.find((payment) => payment.receipt?.id)?.receipt
+}
+
 function AllocationModal({
   clients,
   properties,
+  realtors,
   submitting,
   onClose,
   onSubmit,
@@ -66,6 +84,16 @@ function AllocationModal({
   const selectedProperty = properties.find(
     (property) => String(property.id) === String(form.property_id),
   )
+  const selectedClient = clients.find(
+    (client) => String(client.id) === String(form.client_id),
+  )
+  const selectedRealtor = realtors.find(
+    (realtor) => String(realtor.id) === String(form.realtor_id),
+  )
+  const inputClass =
+    'mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10'
+  const textAreaClass =
+    'mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10'
 
   function updateField(field, value) {
     setForm((current) => {
@@ -76,6 +104,11 @@ function AllocationModal({
           (item) => String(item.id) === String(value),
         )
         next.total_amount = property?.price ?? ''
+      }
+
+      if (field === 'client_id') {
+        const client = clients.find((item) => String(item.id) === String(value))
+        next.realtor_id = client?.realtor_id ? String(client.realtor_id) : ''
       }
 
       if (field === 'payment_plan' && value === 'full') {
@@ -92,6 +125,7 @@ function AllocationModal({
     const payload = {
       property_id: Number(form.property_id),
       client_id: Number(form.client_id),
+      realtor_id: form.realtor_id ? Number(form.realtor_id) : undefined,
       total_amount: Number(form.total_amount),
       payment_plan: form.payment_plan,
       allocated_at: form.allocated_at || undefined,
@@ -109,13 +143,14 @@ function AllocationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 px-4 py-6">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-line bg-panel shadow-xl">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <h3 className="text-lg font-semibold text-ink">Create allocation</h3>
-            <p className="text-sm text-muted">
-              Allocate an available property and optionally record the first payment.
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
+      <div className="mx-auto min-h-screen w-full max-w-5xl border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-5 sm:py-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-brand">Allocation</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink sm:text-xl">Create allocation</h3>
+            <p className="mt-1 text-sm text-muted">
+              Link the buyer, realtor, property, and first payment in one clean record.
             </p>
           </div>
           <button
@@ -128,142 +163,220 @@ function AllocationModal({
           </button>
         </div>
 
-        <form className="space-y-5 px-5 py-5" onSubmit={handleSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Property</span>
-              <select
-                value={form.property_id}
-                onChange={(event) =>
-                  updateField('property_id', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                required
-              >
-                <option value="">Select property</option>
-                {properties.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.title} - {formatMoney(property.price)}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <form className="space-y-4 p-4 sm:p-5" onSubmit={handleSubmit}>
+          <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-md bg-brand/10 text-brand">
+                <Users size={18} />
+              </span>
+              <div>
+                <h4 className="text-sm font-semibold text-ink">Allocation details</h4>
+                <p className="text-xs text-muted">Choose the property, client, and realtor.</p>
+              </div>
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Client</span>
-              <select
-                value={form.client_id}
-                onChange={(event) =>
-                  updateField('client_id', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                required
-              >
-                <option value="">Select client</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.full_name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Property</span>
+                <select
+                  value={form.property_id}
+                  onChange={(event) =>
+                    updateField('property_id', event.target.value)
+                  }
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Select property</option>
+                  {properties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.title} - {formatMoney(property.price)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-muted">
+                  {selectedProperty?.location || 'Available properties only'}
+                </p>
+              </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Total amount</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.total_amount}
-                onChange={(event) =>
-                  updateField('total_amount', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                required
-              />
-            </label>
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Client</span>
+                <select
+                  value={form.client_id}
+                  onChange={(event) =>
+                    updateField('client_id', event.target.value)
+                  }
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Select client</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.full_name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-muted">
+                  {selectedClient?.phone || selectedClient?.email || 'Buyer profile'}
+                </p>
+              </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Payment plan</span>
-              <select
-                value={form.payment_plan}
-                onChange={(event) =>
-                  updateField('payment_plan', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm capitalize outline-none focus:border-brand"
-              >
-                {paymentPlans.map((plan) => (
-                  <option key={plan} value={plan}>
-                    {plan}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Realtor</span>
+                <select
+                  value={form.realtor_id}
+                  onChange={(event) =>
+                    updateField('realtor_id', event.target.value)
+                  }
+                  className={inputClass}
+                >
+                  <option value="">No linked realtor</option>
+                  {realtors.map((realtor) => (
+                    <option key={realtor.id} value={realtor.id}>
+                      {realtor.full_name}
+                      {realtor.company_name ? ` - ${realtor.company_name}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-muted">
+                  {selectedRealtor?.company_name || 'Optional sales partner'}
+                </p>
+              </label>
+            </div>
+          </section>
 
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Allocation date</span>
-              <input
-                type="date"
-                value={form.allocated_at}
-                onChange={(event) =>
-                  updateField('allocated_at', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-              />
-            </label>
+          <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-md bg-accent/10 text-accent">
+                  <CreditCard size={18} />
+                </span>
+                <div>
+                  <h4 className="text-sm font-semibold text-ink">Payment setup</h4>
+                  <p className="text-xs text-muted">Set the total amount and payment plan.</p>
+                </div>
+              </div>
 
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Initial payment</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.initial_payment_amount}
-                onChange={(event) =>
-                  updateField('initial_payment_amount', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                placeholder={selectedProperty ? formatMoney(selectedProperty.price) : '0'}
-              />
-            </label>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Total amount</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.total_amount}
+                    onChange={(event) =>
+                      updateField('total_amount', event.target.value)
+                    }
+                    className={inputClass}
+                    required
+                  />
+                </label>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Payment method</span>
-              <input
-                value={form.payment_method}
-                onChange={(event) =>
-                  updateField('payment_method', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                placeholder="bank_transfer, cash, pos"
-              />
-            </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Payment plan</span>
+                  <select
+                    value={form.payment_plan}
+                    onChange={(event) =>
+                      updateField('payment_plan', event.target.value)
+                    }
+                    className={`${inputClass} capitalize`}
+                  >
+                    {paymentPlans.map((plan) => (
+                      <option key={plan} value={plan}>
+                        {plan}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Reference</span>
-              <input
-                value={form.transaction_reference}
-                onChange={(event) =>
-                  updateField('transaction_reference', event.target.value)
-                }
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-              />
-            </label>
-          </div>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Initial payment</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.initial_payment_amount}
+                    onChange={(event) =>
+                      updateField('initial_payment_amount', event.target.value)
+                    }
+                    className={inputClass}
+                    placeholder={selectedProperty ? formatMoney(selectedProperty.price) : '0'}
+                  />
+                </label>
 
-          <label className="block">
-            <span className="text-sm font-medium text-ink">Notes</span>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Allocation date</span>
+                  <input
+                    type="date"
+                    value={form.allocated_at}
+                    onChange={(event) =>
+                      updateField('allocated_at', event.target.value)
+                    }
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="grid h-9 w-9 place-items-center rounded-md bg-brand/10 text-brand">
+                  <CalendarDays size={18} />
+                </span>
+                <div>
+                  <h4 className="text-sm font-semibold text-ink">First payment</h4>
+                  <p className="text-xs text-muted">Optional receipt details.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Payment method</span>
+                  <input
+                    value={form.payment_method}
+                    onChange={(event) =>
+                      updateField('payment_method', event.target.value)
+                    }
+                    className={inputClass}
+                    placeholder="bank_transfer, cash, pos"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Reference</span>
+                  <input
+                    value={form.transaction_reference}
+                    onChange={(event) =>
+                      updateField('transaction_reference', event.target.value)
+                    }
+                    className={inputClass}
+                    placeholder="Transaction reference"
+                  />
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-md bg-canvas text-muted">
+                <UserPlus size={18} />
+              </span>
+              <div>
+                <h4 className="text-sm font-semibold text-ink">Notes</h4>
+                <p className="text-xs text-muted">Internal context for this allocation.</p>
+              </div>
+            </div>
             <textarea
               value={form.notes}
               onChange={(event) => updateField('notes', event.target.value)}
               rows="3"
-              className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+              className={textAreaClass}
+              placeholder="Add allocation notes"
             />
-          </label>
+          </section>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
+          <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-3 border-t border-line bg-panel px-4 py-4 sm:-mx-5 sm:-mb-5 sm:flex-row sm:justify-end sm:px-5">
             <button
               type="button"
               onClick={onClose}
@@ -290,6 +403,7 @@ export function AllocationsPage() {
   const [allocations, setAllocations] = useState([])
   const [clients, setClients] = useState([])
   const [properties, setProperties] = useState([])
+  const [realtors, setRealtors] = useState([])
   const [meta, setMeta] = useState(null)
   const [filters, setFilters] = useState({ status: '' })
   const [query, setQuery] = useState({ status: '' })
@@ -298,6 +412,9 @@ export function AllocationsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [receiptDocument, setReceiptDocument] = useState(null)
+  const [documentLoading, setDocumentLoading] = useState(false)
+  const [documentError, setDocumentError] = useState('')
 
   const availableProperties = useMemo(
     () => properties.filter((property) => property.status === 'available'),
@@ -327,15 +444,17 @@ export function AllocationsPage() {
 
   const loadFormOptions = useCallback(async () => {
     try {
-      const [clientsResponse, propertiesResponse] = await Promise.all([
+      const [clientsResponse, propertiesResponse, realtorsResponse] = await Promise.all([
         api.get('/clients', { params: { per_page: 100 } }),
         api.get('/properties', {
           params: { per_page: 100, status: 'available' },
         }),
+        api.get('/realtors', { params: { per_page: 100, status: 'active' } }),
       ])
 
       setClients(clientsResponse.data.data)
       setProperties(propertiesResponse.data.data)
+      setRealtors(realtorsResponse.data.data)
     } catch (err) {
       setError(getApiError(err, 'Form options could not be loaded.'))
     }
@@ -398,6 +517,28 @@ export function AllocationsPage() {
       await loadFormOptions()
     } catch (err) {
       setError(getApiError(err, 'Allocation could not be cancelled.'))
+    }
+  }
+
+  async function viewReceiptDocument(allocation) {
+    const receipt = allocationReceipt(allocation)
+
+    if (!receipt?.id) {
+      setError('No generated receipt is available for this allocation yet.')
+      return
+    }
+
+    setReceiptDocument(null)
+    setDocumentError('')
+    setDocumentLoading(true)
+
+    try {
+      const response = await api.get(`/receipts/${receipt.id}/document`)
+      setReceiptDocument(response.data.data)
+    } catch (err) {
+      setDocumentError(getApiError(err, 'Receipt document could not be loaded.'))
+    } finally {
+      setDocumentLoading(false)
     }
   }
 
@@ -490,11 +631,13 @@ export function AllocationsPage() {
             <thead className="bg-canvas text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold">Client</th>
+                <th className="px-4 py-3 font-semibold">Realtor</th>
                 <th className="px-4 py-3 font-semibold">Property</th>
                 <th className="px-4 py-3 font-semibold">Plan</th>
                 <th className="px-4 py-3 font-semibold">Paid</th>
                 <th className="px-4 py-3 font-semibold">Balance</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Receipt</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -508,6 +651,9 @@ export function AllocationsPage() {
                     <p className="mt-1 text-xs text-muted">
                       {allocation.allocated_at || 'No date'}
                     </p>
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {realtorName(allocation)}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-ink">
@@ -529,8 +675,32 @@ export function AllocationsPage() {
                   <td className="px-4 py-3">
                     <StatusBadge status={allocation.status} />
                   </td>
+                  <td className="px-4 py-3 text-muted">
+                    <span className="inline-flex items-center gap-2">
+                      <ReceiptText size={15} />
+                      {allocationReceipt(allocation)?.receipt_number || 'Pending'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => viewReceiptDocument(allocation)}
+                        disabled={!allocationReceipt(allocation)}
+                        className="rounded-md border border-brand/20 bg-brand/5 p-2 text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="View receipt"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => viewReceiptDocument(allocation)}
+                        disabled={!allocationReceipt(allocation)}
+                        className="rounded-md border border-line p-2 text-muted hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Download receipt"
+                      >
+                        <Download size={16} />
+                      </button>
                       <button
                         type="button"
                         onClick={() => cancelAllocation(allocation)}
@@ -550,7 +720,7 @@ export function AllocationsPage() {
 
               {!loading && allocations.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-muted" colSpan="7">
+                  <td className="px-4 py-10 text-center text-muted" colSpan="9">
                     No allocations found.
                   </td>
                 </tr>
@@ -571,9 +741,22 @@ export function AllocationsPage() {
         <AllocationModal
           clients={clients}
           properties={availableProperties}
+          realtors={realtors}
           submitting={submitting}
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
+        />
+      ) : null}
+
+      {(receiptDocument || documentLoading || documentError) ? (
+        <ReceiptDocumentModal
+          document={receiptDocument}
+          loading={documentLoading}
+          error={documentError}
+          onClose={() => {
+            setReceiptDocument(null)
+            setDocumentError('')
+          }}
         />
       ) : null}
     </div>
