@@ -1,9 +1,6 @@
 import {
-  CreditCard,
   Edit3,
   Eye,
-  Home,
-  Landmark,
   Loader2,
   Mail,
   Phone,
@@ -95,20 +92,6 @@ function EmptyState({ children }) {
   )
 }
 
-function ActivityStat({ label, value, icon: Icon }) {
-  return (
-    <div className="rounded-lg border border-line bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase text-muted">{label}</p>
-        <span className="grid h-9 w-9 place-items-center rounded-md bg-brand/10 text-brand">
-          <Icon size={18} />
-        </span>
-      </div>
-      <p className="mt-3 text-xl font-semibold text-ink">{value}</p>
-    </div>
-  )
-}
-
 function ActivityModal({ client, activity, loading, error, onClose, onViewReceipt }) {
   const summary = activity?.summary || {}
   const details = activity?.client || client
@@ -146,33 +129,10 @@ function ActivityModal({ client, activity, loading, error, onClose, onViewReceip
           </div>
         ) : activity ? (
           <div className="space-y-4 p-4 sm:space-y-5 sm:p-5">
-            <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-              <ActivityStat
-                label="Total paid"
-                value={formatMoney(summary.total_amount_paid || 0)}
-                icon={CreditCard}
-              />
-              <ActivityStat
-                label="Outstanding"
-                value={formatMoney(summary.outstanding_balance || 0)}
-                icon={Landmark}
-              />
-              <ActivityStat
-                label="Properties"
-                value={summary.allocated_properties || 0}
-                icon={Home}
-              />
-              <ActivityStat
-                label="Receipts"
-                value={summary.receipts_generated || 0}
-                icon={ReceiptText}
-              />
-            </section>
-
             <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
               <div className="space-y-5">
                 <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
-                  <h4 className="text-sm font-semibold text-ink">Profile</h4>
+                  <h4 className="text-sm font-semibold text-ink">Client information</h4>
                   <div className="mt-4 grid gap-3 text-sm">
                     <div className="rounded-md bg-canvas p-3">
                       <p className="text-xs uppercase text-muted">Realtor</p>
@@ -190,33 +150,20 @@ function ActivityModal({ client, activity, loading, error, onClose, onViewReceip
                 </div>
 
                 <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold text-ink">Recent activity</h4>
-                    <span className="rounded-md bg-canvas px-2 py-1 text-xs font-semibold text-muted">
-                      Latest 5
-                    </span>
-                  </div>
-                  <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
-                    {activity.recent_activities?.slice(0, 5).map((item, index) => (
-                      <div key={`${item.type}-${item.occurred_at}-${index}`} className="rounded-md bg-canvas p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-ink">{item.label}</p>
-                            <p className="mt-1 text-xs text-muted">{item.description}</p>
-                          </div>
-                          <span className="whitespace-nowrap text-xs text-muted">
-                            {item.occurred_at ? new Date(item.occurred_at).toLocaleDateString() : '-'}
-                          </span>
-                        </div>
-                        {item.amount ? (
-                          <p className="mt-2 text-sm font-semibold text-brand">{formatMoney(item.amount)}</p>
-                        ) : null}
-                      </div>
-                    ))}
-
-                    {!activity.recent_activities?.length ? (
-                      <p className="rounded-md bg-canvas p-4 text-sm text-muted">No recent activity yet.</p>
-                    ) : null}
+                  <h4 className="text-sm font-semibold text-ink">Property & allocation summary</h4>
+                  <div className="mt-4 grid gap-3 text-sm">
+                    <div className="rounded-md bg-canvas p-3">
+                      <p className="text-xs uppercase text-muted">Linked properties</p>
+                      <p className="mt-1 font-semibold text-ink">{summary.allocated_properties || 0}</p>
+                    </div>
+                    <div className="rounded-md bg-canvas p-3">
+                      <p className="text-xs uppercase text-muted">Active allocations</p>
+                      <p className="mt-1 font-semibold text-ink">{summary.active_allocations || 0}</p>
+                    </div>
+                    <div className="rounded-md bg-canvas p-3">
+                      <p className="text-xs uppercase text-muted">Outstanding balance</p>
+                      <p className="mt-1 font-semibold text-ink">{formatMoney(summary.outstanding_balance || 0)}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -432,7 +379,64 @@ function ActivityModal({ client, activity, loading, error, onClose, onViewReceip
   )
 }
 
-function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitting }) {
+function QuickRealtorModal({ submitting, error, onClose, onSubmit }) {
+  const [form, setForm] = useState({ full_name: '', phone: '', email: '', company_name: '', status: 'active' })
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    onSubmit(form)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-ink/50 px-4 py-6">
+      <div className="mx-auto w-full max-w-lg rounded-lg border border-line bg-panel shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <div>
+            <p className="text-sm font-medium text-brand">Quick create</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">Add realtor</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md p-2 text-muted hover:bg-canvas" aria-label="Close realtor form">
+            <X size={20} />
+          </button>
+        </div>
+        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+          <label className="block">
+            <span className="text-sm font-medium text-ink">Full name</span>
+            <input value={form.full_name} onChange={(event) => updateField('full_name', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Phone</span>
+              <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Email</span>
+              <input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-sm font-medium text-ink">Company</span>
+            <input value={form.company_name} onChange={(event) => updateField('company_name', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" />
+          </label>
+          {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+          <div className="flex justify-end gap-3 border-t border-line pt-4">
+            <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas">Cancel</button>
+            <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Create realtor
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitting, onQuickCreateRealtor }) {
   const [form, setForm] = useState(initialValues)
 
   function updateField(field, value) {
@@ -529,12 +533,18 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
               <span className="text-sm font-medium text-ink">Realtor</span>
               <select
                 value={form.realtor_id}
-                onChange={(event) =>
+                onChange={(event) => {
+                  if (event.target.value === '__new_realtor__') {
+                    onQuickCreateRealtor()
+                    return
+                  }
+
                   updateField('realtor_id', event.target.value)
-                }
+                }}
                 className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
               >
                 <option value="">No linked realtor</option>
+                <option value="__new_realtor__">+ Add New Realtor</option>
                 {realtors.map((realtor) => (
                   <option key={realtor.id} value={realtor.id}>
                     {realtor.full_name}
@@ -589,6 +599,9 @@ export function ClientsPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [modal, setModal] = useState(null)
+  const [quickRealtorOpen, setQuickRealtorOpen] = useState(false)
+  const [quickSubmitting, setQuickSubmitting] = useState(false)
+  const [quickError, setQuickError] = useState('')
   const [realtors, setRealtors] = useState([])
   const [activityClient, setActivityClient] = useState(null)
   const [activity, setActivity] = useState(null)
@@ -687,6 +700,24 @@ export function ClientsPage() {
       setError(getApiError(err, 'Client could not be saved.'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function createQuickRealtor(payload) {
+    setQuickSubmitting(true)
+    setQuickError('')
+
+    try {
+      const response = await api.post('/realtors', payload)
+      const realtor = response.data.data.realtor
+      setRealtors((current) => [realtor, ...current.filter((item) => item.id !== realtor.id)])
+      setModal((current) => current ? { ...current, quickRealtorId: realtor.id } : current)
+      setQuickRealtorOpen(false)
+      setNotice('Realtor created successfully.')
+    } catch (err) {
+      setQuickError(getApiError(err, 'Realtor could not be created.'))
+    } finally {
+      setQuickSubmitting(false)
     }
   }
 
@@ -992,13 +1023,26 @@ export function ClientsPage() {
 
       {modal ? (
         <ClientModal
-          key={`${modal.mode}-${modal.client?.id || 'new'}`}
+          key={`${modal.mode}-${modal.client?.id || 'new'}-${modal.quickRealtorId || ''}`}
           mode={modal.mode}
-          initialValues={modalInitialValues}
+          initialValues={modal.quickRealtorId ? { ...modalInitialValues, realtor_id: modal.quickRealtorId } : modalInitialValues}
           onClose={() => setModal(null)}
           onSubmit={handleSubmit}
           submitting={submitting}
           realtors={realtors}
+          onQuickCreateRealtor={() => {
+            setQuickError('')
+            setQuickRealtorOpen(true)
+          }}
+        />
+      ) : null}
+
+      {quickRealtorOpen ? (
+        <QuickRealtorModal
+          submitting={quickSubmitting}
+          error={quickError}
+          onClose={() => setQuickRealtorOpen(false)}
+          onSubmit={createQuickRealtor}
         />
       ) : null}
 

@@ -1,15 +1,18 @@
 import {
   Building2,
   Edit3,
+  FileText,
   Image as ImageIcon,
+  Layers3,
   Loader2,
+  MapPin,
   Plus,
   Search,
   Trash2,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api } from '../api/client'
+import { api, assetUrl } from '../api/client'
 import { formatMoney } from '../utils/formatters'
 
 const statusOptions = ['available', 'reserved', 'sold']
@@ -19,6 +22,7 @@ const emptyForm = {
   type: '',
   location: '',
   price: '',
+  property_count: 1,
   status: 'available',
   description: '',
   land_size: '',
@@ -56,8 +60,64 @@ function StatusBadge({ status }) {
   )
 }
 
-function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
+function PropertyImage({ property, className = 'h-14 w-20 rounded-md' }) {
+  const imageUrl = assetUrl(property.image_url || property.image)
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={property.title}
+        className={`${className} shrink-0 object-cover`}
+      />
+    )
+  }
+
+  return (
+    <div className={`${className} grid shrink-0 place-items-center border border-line bg-canvas text-muted`}>
+      <ImageIcon className="h-5 w-5" />
+    </div>
+  )
+}
+
+function InventorySummary({ property, compact = false }) {
+  return (
+    <div className={compact ? 'w-full space-y-2' : 'space-y-1'}>
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas px-2 py-1 text-xs font-semibold text-ink">
+        <Layers3 size={13} />
+        {property.property_count || 0} plots
+      </div>
+      <div className="flex max-w-full flex-wrap gap-1.5 text-[11px] font-medium">
+        <span className="rounded-md bg-emerald-50 px-2 py-1 text-emerald-700">
+          {property.available_count ?? 0} available
+        </span>
+        <span className="rounded-md bg-amber-50 px-2 py-1 text-amber-700">
+          {property.reserved_count ?? 0} reserved
+        </span>
+        <span className="rounded-md bg-red-50 px-2 py-1 text-red-700">
+          {property.sold_count ?? 0} sold
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting, error }) {
   const [form, setForm] = useState(initialValues)
+  const [previewUrl, setPreviewUrl] = useState(assetUrl(initialValues.image_url || initialValues.image))
+
+  useEffect(() => {
+    setForm(initialValues)
+    setPreviewUrl(assetUrl(initialValues.image_url || initialValues.image))
+  }, [initialValues])
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -65,16 +125,18 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
 
   function handleSubmit(event) {
     event.preventDefault()
+
     onSubmit({
       ...form,
       price: Number(form.price),
+      property_count: Number(form.property_count),
     })
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 px-4 py-6">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-line bg-panel shadow-xl">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/40 px-0 py-0 sm:px-4 sm:py-6">
+      <div className="mx-auto min-h-screen w-full max-w-3xl border border-line bg-panel shadow-xl sm:min-h-0 sm:rounded-lg">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-panel px-4 py-4 sm:px-5">
           <div>
             <h3 className="text-lg font-semibold text-ink">
               {mode === 'create' ? 'Add property' : 'Edit property'}
@@ -91,7 +153,7 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
           </button>
         </div>
 
-        <form className="space-y-4 px-5 py-5" onSubmit={handleSubmit}>
+        <form className="space-y-4 px-4 py-5 sm:px-5" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-ink">Title</span>
@@ -132,6 +194,19 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
                 step="0.01"
                 value={form.price}
                 onChange={(event) => updateField('price', event.target.value)}
+                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+                required
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Property count</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={form.property_count}
+                onChange={(event) => updateField('property_count', event.target.value)}
                 className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
                 required
               />
@@ -181,17 +256,24 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
                   const file = event.target.files?.[0] ?? null
                   updateField('image_file', file)
                   if (file) {
-                    updateField('image_url', URL.createObjectURL(file))
+                    const nextPreviewUrl = URL.createObjectURL(file)
+                    setPreviewUrl((currentPreviewUrl) => {
+                      if (currentPreviewUrl?.startsWith('blob:')) {
+                        URL.revokeObjectURL(currentPreviewUrl)
+                      }
+
+                      return nextPreviewUrl
+                    })
                   }
                 }}
-                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-brand file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none file:mr-4 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
               />
-              {form.image_url ? (
-                <div className="mt-4 flex items-center gap-4 rounded-3xl border border-line bg-canvas p-4">
+              {previewUrl ? (
+                <div className="mt-4 flex items-center gap-4 rounded-lg border border-line bg-canvas p-3">
                   <img
-                    src={form.image_url}
+                    src={previewUrl}
                     alt="Property preview"
-                    className="h-16 w-16 rounded-xl object-cover"
+                    className="h-16 w-16 rounded-md object-cover"
                   />
                   <p className="text-sm text-muted">Preview of the selected property image.</p>
                 </div>
@@ -209,13 +291,19 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
             />
           </label>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="sticky bottom-0 -mx-4 -mb-5 flex flex-col-reverse gap-3 border-t border-line bg-panel px-4 py-4 sm:-mx-5 sm:flex-row sm:justify-end sm:px-5">
             <button
               type="button"
               onClick={onClose}
               className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
             >
-              Cancel
+              Close
             </button>
             <button
               type="submit"
@@ -223,7 +311,7 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting }) {
               className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              {mode === 'create' ? 'Create property' : 'Save changes'}
+              {mode === 'create' ? 'Create property' : 'Save property'}
             </button>
           </div>
         </form>
@@ -250,6 +338,7 @@ export function PropertiesPage() {
         type: modal.property.type || '',
         location: modal.property.location || '',
         price: modal.property.price || '',
+        property_count: modal.property.property_count || 1,
         status: modal.property.status || 'available',
         description: modal.property.description || '',
         land_size: modal.property.land_size || '',
@@ -262,6 +351,29 @@ export function PropertiesPage() {
 
     return emptyForm
   }, [modal])
+
+  const inventoryStats = useMemo(() => {
+    return properties.reduce(
+      (totals, property) => {
+        totals.properties += 1
+        totals.value += Number(property.price || 0) * Number(property.property_count || 0)
+        totals.plots += property.property_count || 0
+        totals.available += property.available_count || 0
+        totals.reserved += property.reserved_count || 0
+        totals.sold += property.sold_count || 0
+
+        return totals
+      },
+      {
+        properties: 0,
+        plots: 0,
+        available: 0,
+        reserved: 0,
+        sold: 0,
+        value: 0,
+      },
+    )
+  }, [properties])
 
   const loadProperties = useCallback(async (params) => {
     setLoading(true)
@@ -304,6 +416,20 @@ export function PropertiesPage() {
     setQuery(nextFilters)
   }
 
+  function upsertProperty(savedProperty) {
+    setProperties((current) => {
+      const exists = current.some((property) => property.id === savedProperty.id)
+
+      if (exists) {
+        return current.map((property) =>
+          property.id === savedProperty.id ? savedProperty : property,
+        )
+      }
+
+      return [savedProperty, ...current]
+    })
+  }
+
   async function handleSubmit(payload) {
     setSubmitting(true)
     setError('')
@@ -312,9 +438,24 @@ export function PropertiesPage() {
     try {
       const hasImageFile = payload.image_file instanceof File
       const body = new FormData()
+      const scalarFields = [
+        'title',
+        'type',
+        'location',
+        'price',
+        'property_count',
+        'status',
+        'description',
+        'land_size',
+        'document_type',
+      ]
+
+      scalarFields.forEach((field) => {
+        body.append(field, payload[field] ?? '')
+      })
 
       Object.entries(payload).forEach(([key, value]) => {
-        if (key === 'image_file' || key === 'image_url') {
+        if (scalarFields.includes(key) || key === 'image_file' || key === 'image_url') {
           return
         }
 
@@ -331,18 +472,21 @@ export function PropertiesPage() {
         body.append('image', payload.image_file)
       }
 
-      const config = hasImageFile ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}
+      let response
 
       if (modal?.mode === 'edit') {
-        await api.patch(`/properties/${modal.property.id}`, body, config)
+        body.append('_method', 'PATCH')
+        response = await api.post(`/properties/${modal.property.id}`, body)
         setNotice('Property updated successfully.')
       } else {
-        await api.post('/properties', body, config)
+        response = await api.post('/properties', body)
         setNotice('Property created successfully.')
       }
 
+      const savedProperty = response.data.data.property
+      upsertProperty(savedProperty)
+
       setModal(null)
-      await loadProperties(query)
     } catch (err) {
       setError(getApiError(err, 'Property could not be saved.'))
     } finally {
@@ -370,30 +514,45 @@ export function PropertiesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div>
-          <p className="text-sm font-medium text-brand">Properties</p>
-          <h2 className="mt-1 text-2xl font-semibold text-ink">
-            Property inventory
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Manage availability, pricing, and location details for company
-            assets.
-          </p>
+    <div className="space-y-4 md:space-y-6">
+      <div className="rounded-lg border border-line bg-panel p-4 shadow-sm md:p-5">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="text-sm font-medium text-brand">Properties</p>
+            <h2 className="mt-1 text-2xl font-semibold text-ink">Property inventory</h2>
+            <p className="mt-2 text-sm text-muted">
+              Manage estates, plot counts, pricing, status, and documents from one inventory view.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModal({ mode: 'create' })}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark"
+          >
+            <Plus size={17} />
+            Add property
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setModal({ mode: 'create' })}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          <Plus size={17} />
-          Add property
-        </button>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {[
+            ['Properties', inventoryStats.properties],
+            ['Total plots', inventoryStats.plots],
+            ['Available', inventoryStats.available],
+            ['Reserved', inventoryStats.reserved],
+            ['Sold', inventoryStats.sold],
+            ['Inventory value', formatMoney(inventoryStats.value)],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-line bg-canvas px-3 py-3">
+              <p className="text-[11px] font-semibold uppercase text-muted">{label}</p>
+              <p className="mt-1 truncate text-base font-semibold text-ink">{value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <form
-        className="grid gap-3 rounded-lg border border-line bg-panel p-4 shadow-sm md:grid-cols-[1fr_180px_auto_auto]"
+        className="grid gap-3 rounded-lg border border-line bg-panel p-3 shadow-sm sm:p-4 md:grid-cols-[1fr_180px_auto_auto]"
         onSubmit={applyFilters}
       >
         <label className="relative block">
@@ -466,20 +625,82 @@ export function PropertiesPage() {
             <Building2 size={18} className="text-brand" />
             <h3 className="text-base font-semibold text-ink">Properties</h3>
           </div>
-          <span className="text-sm text-muted">
-            {meta?.total ?? properties.length} total
-          </span>
+          <span className="text-sm text-muted">{meta?.total ?? properties.length} total</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+        <div className="grid gap-3 p-3 md:hidden">
+          {properties.map((property) => (
+            <article key={property.id} className="w-full overflow-hidden rounded-lg border border-line bg-white p-3 shadow-sm">
+              <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3">
+                <PropertyImage property={property} className="h-20 w-20 rounded-md" />
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-semibold text-ink">{property.title}</h3>
+                  <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted">
+                    <MapPin size={13} className="shrink-0" />
+                    <span className="min-w-0 truncate">{property.location}</span>
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={property.status} />
+                    <span className="min-w-0 max-w-full truncate rounded-md bg-canvas px-2 py-1 text-xs font-medium capitalize text-muted">
+                      {property.type}
+                    </span>
+                  </div>
+                  <p className="mt-2 truncate text-base font-semibold text-ink">{formatMoney(property.price)}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-xs">
+                <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                  <p className="font-medium text-muted">Land size</p>
+                  <p className="mt-1 truncate font-semibold text-ink">{property.land_size || '-'}</p>
+                </div>
+                <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                  <p className="font-medium text-muted">Document</p>
+                  <p className="mt-1 truncate font-semibold text-ink">{property.document_type || '-'}</p>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <InventorySummary property={property} compact />
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
+                <button
+                  type="button"
+                  onClick={() => setModal({ mode: 'edit', property })}
+                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
+                  aria-label={`Edit ${property.title}`}
+                >
+                  <Edit3 size={14} />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteProperty(property)}
+                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  aria-label={`Delete ${property.title}`}
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))}
+
+          {!loading && properties.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-line bg-canvas px-4 py-10 text-center text-sm text-muted">
+              No properties found.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead className="bg-canvas text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold">Property</th>
-                <th className="px-4 py-3 font-semibold">Type</th>
-                <th className="px-4 py-3 font-semibold">Location</th>
-                <th className="px-4 py-3 font-semibold">Land size</th>
-                <th className="px-4 py-3 font-semibold">Document</th>
+                <th className="px-4 py-3 font-semibold">Details</th>
+                <th className="px-4 py-3 font-semibold">Inventory</th>
                 <th className="px-4 py-3 font-semibold">Price</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
@@ -488,35 +709,43 @@ export function PropertiesPage() {
             <tbody>
               {properties.map((property) => (
                 <tr key={property.id} className="border-t border-line">
-                  <td className="max-w-[280px] px-4 py-3">
+                  <td className="max-w-[340px] px-4 py-3">
                     <div className="flex items-start gap-3">
-                      {property.image_url ? (
-                        <img
-                          src={property.image_url}
-                          alt={property.title}
-                          className="h-14 w-20 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-20 items-center justify-center rounded-xl border border-line bg-canvas text-muted">
-                          <ImageIcon className="h-6 w-6" />
-                        </div>
-                      )}
-                      <div>
+                      <PropertyImage property={property} className="h-14 w-20 rounded-md" />
+                      <div className="min-w-0">
                         <p className="font-medium text-ink">{property.title}</p>
                         <p className="mt-1 truncate text-xs text-muted">
                           {property.description || 'No description'}
                         </p>
+                        <p className="mt-2 inline-flex rounded-md bg-canvas px-2 py-1 text-xs font-medium capitalize text-muted">
+                          {property.type}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 capitalize text-muted">
-                    {property.type}
+                  <td className="px-4 py-3">
+                    <div className="space-y-2 text-xs text-muted">
+                      <p className="flex items-center gap-1.5">
+                        <MapPin size={14} className="text-brand" />
+                        <span className="max-w-[220px] truncate">{property.location}</span>
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <FileText size={14} className="text-brand" />
+                        <span className="max-w-[220px] truncate">{property.document_type || 'No document'}</span>
+                      </p>
+                      <p className="font-medium text-ink">{property.land_size || '-'}</p>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-muted">{property.location}</td>
-                  <td className="px-4 py-3 text-muted">{property.land_size || '-'}</td>
-                  <td className="px-4 py-3 text-muted">{property.document_type || '-'}</td>
-                  <td className="px-4 py-3 font-semibold text-ink">
-                    {formatMoney(property.price)}
+                  <td className="px-4 py-3">
+                    <InventorySummary property={property} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div>
+                      <p className="font-semibold text-ink">{formatMoney(property.price)}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        {formatMoney(Number(property.price || 0) * Number(property.property_count || 0))} inventory value
+                      </p>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={property.status} />
@@ -571,6 +800,7 @@ export function PropertiesPage() {
           onClose={() => setModal(null)}
           onSubmit={handleSubmit}
           submitting={submitting}
+          error={error}
         />
       ) : null}
     </div>

@@ -4,7 +4,6 @@ namespace App\Services\RealEstate;
 
 use App\Enums\AllocationStatus;
 use App\Enums\PaymentPlan;
-use App\Enums\PropertyStatus;
 use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Property;
@@ -27,15 +26,25 @@ class AllocationService
             $property = Property::query()->lockForUpdate()->findOrFail($payload['property_id']);
             $client = Client::query()->lockForUpdate()->findOrFail($payload['client_id']);
 
-            if ($property->status !== PropertyStatus::Available) {
+            if ($property->available_count < 1) {
                 throw ValidationException::withMessages([
-                    'property_id' => ['Only available properties can be allocated.'],
+                    'property_id' => ['No available plots remain for this property.'],
                 ]);
             }
 
             $totalAmount = round((float) $payload['total_amount'], 2);
             $initialPaymentAmount = round((float) ($payload['initial_payment_amount'] ?? 0), 2);
             $paymentPlan = $payload['payment_plan'];
+            $paymentStatus = $payload['payment_status'] ?? match (true) {
+                $initialPaymentAmount >= $totalAmount => 'paid',
+                $initialPaymentAmount > 0 => 'part_payment',
+                default => 'unpaid',
+            };
+
+            if ($paymentStatus === 'paid') {
+                $paymentPlan = PaymentPlan::Full->value;
+                $initialPaymentAmount = $totalAmount;
+            }
 
             if ($initialPaymentAmount > $totalAmount) {
                 throw ValidationException::withMessages([
@@ -47,6 +56,16 @@ class AllocationService
                 throw ValidationException::withMessages([
                     'initial_payment_amount' => ['Full payment allocations must include the full allocation amount.'],
                 ]);
+            }
+
+            if ($paymentStatus === 'part_payment' && $initialPaymentAmount <= 0) {
+                throw ValidationException::withMessages([
+                    'initial_payment_amount' => ['Part payment allocations must include an amount paid.'],
+                ]);
+            }
+
+            if ($paymentStatus === 'unpaid') {
+                $initialPaymentAmount = 0;
             }
 
             $realtorId = $payload['realtor_id'] ?? $client->realtor_id;
@@ -69,7 +88,10 @@ class AllocationService
                 'notes' => $payload['notes'] ?? null,
             ]);
 
-            $property->forceFill(['status' => PropertyStatus::Reserved])->save();
+            $property->forceFill([
+                'available_count' => max($property->available_count - 1, 0),
+                'reserved_count' => $property->reserved_count + 1,
+            ])->save();
 
             if ($initialPaymentAmount > 0) {
                 $this->paymentService->recordForAllocation($allocation, [
@@ -79,6 +101,9 @@ class AllocationService
                     'transaction_reference' => $payload['transaction_reference'] ?? null,
                     'paid_at' => $payload['paid_at'] ?? now(),
                     'notes' => $payload['payment_notes'] ?? null,
+                    'generate_receipt' => (bool) ($payload['generate_receipt'] ?? true),
+                    'receipt_notes' => $payload['receipt_notes'] ?? null,
+                    'receipt_reference' => $payload['receipt_reference'] ?? null,
                 ], $allocator);
             }
 
@@ -90,7 +115,7 @@ class AllocationService
     {
         return DB::transaction(function () use ($allocation) {
             $allocation = Allocation::query()
-                ->with('property')
+                ->with(['property'])
                 ->lockForUpdate()
                 ->findOrFail($allocation->id);
 
@@ -101,7 +126,10 @@ class AllocationService
             }
 
             $allocation->forceFill(['status' => AllocationStatus::Cancelled])->save();
-            $allocation->property?->forceFill(['status' => PropertyStatus::Available])->save();
+            $allocation->property->forceFill([
+                'available_count' => $allocation->property->available_count + 1,
+                'reserved_count' => max($allocation->property->reserved_count - 1, 0),
+            ])->save();
 
             return $allocation->fresh(['client.realtor', 'realtor', 'property']);
         });

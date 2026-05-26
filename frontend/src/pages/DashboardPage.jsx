@@ -2,8 +2,8 @@ import {
   Banknote,
   Building2,
   ChevronRight,
+  ClipboardList,
   Home,
-  Landmark,
   Loader2,
   Trophy,
   Users,
@@ -25,6 +25,10 @@ const emptyStats = {
   active_allocations: 0,
   completed_allocations: 0,
   total_realtors: 0,
+  total_plots: 0,
+  available_plots: 0,
+  reserved_plots: 0,
+  sold_plots: 0,
 }
 
 function realtorName(record) {
@@ -98,38 +102,43 @@ export function DashboardPage() {
         value: formatMoney(stats.revenue),
         helper: 'Confirmed payments only',
         icon: Banknote,
+        tone: 'brand',
       },
       {
-        label: 'Sold Properties',
-        value: stats.sold_properties,
-        helper: `${stats.reserved_properties} currently reserved`,
+        label: 'Plots Sold',
+        value: stats.sold_plots,
+        helper: `${stats.available_plots} available plots`,
         icon: Home,
+        tone: 'accent',
       },
       {
-        label: 'Outstanding',
-        value: formatMoney(stats.outstanding_balances),
-        helper: `${stats.active_allocations} active allocations`,
-        icon: Landmark,
+        label: 'Active Allocations',
+        value: stats.active_allocations,
+        helper: `${stats.completed_allocations} completed`,
+        icon: ClipboardList,
+        tone: 'ink',
       },
       {
         label: 'Clients',
         value: stats.total_clients,
         helper: `${stats.total_realtors} linked realtors`,
         icon: Users,
+        tone: 'brand',
       },
       {
-        label: 'Properties',
-        value: stats.total_properties,
-        helper: `${stats.available_properties} available`,
+        label: 'Inventory',
+        value: stats.total_plots,
+        helper: `${stats.total_properties} properties`,
         icon: Building2,
+        tone: 'accent',
       },
     ],
     [stats],
   )
 
   const topRealtors = summary?.top_realtors || []
-  const topMonthlyClients = Math.max(
-    ...topRealtors.map((realtor) => realtor.monthly_clients_count || 0),
+  const topPropertiesSold = Math.max(
+    ...topRealtors.map((realtor) => realtor.properties_sold_count || 0),
     1,
   )
   const activeTargetType = settings?.target_type || 'monthly'
@@ -146,7 +155,49 @@ export function DashboardPage() {
     : 0
 
   return (
-    <div className="space-y-3 md:space-y-6">
+    <div className="space-y-4 md:space-y-6">
+      <div className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
+        <div className="grid gap-5 p-4 md:grid-cols-[1fr_320px] md:p-6 xl:grid-cols-[1fr_420px]">
+          <div className="flex min-w-0 flex-col justify-center">
+            <p className="text-sm font-medium text-brand">TerraOps</p>
+            <h2 className="mt-2 text-2xl font-semibold text-ink md:text-3xl">
+              Intelligent Real Estate Operations
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              A command view for revenue, inventory movement, allocations, and realtor performance.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-line bg-ink p-4 text-white">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase text-white/60">{activeTargetLabel}</p>
+                <p className="mt-2 text-2xl font-semibold">{formatMoney(activeTargetAmount)}</p>
+              </div>
+              <span className="rounded-md bg-white/10 px-3 py-1 text-xs font-semibold">
+                {targetProgress}% reached
+              </span>
+            </div>
+            <div className="mt-5 h-2 rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-700"
+                style={{ width: `${targetProgress}%` }}
+              />
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-white/55">Outstanding</p>
+                <p className="mt-1 font-semibold">{formatMoney(stats.outstanding_balances)}</p>
+              </div>
+              <div>
+                <p className="text-white/55">Completed</p>
+                <p className="mt-1 font-semibold">{stats.completed_allocations} allocations</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col justify-between gap-2 md:gap-4 md:flex-row md:items-end">
         <div>
           <p className="text-sm font-medium text-brand">Dashboard</p>
@@ -181,70 +232,11 @@ export function DashboardPage() {
       <section className="grid gap-2 md:gap-4 xl:grid-cols-[1.25fr_0.95fr]">
         <div className="grid gap-2 md:gap-4">
           <div className="rounded-lg md:rounded-[24px] border border-line bg-panel p-3 md:p-6 shadow-sm">
-            <div className="flex flex-col gap-2 md:gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs md:text-sm font-medium uppercase tracking-[0.25em] text-brand">
-                  {activeTargetLabel}
-                </p>
-                <h3 className="mt-2 md:mt-3 text-2xl md:text-3xl font-semibold text-ink">
-                  {formatMoney(activeTargetAmount)}
-                </h3>
-                <p className="mt-1 md:mt-2 text-xs md:text-sm text-muted">
-                  Goal progress for the active {activeTargetType} target across the sales pipeline.
-                </p>
-                {settings ? (
-                  <p className="mt-3 text-xs text-ink/80">
-                    Active dashboard target: {settings.target_type === 'weekly' ? 'Weekly' : 'Monthly'}{' '}
-                    {formatMoney(settings.target_amount)}
-                  </p>
-                ) : null}
-              </div>
-              <div className="rounded-full border border-line bg-canvas px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-brand whitespace-nowrap">
-                {targetProgress}% reached
-              </div>
-            </div>
-
-            <div className="mt-3 md:mt-6 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">Progress</p>
-              <div className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white shadow-sm animate-floating">
-                {targetProgress}% reached
-              </div>
-            </div>
-
-            <div className="mt-3 md:mt-6 rounded-full bg-canvas p-1 relative">
-              <div
-                className="h-2 md:h-3 rounded-full bg-brand transition-all duration-700 ease-out"
-                style={{ width: `${targetProgress}%` }}
-              />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] md:text-xs font-semibold text-ink/80">
-                {targetProgress}% complete
-              </div>
-            </div>
-
-            <div className="mt-3 md:mt-6 grid gap-2 md:gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl md:rounded-3xl bg-canvas p-3 md:p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted">Revenue</p>
-                <p className="mt-2 md:mt-3 text-lg md:text-2xl font-semibold text-ink">
-                  {formatMoney(stats.revenue)}
-                </p>
-              </div>
-              <div className="rounded-2xl md:rounded-3xl bg-canvas p-3 md:p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted">
-                  Outstanding
-                </p>
-                <p className="mt-2 md:mt-3 text-lg md:text-2xl font-semibold text-ink">
-                  {formatMoney(stats.outstanding_balances)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg md:rounded-[24px] border border-line bg-panel p-3 md:p-6 shadow-sm">
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Realtor leaderboard</p>
                 <p className="mt-1 text-xs md:text-sm text-muted">
-                  Ranked by clients added this month.
+                  Ranked by completed property sales.
                 </p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 md:px-3 md:py-1 text-xs font-semibold text-brand">
@@ -255,8 +247,8 @@ export function DashboardPage() {
 
             <div className="mt-3 md:mt-6 space-y-2 md:space-y-3">
               {topRealtors.map((realtor, index) => {
-                const monthlyClients = realtor.monthly_clients_count || 0
-                const width = topMonthlyClients ? (monthlyClients / topMonthlyClients) * 100 : 0
+                const propertiesSold = realtor.properties_sold_count || 0
+                const width = topPropertiesSold ? (propertiesSold / topPropertiesSold) * 100 : 0
 
                 return (
                   <div key={realtor.id} className="rounded-xl border border-line bg-white p-3">
@@ -275,8 +267,8 @@ export function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-ink">{monthlyClients}</p>
-                        <p className="text-xs text-muted">clients</p>
+                        <p className="text-sm font-semibold text-ink">{propertiesSold}</p>
+                        <p className="text-xs text-muted">sold</p>
                       </div>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-canvas">
@@ -286,8 +278,12 @@ export function DashboardPage() {
                       />
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs text-muted">
-                      <span>{realtor.clients_count ?? 0} total clients</span>
                       <span>{formatMoney(realtor.confirmed_revenue || 0)} revenue</span>
+                      <span>{formatMoney(realtor.outstanding_balances || 0)} outstanding</span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs text-muted">
+                      <span>{formatMoney(realtor.installment_totals || 0)} installments</span>
+                      <span>{realtor.clients_count ?? 0} clients</span>
                     </div>
                   </div>
                 )
@@ -295,7 +291,7 @@ export function DashboardPage() {
 
               {!loading && topRealtors.length === 0 ? (
                 <div className="rounded-xl bg-canvas p-4 text-sm text-muted">
-                  No realtor client activity yet this month.
+                  No completed realtor property sales yet.
                 </div>
               ) : null}
             </div>
@@ -308,7 +304,7 @@ export function DashboardPage() {
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Inventory snapshot</p>
                 <p className="mt-1 text-xs md:text-sm text-muted">
-                  Current property status and quick navigation.
+                  Current plot inventory and quick navigation.
                 </p>
               </div>
               <span className="rounded-full bg-brand/10 px-2 py-1 md:px-3 md:py-1 text-xs font-semibold text-brand whitespace-nowrap">
@@ -317,7 +313,7 @@ export function DashboardPage() {
             </div>
 
             <div className="mt-3 md:mt-6 space-y-2 md:space-y-3">
-              {(summary?.property_status_breakdown || []).map((item) => (
+              {(summary?.property_inventory_breakdown || []).map((item) => (
                 <div
                   key={item.status}
                   className="flex items-center justify-between rounded-xl md:rounded-2xl bg-canvas px-3 py-2 md:px-4 md:py-3"

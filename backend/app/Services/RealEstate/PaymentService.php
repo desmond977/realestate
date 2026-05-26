@@ -5,7 +5,6 @@ namespace App\Services\RealEstate;
 use App\Enums\AllocationStatus;
 use App\Enums\PaymentPlan;
 use App\Enums\PaymentStatus;
-use App\Enums\PropertyStatus;
 use App\Models\Allocation;
 use App\Models\Payment;
 use App\Models\User;
@@ -76,10 +75,18 @@ class PaymentService
                 ])->save();
 
                 if ($newBalance <= 0) {
-                    $allocation->property?->forceFill(['status' => PropertyStatus::Sold])->save();
+                    $allocation->property->forceFill([
+                        'reserved_count' => max($allocation->property->reserved_count - 1, 0),
+                        'sold_count' => $allocation->property->sold_count + 1,
+                    ])->save();
                 }
 
-                $this->receiptService->createForPayment($payment, $recorder);
+                if (($payload['generate_receipt'] ?? true) !== false) {
+                    $this->receiptService->createForPayment($payment, $recorder, [
+                        'receipt_notes' => $payload['receipt_notes'] ?? null,
+                        'receipt_reference' => $payload['receipt_reference'] ?? null,
+                    ]);
+                }
             }
 
             return $payment->load(['allocation.realtor', 'client.realtor', 'realtor', 'property', 'receipt']);

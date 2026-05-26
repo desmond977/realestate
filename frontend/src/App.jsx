@@ -11,6 +11,7 @@ import { ProfilePage } from './pages/ProfilePage.jsx'
 import { ReceiptsPage } from './pages/ReceiptsPage.jsx'
 import { RealtorsPage } from './pages/RealtorsPage.jsx'
 import { SettingsPage } from './pages/SettingsPage.jsx'
+import { UsersPage } from './pages/UsersPage.jsx'
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute roles={['admin']} />}>
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/users" element={<UsersPage />} />
           </Route>
         </Route>
       </Route>

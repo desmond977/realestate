@@ -46,13 +46,32 @@ class DashboardApiTest extends TestCase
             'realtor_id' => $secondRealtor->id,
             'created_at' => now()->subMonths(2),
         ]);
-        $availableProperty = Property::factory()->create(['status' => PropertyStatus::Available]);
-        $reservedProperty = Property::factory()->create(['status' => PropertyStatus::Reserved]);
-        $soldProperty = Property::factory()->create(['status' => PropertyStatus::Sold]);
+        $availableProperty = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'property_count' => 10,
+            'available_count' => 10,
+            'reserved_count' => 0,
+            'sold_count' => 0,
+        ]);
+        $reservedProperty = Property::factory()->create([
+            'status' => PropertyStatus::Reserved,
+            'property_count' => 8,
+            'available_count' => 5,
+            'reserved_count' => 3,
+            'sold_count' => 0,
+        ]);
+        $soldProperty = Property::factory()->create([
+            'status' => PropertyStatus::Sold,
+            'property_count' => 4,
+            'available_count' => 0,
+            'reserved_count' => 0,
+            'sold_count' => 4,
+        ]);
 
         $activeAllocation = Allocation::factory()->create([
             'client_id' => $client->id,
             'property_id' => $reservedProperty->id,
+            'realtor_id' => $topRealtor->id,
             'total_amount' => 10000000,
             'amount_paid' => 3000000,
             'balance' => 7000000,
@@ -64,6 +83,7 @@ class DashboardApiTest extends TestCase
         Allocation::factory()->create([
             'client_id' => $client->id,
             'property_id' => $soldProperty->id,
+            'realtor_id' => $topRealtor->id,
             'total_amount' => 5000000,
             'amount_paid' => 5000000,
             'balance' => 0,
@@ -76,6 +96,7 @@ class DashboardApiTest extends TestCase
             'allocation_id' => $activeAllocation->id,
             'client_id' => $client->id,
             'property_id' => $reservedProperty->id,
+            'realtor_id' => $topRealtor->id,
             'amount' => 3000000,
             'status' => PaymentStatus::Confirmed,
             'paid_at' => now(),
@@ -85,6 +106,7 @@ class DashboardApiTest extends TestCase
             'allocation_id' => $activeAllocation->id,
             'client_id' => $client->id,
             'property_id' => $reservedProperty->id,
+            'realtor_id' => $topRealtor->id,
             'amount' => 2000000,
             'status' => PaymentStatus::Failed,
             'paid_at' => now()->subHour(),
@@ -103,6 +125,10 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.stats.available_properties', 1)
             ->assertJsonPath('data.stats.reserved_properties', 1)
             ->assertJsonPath('data.stats.sold_properties', 1)
+            ->assertJsonPath('data.stats.total_plots', 22)
+            ->assertJsonPath('data.stats.available_plots', 15)
+            ->assertJsonPath('data.stats.reserved_plots', 3)
+            ->assertJsonPath('data.stats.sold_plots', 4)
             ->assertJsonPath('data.stats.total_clients', 5)
             ->assertJsonPath('data.stats.revenue', 3000000)
             ->assertJsonPath('data.stats.outstanding_balances', 7000000)
@@ -110,9 +136,12 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.stats.completed_allocations', 1)
             ->assertJsonPath('data.property_status_breakdown.0.status', 'available')
             ->assertJsonPath('data.top_realtors.0.full_name', 'Top Realtor')
-            ->assertJsonPath('data.top_realtors.0.monthly_clients_count', 3)
+            ->assertJsonPath('data.top_realtors.0.properties_sold_count', 1)
+            ->assertJsonPath('data.top_realtors.0.confirmed_revenue', 3000000)
+            ->assertJsonPath('data.top_realtors.0.outstanding_balances', 7000000)
             ->assertJsonPath('data.recent_payments.0.receipt.receipt_number', 'REC-DASHBOARD-001')
             ->assertJsonCount(3, 'data.property_status_breakdown')
+            ->assertJsonCount(3, 'data.property_inventory_breakdown')
             ->assertJsonCount(3, 'data.allocation_status_breakdown');
 
         $this->assertDatabaseHas('properties', [

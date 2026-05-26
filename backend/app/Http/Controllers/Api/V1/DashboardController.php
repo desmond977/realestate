@@ -25,6 +25,7 @@ class DashboardController extends Controller
                 'monthly_target' => $summary['monthly_target'],
                 'monthly_target_progress' => $summary['monthly_target_progress'],
                 'property_status_breakdown' => $summary['property_status_breakdown'],
+                'property_inventory_breakdown' => $summary['property_inventory_breakdown'],
                 'allocation_status_breakdown' => $summary['allocation_status_breakdown'],
                 'recent_payments' => PaymentResource::collection($summary['recent_payments']),
                 'recent_allocations' => AllocationResource::collection($summary['recent_allocations']),

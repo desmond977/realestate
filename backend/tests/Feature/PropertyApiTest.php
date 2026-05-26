@@ -48,7 +48,7 @@ class PropertyApiTest extends TestCase
             ->assertJsonPath('data.0.status', 'available');
     }
 
-    public function test_authenticated_user_can_create_property(): void
+    public function test_authenticated_user_can_create_property_with_count_inventory(): void
     {
         Sanctum::actingAs(User::factory()->create());
 
@@ -57,9 +57,10 @@ class PropertyApiTest extends TestCase
             'type' => 'land',
             'location' => 'Ibeju-Lekki',
             'price' => 12500000,
+            'property_count' => 20,
             'status' => 'available',
             'description' => 'Dry land in a fast developing estate.',
-            'land_size' => '500 SQM',
+            'land_size' => '5 Acres',
             'document_type' => 'C of O',
             'image' => 'properties/greenfield.jpg',
         ]);
@@ -69,11 +70,17 @@ class PropertyApiTest extends TestCase
             ->assertJsonPath('message', 'Property created successfully.')
             ->assertJsonPath('data.property.title', 'Greenfield Estate Plot')
             ->assertJsonPath('data.property.price', 12500000)
-            ->assertJsonPath('data.property.land_size', '500 SQM')
+            ->assertJsonPath('data.property.property_count', 20)
+            ->assertJsonPath('data.property.available_count', 20)
+            ->assertJsonPath('data.property.reserved_count', 0)
+            ->assertJsonPath('data.property.sold_count', 0)
+            ->assertJsonPath('data.property.land_size', '5 Acres')
             ->assertJsonPath('data.property.document_type', 'C of O');
 
         $this->assertDatabaseHas('properties', [
             'title' => 'Greenfield Estate Plot',
+            'property_count' => 20,
+            'available_count' => 20,
             'status' => 'available',
         ]);
     }
@@ -85,9 +92,27 @@ class PropertyApiTest extends TestCase
         $this->postJson('/api/v1/properties', [
             'title' => '',
             'price' => -1,
+            'property_count' => 0,
             'status' => 'unlisted',
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['title', 'type', 'location', 'price', 'status']);
+            ->assertJsonValidationErrors(['title', 'type', 'location', 'price', 'property_count', 'status']);
+    }
+
+    public function test_property_counts_cannot_exceed_total_count(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/v1/properties', [
+            'title' => 'Invalid Count Estate',
+            'type' => 'land',
+            'location' => 'Guzape',
+            'price' => 10000000,
+            'property_count' => 5,
+            'available_count' => 4,
+            'reserved_count' => 2,
+            'sold_count' => 0,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['property_count']);
     }
 
     public function test_authenticated_user_can_upload_property_image(): void
@@ -102,6 +127,7 @@ class PropertyApiTest extends TestCase
             'type' => 'land',
             'location' => 'Victoria Island',
             'price' => 8000000,
+            'property_count' => 8,
             'status' => 'available',
             'description' => 'Image upload test.',
             'land_size' => '1 Plot',
@@ -120,19 +146,27 @@ class PropertyApiTest extends TestCase
         $property = Property::factory()->create([
             'title' => 'Old Title',
             'status' => PropertyStatus::Reserved,
+            'property_count' => 10,
+            'available_count' => 7,
+            'reserved_count' => 2,
+            'sold_count' => 1,
         ]);
 
         $this->getJson("/api/v1/properties/{$property->id}")
             ->assertOk()
-            ->assertJsonPath('data.property.title', 'Old Title');
+            ->assertJsonPath('data.property.title', 'Old Title')
+            ->assertJsonPath('data.property.available_count', 7);
 
         $this->patchJson("/api/v1/properties/{$property->id}", [
             'title' => 'Updated Title',
             'status' => 'sold',
+            'property_count' => 12,
         ])->assertOk()
             ->assertJsonPath('message', 'Property updated successfully.')
             ->assertJsonPath('data.property.title', 'Updated Title')
-            ->assertJsonPath('data.property.status', 'sold');
+            ->assertJsonPath('data.property.status', 'sold')
+            ->assertJsonPath('data.property.property_count', 12)
+            ->assertJsonPath('data.property.available_count', 9);
     }
 
     public function test_authenticated_user_can_delete_property(): void

@@ -63,7 +63,7 @@ export function LoginPage() {
               <div className="flex items-center gap-4">
                 <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-28 w-28 rounded-md object-contain" />
                 <div>
-                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'EstateOps'}</p>
+                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'TerraOps'}</p>
                   <p className="text-sm text-muted">Real estate management</p>
                 </div>
               </div>
@@ -73,7 +73,7 @@ export function LoginPage() {
                   <Building2 size={34} />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-ink">EstateOps</p>
+                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'TerraOps'}</p>
                   <p className="text-sm text-muted">Real estate management</p>
                 </div>
               </>

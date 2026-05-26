@@ -8,7 +8,10 @@ use App\Models\User;
 
 class ReceiptService
 {
-    public function createForPayment(Payment $payment, ?User $issuer = null): Receipt
+    /**
+     * @param array<string, mixed> $metadata
+     */
+    public function createForPayment(Payment $payment, ?User $issuer = null, array $metadata = []): Receipt
     {
         return Receipt::query()->create([
             'payment_id' => $payment->id,
@@ -20,7 +23,7 @@ class ReceiptService
                 'client_id' => $payment->client_id,
                 'property_id' => $payment->property_id,
                 'payment_method' => $payment->payment_method,
-            ],
+            ] + $metadata,
         ]);
     }
 

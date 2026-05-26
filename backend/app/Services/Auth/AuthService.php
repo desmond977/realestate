@@ -35,6 +35,12 @@ class AuthService
             ]);
         }
 
+        if (($user->status ?? 'active') !== 'active') {
+            throw ValidationException::withMessages([
+                'email' => ['This user account is inactive.'],
+            ]);
+        }
+
         return $user;
     }
 

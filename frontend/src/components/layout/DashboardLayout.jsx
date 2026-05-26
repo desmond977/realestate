@@ -7,6 +7,7 @@ import {
   Menu,
   ReceiptText,
   Settings2,
+  ShieldCheck,
   User,
   UserPlus,
   Users,
@@ -20,11 +21,13 @@ import { api } from '../../api/client'
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'staff'] },
+  { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff'] },
+  
   { label: 'Allocations', to: '/allocations', icon: Home, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Payments', to: '/payments', icon: CreditCard, roles: ['admin', 'accountant'] },
   { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'accountant'] },
-  { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Users', to: '/users', icon: ShieldCheck, roles: ['admin'] },
 ]
 
 const utilityNavItems = [

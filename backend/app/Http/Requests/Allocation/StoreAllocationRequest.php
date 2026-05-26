@@ -4,6 +4,7 @@ namespace App\Http\Requests\Allocation;
 
 use App\Enums\PaymentPlan;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class StoreAllocationRequest extends FormRequest
@@ -24,6 +25,7 @@ class StoreAllocationRequest extends FormRequest
             'realtor_id' => ['nullable', 'integer', 'exists:realtors,id'],
             'total_amount' => ['required', 'numeric', 'min:0.01'],
             'payment_plan' => ['required', new Enum(PaymentPlan::class)],
+            'payment_status' => ['sometimes', Rule::in(['paid', 'unpaid', 'part_payment'])],
             'allocated_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'initial_payment_amount' => ['nullable', 'numeric', 'min:0'],
@@ -31,6 +33,9 @@ class StoreAllocationRequest extends FormRequest
             'transaction_reference' => ['nullable', 'string', 'max:255', 'unique:payments,transaction_reference'],
             'paid_at' => ['nullable', 'date'],
             'payment_notes' => ['nullable', 'string'],
+            'generate_receipt' => ['sometimes', 'boolean'],
+            'receipt_notes' => ['nullable', 'string'],
+            'receipt_reference' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -17,6 +17,10 @@ class Property extends Model
         'type',
         'location',
         'price',
+        'property_count',
+        'available_count',
+        'reserved_count',
+        'sold_count',
         'status',
         'description',
         'image',
@@ -26,6 +30,10 @@ class Property extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'property_count' => 'integer',
+        'available_count' => 'integer',
+        'reserved_count' => 'integer',
+        'sold_count' => 'integer',
         'status' => PropertyStatus::class,
     ];
 

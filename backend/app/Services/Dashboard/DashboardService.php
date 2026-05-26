@@ -32,6 +32,10 @@ class DashboardService
                 'available_properties' => Property::query()->where('status', PropertyStatus::Available)->count(),
                 'reserved_properties' => Property::query()->where('status', PropertyStatus::Reserved)->count(),
                 'sold_properties' => Property::query()->where('status', PropertyStatus::Sold)->count(),
+                'total_plots' => (int) Property::query()->sum('property_count'),
+                'available_plots' => (int) Property::query()->sum('available_count'),
+                'reserved_plots' => (int) Property::query()->sum('reserved_count'),
+                'sold_plots' => (int) Property::query()->sum('sold_count'),
                 'total_clients' => Client::query()->count(),
                 'total_realtors' => Realtor::query()->count(),
                 'revenue' => $revenue,
@@ -44,6 +48,7 @@ class DashboardService
             'monthly_target' => $monthlyTarget,
             'monthly_target_progress' => $this->targetProgress($revenue, $monthlyTarget),
             'property_status_breakdown' => $this->propertyStatusBreakdown(),
+            'property_inventory_breakdown' => $this->propertyInventoryBreakdown(),
             'allocation_status_breakdown' => $this->allocationStatusBreakdown(),
             'recent_payments' => $this->recentPayments(),
             'recent_allocations' => $this->recentAllocations(),
@@ -106,18 +111,42 @@ class DashboardService
             ->withSum(['payments as confirmed_revenue' => function ($query) {
                 $query->where('status', PaymentStatus::Confirmed);
             }], 'amount')
+            ->withSum(['payments as installment_totals' => function ($query) {
+                $query
+                    ->where('status', PaymentStatus::Confirmed)
+                    ->where('payment_type', 'installment');
+            }], 'amount')
+            ->withSum(['allocations as outstanding_balances' => function ($query) {
+                $query->where('status', AllocationStatus::Active);
+            }], 'balance')
             ->withCount([
                 'clients',
                 'allocations',
-                'clients as monthly_clients_count' => function ($query) use ($startOfMonth, $endOfMonth) {
-                    $query->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+                'allocations as properties_sold_count' => function ($query) {
+                    $query->where('status', AllocationStatus::Completed);
+                },
+                'allocations as monthly_properties_sold_count' => function ($query) use ($startOfMonth, $endOfMonth) {
+                    $query
+                        ->where('status', AllocationStatus::Completed)
+                        ->whereBetween('updated_at', [$startOfMonth, $endOfMonth]);
                 },
             ])
-            ->orderByDesc('monthly_clients_count')
-            ->orderByDesc('clients_count')
+            ->orderByDesc('properties_sold_count')
             ->orderByDesc('confirmed_revenue')
             ->limit(5)
             ->get();
+    }
+
+    /**
+     * @return array<int, array{status: string, count: int}>
+     */
+    private function propertyInventoryBreakdown(): array
+    {
+        return [
+            ['status' => 'available', 'count' => (int) Property::query()->sum('available_count')],
+            ['status' => 'reserved', 'count' => (int) Property::query()->sum('reserved_count')],
+            ['status' => 'sold', 'count' => (int) Property::query()->sum('sold_count')],
+        ];
     }
 
     private function targetProgress(float $revenue, float $target): int

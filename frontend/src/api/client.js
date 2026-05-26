@@ -3,6 +3,20 @@ import axios from 'axios'
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
 
+const API_ORIGIN = new URL(API_BASE_URL).origin
+
+export function assetUrl(path) {
+  if (!path) {
+    return null
+  }
+
+  if (/^(blob:|data:|https?:\/\/)/i.test(path)) {
+    return path
+  }
+
+  return new URL(path, API_ORIGIN).toString()
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {

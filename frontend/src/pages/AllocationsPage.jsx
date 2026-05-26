@@ -27,6 +27,7 @@ const emptyForm = {
   realtor_id: '',
   total_amount: '',
   payment_plan: 'installment',
+  payment_status: 'unpaid',
   allocated_at: '',
   notes: '',
   initial_payment_amount: '',
@@ -34,6 +35,9 @@ const emptyForm = {
   transaction_reference: '',
   paid_at: '',
   payment_notes: '',
+  generate_receipt: false,
+  receipt_notes: '',
+  receipt_reference: '',
 }
 
 function getApiError(error, fallback) {
@@ -72,6 +76,96 @@ function allocationReceipt(allocation) {
   return allocation?.payments?.find((payment) => payment.receipt?.id)?.receipt
 }
 
+function QuickCreateModal({ type, submitting, error, onClose, onSubmit }) {
+  const defaults = {
+    realtor: { full_name: '', phone: '', email: '', company_name: '', status: 'active' },
+    client: { first_name: '', last_name: '', phone: '', email: '', realtor_id: '' },
+    property: { title: '', type: 'land', location: '', price: '', property_count: 1, status: 'available' },
+  }
+  const [form, setForm] = useState(defaults[type])
+
+  useEffect(() => setForm(defaults[type]), [type])
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    onSubmit({
+      ...form,
+      price: form.price ? Number(form.price) : undefined,
+      property_count: form.property_count ? Number(form.property_count) : undefined,
+    })
+  }
+
+  const title = type === 'realtor' ? 'Add realtor' : type === 'client' ? 'Add client' : 'Add property'
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-ink/50 px-4 py-6">
+      <div className="mx-auto w-full max-w-xl rounded-lg border border-line bg-panel shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <div>
+            <p className="text-sm font-medium text-brand">Quick create</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">{title}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md p-2 text-muted hover:bg-canvas" aria-label="Close quick create">
+            <X size={20} />
+          </button>
+        </div>
+        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+          {type === 'realtor' ? (
+            <>
+              <label className="block"><span className="text-sm font-medium text-ink">Full name</span><input value={form.full_name} onChange={(event) => updateField('full_name', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block"><span className="text-sm font-medium text-ink">Phone</span><input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" /></label>
+                <label className="block"><span className="text-sm font-medium text-ink">Email</span><input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" /></label>
+              </div>
+              <label className="block"><span className="text-sm font-medium text-ink">Company</span><input value={form.company_name} onChange={(event) => updateField('company_name', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" /></label>
+            </>
+          ) : null}
+
+          {type === 'client' ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block"><span className="text-sm font-medium text-ink">First name</span><input value={form.first_name} onChange={(event) => updateField('first_name', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+                <label className="block"><span className="text-sm font-medium text-ink">Last name</span><input value={form.last_name} onChange={(event) => updateField('last_name', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block"><span className="text-sm font-medium text-ink">Phone</span><input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" /></label>
+                <label className="block"><span className="text-sm font-medium text-ink">Email</span><input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" /></label>
+              </div>
+            </>
+          ) : null}
+
+          {type === 'property' ? (
+            <>
+              <label className="block"><span className="text-sm font-medium text-ink">Title</span><input value={form.title} onChange={(event) => updateField('title', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block"><span className="text-sm font-medium text-ink">Type</span><input value={form.type} onChange={(event) => updateField('type', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+                <label className="block"><span className="text-sm font-medium text-ink">Location</span><input value={form.location} onChange={(event) => updateField('location', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block"><span className="text-sm font-medium text-ink">Price</span><input type="number" min="0" value={form.price} onChange={(event) => updateField('price', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+                <label className="block"><span className="text-sm font-medium text-ink">Property count</span><input type="number" min="1" value={form.property_count} onChange={(event) => updateField('property_count', event.target.value)} className="mt-2 w-full rounded-md border border-line px-3 py-2.5 text-sm outline-none focus:border-brand" required /></label>
+              </div>
+            </>
+          ) : null}
+
+          {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+          <div className="flex justify-end gap-3 border-t border-line pt-4">
+            <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas">Cancel</button>
+            <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function AllocationModal({
   clients,
   properties,
@@ -79,6 +173,8 @@ function AllocationModal({
   submitting,
   onClose,
   onSubmit,
+  onQuickCreate,
+  quickSelection,
 }) {
   const [form, setForm] = useState(emptyForm)
   const selectedProperty = properties.find(
@@ -95,15 +191,43 @@ function AllocationModal({
   const textAreaClass =
     'mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10'
 
+  useEffect(() => {
+    if (!quickSelection) {
+      return
+    }
+
+    setForm((current) => {
+      const next = {
+        ...current,
+        [`${quickSelection.type}_id`]: String(quickSelection.id),
+      }
+
+      if (quickSelection.type === 'property') {
+        const property = properties.find((item) => Number(item.id) === Number(quickSelection.id))
+        next.total_amount = property?.price ?? current.total_amount
+      }
+
+      if (quickSelection.type === 'client') {
+        const client = clients.find((item) => Number(item.id) === Number(quickSelection.id))
+        next.realtor_id = client?.realtor_id ? String(client.realtor_id) : current.realtor_id
+      }
+
+      return next
+    })
+  }, [clients, properties, quickSelection])
+
   function updateField(field, value) {
     setForm((current) => {
       const next = { ...current, [field]: value }
 
       if (field === 'property_id') {
-        const property = properties.find(
-          (item) => String(item.id) === String(value),
-        )
-        next.total_amount = property?.price ?? ''
+        const property = properties.find((item) => String(item.id) === String(value))
+
+        if (property?.price !== undefined && property?.price !== null && property?.price !== '') {
+          next.total_amount = property.price
+        } else {
+          next.total_amount = ''
+        }
       }
 
       if (field === 'client_id') {
@@ -113,6 +237,19 @@ function AllocationModal({
 
       if (field === 'payment_plan' && value === 'full') {
         next.initial_payment_amount = next.total_amount
+      }
+
+      if (field === 'payment_status') {
+        if (value === 'paid') {
+          next.payment_plan = 'full'
+          next.initial_payment_amount = next.total_amount
+          next.generate_receipt = true
+        }
+
+        if (value === 'unpaid') {
+          next.initial_payment_amount = ''
+          next.generate_receipt = false
+        }
       }
 
       return next
@@ -128,6 +265,7 @@ function AllocationModal({
       realtor_id: form.realtor_id ? Number(form.realtor_id) : undefined,
       total_amount: Number(form.total_amount),
       payment_plan: form.payment_plan,
+      payment_status: form.payment_status,
       allocated_at: form.allocated_at || undefined,
       notes: form.notes || undefined,
       initial_payment_amount: form.initial_payment_amount
@@ -137,6 +275,9 @@ function AllocationModal({
       transaction_reference: form.transaction_reference || undefined,
       paid_at: form.paid_at || undefined,
       payment_notes: form.payment_notes || undefined,
+      generate_receipt: form.generate_receipt,
+      receipt_notes: form.receipt_notes || undefined,
+      receipt_reference: form.receipt_reference || undefined,
     }
 
     onSubmit(payload)
@@ -180,21 +321,29 @@ function AllocationModal({
                 <span className="text-sm font-medium text-ink">Property</span>
                 <select
                   value={form.property_id}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    if (event.target.value === '__new_property__') {
+                      onQuickCreate('property')
+                      return
+                    }
+
                     updateField('property_id', event.target.value)
-                  }
+                  }}
                   className={inputClass}
                   required
                 >
                   <option value="">Select property</option>
+                  <option value="__new_property__">+ Add New Property</option>
                   {properties.map((property) => (
                     <option key={property.id} value={property.id}>
-                      {property.title} - {formatMoney(property.price)}
+                      {property.title}
                     </option>
                   ))}
                 </select>
                 <p className="mt-2 text-xs text-muted">
-                  {selectedProperty?.location || 'Available properties only'}
+                  {selectedProperty
+                    ? `${selectedProperty.location} - ${selectedProperty.available_count ?? 0} available`
+                    : 'Properties with available plots only'}
                 </p>
               </label>
 
@@ -202,13 +351,19 @@ function AllocationModal({
                 <span className="text-sm font-medium text-ink">Client</span>
                 <select
                   value={form.client_id}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    if (event.target.value === '__new_client__') {
+                      onQuickCreate('client')
+                      return
+                    }
+
                     updateField('client_id', event.target.value)
-                  }
+                  }}
                   className={inputClass}
                   required
                 >
                   <option value="">Select client</option>
+                  <option value="__new_client__">+ Add New Client</option>
                   {clients.map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.full_name}
@@ -224,12 +379,18 @@ function AllocationModal({
                 <span className="text-sm font-medium text-ink">Realtor</span>
                 <select
                   value={form.realtor_id}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    if (event.target.value === '__new_realtor__') {
+                      onQuickCreate('realtor')
+                      return
+                    }
+
                     updateField('realtor_id', event.target.value)
-                  }
+                  }}
                   className={inputClass}
                 >
                   <option value="">No linked realtor</option>
+                  <option value="__new_realtor__">+ Add New Realtor</option>
                   {realtors.map((realtor) => (
                     <option key={realtor.id} value={realtor.id}>
                       {realtor.full_name}
@@ -290,18 +451,16 @@ function AllocationModal({
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-ink">Initial payment</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.initial_payment_amount}
-                    onChange={(event) =>
-                      updateField('initial_payment_amount', event.target.value)
-                    }
-                    className={inputClass}
-                    placeholder={selectedProperty ? formatMoney(selectedProperty.price) : '0'}
-                  />
+                  <span className="text-sm font-medium text-ink">Payment status</span>
+                  <select
+                    value={form.payment_status}
+                    onChange={(event) => updateField('payment_status', event.target.value)}
+                    className={`${inputClass} capitalize`}
+                  >
+                    <option value="unpaid">Unpaid</option>
+                    <option value="part_payment">Part Payment</option>
+                    <option value="paid">Paid</option>
+                  </select>
                 </label>
 
                 <label className="block">
@@ -325,11 +484,32 @@ function AllocationModal({
                 </span>
                 <div>
                   <h4 className="text-sm font-semibold text-ink">First payment</h4>
-                  <p className="text-xs text-muted">Optional receipt details.</p>
+                  <p className="text-xs text-muted">First payment and optional receipt details.</p>
                 </div>
               </div>
 
               <div className="grid gap-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Amount paid</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.initial_payment_amount}
+                    onChange={(event) => updateField('initial_payment_amount', event.target.value)}
+                    className={inputClass}
+                    placeholder={selectedProperty?.price ? formatMoney(selectedProperty.price) : '0'}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Payment date</span>
+                  <input
+                    type="date"
+                    value={form.paid_at}
+                    onChange={(event) => updateField('paid_at', event.target.value)}
+                    className={inputClass}
+                  />
+                </label>
                 <label className="block">
                   <span className="text-sm font-medium text-ink">Payment method</span>
                   <input
@@ -353,6 +533,39 @@ function AllocationModal({
                     placeholder="Transaction reference"
                   />
                 </label>
+
+                <label className="flex items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2.5">
+                  <span className="text-sm font-medium text-ink">Generate receipt</span>
+                  <input
+                    type="checkbox"
+                    checked={form.generate_receipt}
+                    onChange={(event) => updateField('generate_receipt', event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                </label>
+
+                {form.generate_receipt ? (
+                  <div className="grid gap-4">
+                    <label className="block">
+                      <span className="text-sm font-medium text-ink">Receipt reference</span>
+                      <input
+                        value={form.receipt_reference}
+                        onChange={(event) => updateField('receipt_reference', event.target.value)}
+                        className={inputClass}
+                        placeholder="Optional receipt reference"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-ink">Receipt notes</span>
+                      <textarea
+                        value={form.receipt_notes}
+                        onChange={(event) => updateField('receipt_notes', event.target.value)}
+                        rows="3"
+                        className={textAreaClass}
+                      />
+                    </label>
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>
@@ -410,6 +623,10 @@ export function AllocationsPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [quickCreateType, setQuickCreateType] = useState(null)
+  const [quickCreateSelection, setQuickCreateSelection] = useState(null)
+  const [quickSubmitting, setQuickSubmitting] = useState(false)
+  const [quickError, setQuickError] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [receiptDocument, setReceiptDocument] = useState(null)
@@ -417,7 +634,9 @@ export function AllocationsPage() {
   const [documentError, setDocumentError] = useState('')
 
   const availableProperties = useMemo(
-    () => properties.filter((property) => property.status === 'available'),
+    () => properties.filter((property) => {
+      return Number(property.available_count || 0) > 0
+    }),
     [properties],
   )
 
@@ -447,7 +666,7 @@ export function AllocationsPage() {
       const [clientsResponse, propertiesResponse, realtorsResponse] = await Promise.all([
         api.get('/clients', { params: { per_page: 100 } }),
         api.get('/properties', {
-          params: { per_page: 100, status: 'available' },
+          params: { per_page: 100 },
         }),
         api.get('/realtors', { params: { per_page: 100, status: 'active' } }),
       ])
@@ -495,6 +714,41 @@ export function AllocationsPage() {
       setError(getApiError(err, 'Allocation could not be created.'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleQuickCreate(payload) {
+    setQuickSubmitting(true)
+    setQuickError('')
+
+    try {
+      const endpoints = {
+        realtor: '/realtors',
+        client: '/clients',
+        property: '/properties',
+      }
+      const response = await api.post(endpoints[quickCreateType], payload)
+      const created = response.data.data[quickCreateType]
+
+      if (quickCreateType === 'realtor') {
+        setRealtors((current) => [created, ...current.filter((item) => item.id !== created.id)])
+      }
+
+      if (quickCreateType === 'client') {
+        setClients((current) => [created, ...current.filter((item) => item.id !== created.id)])
+      }
+
+      if (quickCreateType === 'property') {
+        setProperties((current) => [created, ...current.filter((item) => item.id !== created.id)])
+      }
+
+      setQuickCreateSelection({ type: quickCreateType, id: created.id })
+      setQuickCreateType(null)
+      setNotice(`${quickCreateType} created successfully.`)
+    } catch (err) {
+      setQuickError(getApiError(err, 'Record could not be created.'))
+    } finally {
+      setQuickSubmitting(false)
     }
   }
 
@@ -556,7 +810,10 @@ export function AllocationsPage() {
         </div>
         <button
           type="button"
-          onClick={() => setModalOpen(true)}
+          onClick={() => {
+            setQuickCreateSelection(null)
+            setModalOpen(true)
+          }}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           <Plus size={17} />
@@ -745,6 +1002,21 @@ export function AllocationsPage() {
           submitting={submitting}
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
+          onQuickCreate={(type) => {
+            setQuickError('')
+            setQuickCreateType(type)
+          }}
+          quickSelection={quickCreateSelection}
+        />
+      ) : null}
+
+      {quickCreateType ? (
+        <QuickCreateModal
+          type={quickCreateType}
+          submitting={quickSubmitting}
+          error={quickError}
+          onClose={() => setQuickCreateType(null)}
+          onSubmit={handleQuickCreate}
         />
       ) : null}
 

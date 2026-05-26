@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Enum;
 
 class PropertyController extends Controller
@@ -53,6 +54,8 @@ class PropertyController extends Controller
             $data['image'] = $request->file('image')->store('properties', 'public');
         }
 
+        $data = $this->normalizeInventoryCounts($data);
+
         $property = Property::query()->create($data);
 
         return response()->json([
@@ -84,6 +87,8 @@ class PropertyController extends Controller
             $data['image'] = $request->file('image')->store('properties', 'public');
         }
 
+        $data = $this->normalizeInventoryCounts($data, $property);
+
         $property->update($data);
 
         return response()->json([
@@ -101,5 +106,32 @@ class PropertyController extends Controller
         return response()->json([
             'message' => 'Property deleted successfully.',
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function normalizeInventoryCounts(array $data, ?Property $property = null): array
+    {
+        $propertyCount = (int) ($data['property_count'] ?? $property?->property_count ?? 1);
+        $reservedCount = (int) ($data['reserved_count'] ?? $property?->reserved_count ?? 0);
+        $soldCount = (int) ($data['sold_count'] ?? $property?->sold_count ?? 0);
+        $availableCount = array_key_exists('available_count', $data)
+            ? (int) $data['available_count']
+            : max($propertyCount - $reservedCount - $soldCount, 0);
+
+        if (($availableCount + $reservedCount + $soldCount) > $propertyCount) {
+            throw ValidationException::withMessages([
+                'property_count' => ['Available, reserved, and sold counts cannot exceed the property count.'],
+            ]);
+        }
+
+        $data['property_count'] = $propertyCount;
+        $data['available_count'] = $availableCount;
+        $data['reserved_count'] = $reservedCount;
+        $data['sold_count'] = $soldCount;
+
+        return $data;
     }
 }
