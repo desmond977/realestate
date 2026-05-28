@@ -4,6 +4,7 @@ namespace App\Services\RealEstate;
 
 use App\Enums\AllocationStatus;
 use App\Enums\PaymentPlan;
+use App\Enums\PropertyStatus;
 use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Property;
@@ -13,8 +14,11 @@ use Illuminate\Validation\ValidationException;
 
 class AllocationService
 {
-    public function __construct(private readonly PaymentService $paymentService)
-    {
+    public function __construct(
+        private readonly PaymentService $paymentService,
+        private readonly PropertyInventoryService $propertyInventoryService,
+        private readonly EmailNotificationService $emailNotificationService,
+    ) {
     }
 
     /**
@@ -26,13 +30,29 @@ class AllocationService
             $property = Property::query()->lockForUpdate()->findOrFail($payload['property_id']);
             $client = Client::query()->lockForUpdate()->findOrFail($payload['client_id']);
 
+            if ($property->status === PropertyStatus::Sold) {
+                throw ValidationException::withMessages([
+                    'property_id' => ['Sold properties cannot be allocated.'],
+                ]);
+            }
+
             if ($property->available_count < 1) {
                 throw ValidationException::withMessages([
                     'property_id' => ['No available plots remain for this property.'],
                 ]);
             }
 
-            $totalAmount = round((float) $payload['total_amount'], 2);
+            $totalAmount = round((float) $property->price, 2);
+            $submittedTotalAmount = array_key_exists('total_amount', $payload)
+                ? round((float) $payload['total_amount'], 2)
+                : null;
+
+            if ($submittedTotalAmount !== null && abs($submittedTotalAmount - $totalAmount) > 0.01) {
+                throw ValidationException::withMessages([
+                    'total_amount' => ['Allocation amount must match the selected property price.'],
+                ]);
+            }
+
             $initialPaymentAmount = round((float) ($payload['initial_payment_amount'] ?? 0), 2);
             $paymentPlan = $payload['payment_plan'];
             $paymentStatus = $payload['payment_status'] ?? match (true) {
@@ -46,16 +66,8 @@ class AllocationService
                 $initialPaymentAmount = $totalAmount;
             }
 
-            if ($initialPaymentAmount > $totalAmount) {
-                throw ValidationException::withMessages([
-                    'initial_payment_amount' => ['Initial payment cannot exceed the total allocation amount.'],
-                ]);
-            }
-
-            if ($paymentPlan === PaymentPlan::Full->value && $initialPaymentAmount !== $totalAmount) {
-                throw ValidationException::withMessages([
-                    'initial_payment_amount' => ['Full payment allocations must include the full allocation amount.'],
-                ]);
+            if ($paymentStatus === 'unpaid') {
+                $initialPaymentAmount = 0;
             }
 
             if ($paymentStatus === 'part_payment' && $initialPaymentAmount <= 0) {
@@ -64,8 +76,16 @@ class AllocationService
                 ]);
             }
 
-            if ($paymentStatus === 'unpaid') {
-                $initialPaymentAmount = 0;
+            if ($initialPaymentAmount > $totalAmount) {
+                throw ValidationException::withMessages([
+                    'initial_payment_amount' => ['Initial payment cannot exceed the total allocation amount.'],
+                ]);
+            }
+
+            if ($paymentStatus !== 'unpaid' && $paymentPlan === PaymentPlan::Full->value && $initialPaymentAmount !== $totalAmount) {
+                throw ValidationException::withMessages([
+                    'initial_payment_amount' => ['Full payment allocations must include the full allocation amount.'],
+                ]);
             }
 
             $realtorId = $payload['realtor_id'] ?? $client->realtor_id;
@@ -83,15 +103,14 @@ class AllocationService
                 'amount_paid' => 0,
                 'balance' => $totalAmount,
                 'payment_plan' => $paymentPlan,
-                'status' => AllocationStatus::Active->value,
+                'status' => $paymentStatus === 'unpaid'
+                    ? AllocationStatus::Reserved->value
+                    : AllocationStatus::Active->value,
                 'allocated_at' => $payload['allocated_at'] ?? now()->toDateString(),
                 'notes' => $payload['notes'] ?? null,
             ]);
 
-            $property->forceFill([
-                'available_count' => max($property->available_count - 1, 0),
-                'reserved_count' => $property->reserved_count + 1,
-            ])->save();
+            $this->propertyInventoryService->reserveOne($property);
 
             if ($initialPaymentAmount > 0) {
                 $this->paymentService->recordForAllocation($allocation, [
@@ -101,14 +120,19 @@ class AllocationService
                     'transaction_reference' => $payload['transaction_reference'] ?? null,
                     'paid_at' => $payload['paid_at'] ?? now(),
                     'notes' => $payload['payment_notes'] ?? null,
-                    'generate_receipt' => (bool) ($payload['generate_receipt'] ?? true),
-                    'receipt_notes' => $payload['receipt_notes'] ?? null,
-                    'receipt_reference' => $payload['receipt_reference'] ?? null,
                 ], $allocator);
             }
 
             return $allocation->fresh(['client.realtor', 'realtor', 'property', 'payments.receipt']);
         });
+    }
+
+    /**
+     * Send notification for allocation creation (called after transaction completes)
+     */
+    public function notifyAllocationCreated(Allocation $allocation): void
+    {
+        $this->emailNotificationService->sendAllocationCreated($allocation);
     }
 
     public function cancel(Allocation $allocation): Allocation
@@ -126,12 +150,68 @@ class AllocationService
             }
 
             $allocation->forceFill(['status' => AllocationStatus::Cancelled])->save();
-            $allocation->property->forceFill([
-                'available_count' => $allocation->property->available_count + 1,
-                'reserved_count' => max($allocation->property->reserved_count - 1, 0),
-            ])->save();
+            $this->propertyInventoryService->releaseReservation($allocation->property);
 
             return $allocation->fresh(['client.realtor', 'realtor', 'property']);
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function updatePaymentState(Allocation $allocation, array $payload, ?User $user = null): Allocation
+    {
+        return DB::transaction(function () use ($allocation, $payload, $user) {
+            $allocation = Allocation::query()
+                ->with(['client.realtor', 'realtor', 'property', 'payments.receipt'])
+                ->lockForUpdate()
+                ->findOrFail($allocation->id);
+
+            if ($allocation->status === AllocationStatus::Cancelled) {
+                throw ValidationException::withMessages([
+                    'allocation_id' => ['Cancelled allocations cannot be updated.'],
+                ]);
+            }
+
+            $updates = [];
+
+            if (array_key_exists('notes', $payload)) {
+                $updates['notes'] = $payload['notes'];
+            }
+
+            if (($payload['payment_status'] ?? null) === 'unpaid' && (float) ($allocation->amount_paid ?? 0) <= 0) {
+                $updates['status'] = AllocationStatus::Reserved->value;
+            }
+
+            if ($updates !== []) {
+                $allocation->forceFill($updates)->save();
+            }
+
+            $paymentAmount = round((float) ($payload['initial_payment_amount'] ?? $payload['amount'] ?? 0), 2);
+            $paymentStatus = $payload['payment_status'] ?? null;
+
+            if ($paymentAmount > 0) {
+                if ($paymentStatus === 'paid' && abs($paymentAmount - (float) $allocation->balance) > 0.01) {
+                    throw ValidationException::withMessages([
+                        'initial_payment_amount' => ['Paid allocations must include the full outstanding balance.'],
+                    ]);
+                }
+
+                $this->paymentService->recordForAllocation($allocation, [
+                    'amount' => $paymentAmount,
+                    'payment_type' => $payload['payment_type'] ?? $allocation->payment_plan->value,
+                    'payment_method' => $payload['payment_method'] ?? null,
+                    'transaction_reference' => $payload['transaction_reference'] ?? null,
+                    'paid_at' => $payload['paid_at'] ?? now(),
+                    'notes' => $payload['payment_notes'] ?? null,
+                ], $user);
+            } elseif (in_array($paymentStatus, ['paid', 'part_payment'], true)) {
+                throw ValidationException::withMessages([
+                    'initial_payment_amount' => ['A payment amount is required to update this allocation payment status.'],
+                ]);
+            }
+
+            return $allocation->fresh(['client.realtor', 'realtor', 'property', 'payments.receipt', 'allocator']);
         });
     }
 }

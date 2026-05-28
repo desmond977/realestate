@@ -40,8 +40,10 @@ Route::prefix('v1')->group(function () {
         Route::get('settings/company', [CompanySettingController::class, 'show'])->middleware('role:admin,staff,accountant');
         Route::put('settings/company', [CompanySettingController::class, 'update'])->middleware('role:admin');
 
+        Route::get('allocations/form-options', [AllocationController::class, 'formOptions'])
+            ->middleware('role:admin,staff,accountant');
         Route::apiResource('allocations', AllocationController::class)
-            ->only(['index', 'store', 'show', 'destroy'])
+            ->only(['index', 'store', 'show', 'update', 'destroy'])
             ->middleware('role:admin,staff,accountant');
         Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware('role:admin,staff');
         Route::apiResource('clients', ClientController::class)->middleware('role:admin,staff');
@@ -51,7 +53,12 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('payments', PaymentController::class)
             ->only(['index', 'store', 'show'])
             ->middleware('role:admin,accountant');
-        Route::apiResource('properties', PropertyController::class)->middleware('role:admin,staff');
+        Route::apiResource('properties', PropertyController::class)
+            ->only(['index', 'show'])
+            ->middleware('role:admin,accountant');
+        Route::apiResource('properties', PropertyController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->middleware('role:admin');
         Route::get('receipts/{receipt}/document', [ReceiptController::class, 'document'])
             ->middleware('role:admin,staff,accountant');
         Route::apiResource('receipts', ReceiptController::class)

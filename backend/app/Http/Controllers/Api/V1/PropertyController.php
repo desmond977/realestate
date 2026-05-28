@@ -19,6 +19,8 @@ class PropertyController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
+        $this->authorize('viewAny', Property::class);
+
         $validated = $request->validate([
             'search' => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', new Enum(PropertyStatus::class)],
@@ -68,6 +70,8 @@ class PropertyController extends Controller
 
     public function show(Property $property): JsonResponse
     {
+        $this->authorize('view', $property);
+
         return response()->json([
             'data' => [
                 'property' => new PropertyResource($property),
@@ -101,6 +105,8 @@ class PropertyController extends Controller
 
     public function destroy(Property $property): JsonResponse
     {
+        $this->authorize('delete', $property);
+
         $property->delete();
 
         return response()->json([

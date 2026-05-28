@@ -24,11 +24,39 @@ class AllocationPaymentApiTest extends TestCase
         $this->getJson('/api/v1/payments')->assertUnauthorized();
     }
 
+    public function test_staff_can_load_allocation_form_options_without_property_page_access(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'staff']));
+        Client::factory()->create();
+        Realtor::factory()->create(['status' => 'active']);
+        Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'available_count' => 1,
+        ]);
+        Property::factory()->create([
+            'status' => PropertyStatus::Reserved,
+            'available_count' => 1,
+        ]);
+        Property::factory()->create([
+            'status' => PropertyStatus::Sold,
+            'available_count' => 1,
+        ]);
+
+        $this->getJson('/api/v1/allocations/form-options')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.clients')
+            ->assertJsonCount(2, 'data.properties')
+            ->assertJsonCount(1, 'data.realtors');
+
+        $this->getJson('/api/v1/properties')->assertForbidden();
+    }
+
     public function test_authenticated_user_can_create_installment_allocation_with_initial_payment_and_receipt(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $property = Property::factory()->create([
             'status' => PropertyStatus::Available,
+            'price' => 10000000,
             'property_count' => 5,
             'available_count' => 5,
             'reserved_count' => 0,
@@ -55,11 +83,15 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonPath('data.allocation.realtor.full_name', 'Central Agent')
             ->assertJsonPath('data.allocation.balance', 7500000)
             ->assertJsonPath('data.allocation.status', 'active')
-            ->assertJsonPath('data.allocation.property.status', 'available')
+            ->assertJsonPath('data.allocation.property.status', 'reserved')
             ->assertJsonPath('data.allocation.property.available_count', 4)
             ->assertJsonPath('data.allocation.property.reserved_count', 1)
-            ->assertJsonCount(1, 'data.allocation.payments')
-            ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001');
+            ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001')
+            ->assertJsonPath('data.allocation.payments.0.receipt.metadata.allocation_id', 1)
+            ->assertJsonPath('data.allocation.payments.0.receipt.metadata.client_id', $client->id)
+            ->assertJsonPath('data.allocation.payments.0.receipt.metadata.realtor_id', $realtor->id)
+            ->assertJsonPath('data.allocation.payments.0.receipt.metadata.property_id', $property->id)
+            ->assertJsonCount(1, 'data.allocation.payments');
 
         $this->assertDatabaseHas('payments', [
             'transaction_reference' => 'TXN-INITIAL-001',
@@ -67,15 +99,16 @@ class AllocationPaymentApiTest extends TestCase
             'realtor_id' => $realtor->id,
         ]);
 
-        $this->assertDatabaseHas('receipts', [
-            'receipt_number' => 'REC-'.now()->format('Ymd').'-000001',
-        ]);
+        $this->assertDatabaseCount('receipts', 1);
     }
 
     public function test_full_payment_allocation_requires_full_initial_payment(): void
     {
         Sanctum::actingAs(User::factory()->create());
-        $property = Property::factory()->create(['status' => PropertyStatus::Available]);
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+        ]);
         $client = Client::factory()->create();
 
         $this->postJson('/api/v1/allocations', [
@@ -91,7 +124,10 @@ class AllocationPaymentApiTest extends TestCase
     public function test_allocation_can_link_selected_realtor_to_client_and_payment(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
-        $property = Property::factory()->create(['status' => PropertyStatus::Available]);
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+        ]);
         $client = Client::factory()->create(['realtor_id' => null]);
         $realtor = Realtor::factory()->create(['full_name' => 'Allocation Realtor']);
 
@@ -121,6 +157,7 @@ class AllocationPaymentApiTest extends TestCase
         Sanctum::actingAs(User::factory()->create());
         $property = Property::factory()->create([
             'status' => PropertyStatus::Available,
+            'price' => 10000000,
             'property_count' => 3,
             'available_count' => 0,
             'reserved_count' => 2,
@@ -137,11 +174,243 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonValidationErrors(['property_id']);
     }
 
+    public function test_sold_property_cannot_be_allocated_even_with_available_count(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Sold,
+            'price' => 10000000,
+            'property_count' => 3,
+            'available_count' => 1,
+            'reserved_count' => 0,
+            'sold_count' => 2,
+        ]);
+        $client = Client::factory()->create();
+
+        $this->postJson('/api/v1/allocations', [
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_status' => 'unpaid',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['property_id']);
+    }
+
+    public function test_allocation_amount_must_match_property_price(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 12500000,
+        ]);
+        $client = Client::factory()->create();
+
+        $this->postJson('/api/v1/allocations', [
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_status' => 'unpaid',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['total_amount']);
+    }
+
+    public function test_unpaid_allocation_reserves_inventory_without_payment_or_receipt(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+            'property_count' => 2,
+            'available_count' => 2,
+            'reserved_count' => 0,
+            'sold_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+
+        $response = $this->postJson('/api/v1/allocations', [
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_status' => 'unpaid',
+            'initial_payment_amount' => 500000,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.allocation.status', 'reserved')
+            ->assertJsonPath('data.allocation.amount_paid', 0)
+            ->assertJsonPath('data.allocation.balance', 10000000)
+            ->assertJsonPath('data.allocation.property.available_count', 1)
+            ->assertJsonPath('data.allocation.property.reserved_count', 1)
+            ->assertJsonCount(0, 'data.allocation.payments');
+
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseCount('receipts', 0);
+    }
+
+    public function test_paid_allocation_sells_inventory_and_generates_receipt_on_create(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+            'property_count' => 2,
+            'available_count' => 2,
+            'reserved_count' => 0,
+            'sold_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+
+        $response = $this->postJson('/api/v1/allocations', [
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_status' => 'paid',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.allocation.status', 'completed')
+            ->assertJsonPath('data.allocation.amount_paid', 10000000)
+            ->assertJsonPath('data.allocation.balance', 0)
+            ->assertJsonPath('data.allocation.property.available_count', 1)
+            ->assertJsonPath('data.allocation.property.reserved_count', 0)
+            ->assertJsonPath('data.allocation.property.sold_count', 1)
+            ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001')
+            ->assertJsonCount(1, 'data.allocation.payments');
+
+        $this->assertDatabaseCount('receipts', 1);
+    }
+
+    public function test_unpaid_allocation_can_be_updated_with_part_payment(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Reserved,
+            'price' => 10000000,
+            'property_count' => 2,
+            'available_count' => 1,
+            'reserved_count' => 1,
+            'sold_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+        $allocation = Allocation::factory()->create([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'amount_paid' => 0,
+            'balance' => 10000000,
+            'status' => AllocationStatus::Reserved,
+        ]);
+
+        $response = $this->patchJson("/api/v1/allocations/{$allocation->id}", [
+            'payment_status' => 'part_payment',
+            'initial_payment_amount' => 2500000,
+            'payment_method' => 'bank_transfer',
+            'payment_notes' => 'First installment',
+            'notes' => 'Buyer requested installment plan.',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('message', 'Allocation updated successfully.')
+            ->assertJsonPath('data.allocation.status', 'active')
+            ->assertJsonPath('data.allocation.amount_paid', 2500000)
+            ->assertJsonPath('data.allocation.balance', 7500000)
+            ->assertJsonPath('data.allocation.notes', 'Buyer requested installment plan.')
+            ->assertJsonPath('data.allocation.property.status', 'reserved')
+            ->assertJsonPath('data.allocation.property.reserved_count', 1)
+            ->assertJsonPath('data.allocation.property.sold_count', 0)
+            ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001')
+            ->assertJsonCount(1, 'data.allocation.payments');
+
+        $this->assertDatabaseHas('payments', [
+            'allocation_id' => $allocation->id,
+            'amount' => 2500000,
+            'notes' => 'First installment',
+        ]);
+    }
+
+    public function test_unpaid_allocation_can_be_updated_to_paid_and_sold(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Reserved,
+            'price' => 10000000,
+            'property_count' => 1,
+            'available_count' => 0,
+            'reserved_count' => 1,
+            'sold_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+        $allocation = Allocation::factory()->create([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'amount_paid' => 0,
+            'balance' => 10000000,
+            'status' => AllocationStatus::Reserved,
+        ]);
+
+        $response = $this->patchJson("/api/v1/allocations/{$allocation->id}", [
+            'payment_status' => 'paid',
+            'initial_payment_amount' => 10000000,
+            'payment_method' => 'pos',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.allocation.status', 'completed')
+            ->assertJsonPath('data.allocation.amount_paid', 10000000)
+            ->assertJsonPath('data.allocation.balance', 0)
+            ->assertJsonPath('data.allocation.property.status', 'sold')
+            ->assertJsonPath('data.allocation.property.reserved_count', 0)
+            ->assertJsonPath('data.allocation.property.sold_count', 1)
+            ->assertJsonPath('data.allocation.payments.0.receipt.receipt_number', 'REC-'.now()->format('Ymd').'-000001');
+    }
+
+    public function test_property_with_zero_available_count_stays_available_until_all_plots_are_sold(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Reserved,
+            'price' => 10000000,
+            'property_count' => 2,
+            'available_count' => 0,
+            'reserved_count' => 1,
+            'sold_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+        $allocation = Allocation::factory()->create([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'amount_paid' => 0,
+            'balance' => 10000000,
+            'status' => AllocationStatus::Reserved,
+        ]);
+
+        $this->patchJson("/api/v1/allocations/{$allocation->id}", [
+            'payment_status' => 'paid',
+            'initial_payment_amount' => 10000000,
+            'payment_method' => 'pos',
+        ])->assertOk()
+            ->assertJsonPath('data.allocation.property.status', 'available')
+            ->assertJsonPath('data.allocation.property.available_count', 0)
+            ->assertJsonPath('data.allocation.property.reserved_count', 0)
+            ->assertJsonPath('data.allocation.property.sold_count', 1);
+    }
+
     public function test_authenticated_user_can_record_payment_and_complete_allocation(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $property = Property::factory()->create([
             'status' => PropertyStatus::Reserved,
+            'price' => 10000000,
             'property_count' => 1,
             'available_count' => 0,
             'reserved_count' => 1,
@@ -180,16 +449,17 @@ class AllocationPaymentApiTest extends TestCase
 
         $this->assertSame('completed', $allocation->status->value);
         $this->assertSame(0.0, (float) $allocation->balance);
-        $this->assertSame('reserved', $property->status->value);
+        $this->assertSame('sold', $property->status->value);
         $this->assertSame(0, $property->reserved_count);
         $this->assertSame(1, $property->sold_count);
     }
 
-    public function test_allocation_moves_one_available_plot_to_reserved_without_changing_property_status(): void
+    public function test_allocation_moves_one_available_plot_to_reserved_and_marks_property_reserved(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
         $property = Property::factory()->create([
             'status' => PropertyStatus::Available,
+            'price' => 10000000,
             'property_count' => 4,
             'available_count' => 4,
             'reserved_count' => 0,
@@ -206,13 +476,14 @@ class AllocationPaymentApiTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('data.allocation.property.status', 'available')
+            ->assertJsonPath('data.allocation.status', 'reserved')
+            ->assertJsonPath('data.allocation.property.status', 'reserved')
             ->assertJsonPath('data.allocation.property.available_count', 3)
             ->assertJsonPath('data.allocation.property.reserved_count', 1);
 
         $property->refresh();
 
-        $this->assertSame('available', $property->status->value);
+        $this->assertSame('reserved', $property->status->value);
         $this->assertSame(3, $property->available_count);
         $this->assertSame(1, $property->reserved_count);
     }
@@ -233,7 +504,7 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonValidationErrors(['amount']);
     }
 
-    public function test_unpaid_allocation_can_be_cancelled_without_changing_parent_property_status(): void
+    public function test_unpaid_allocation_can_be_cancelled_and_releases_inventory_status(): void
     {
         Sanctum::actingAs(User::factory()->create());
         $property = Property::factory()->create([
@@ -253,7 +524,7 @@ class AllocationPaymentApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Allocation cancelled successfully.')
             ->assertJsonPath('data.allocation.status', 'cancelled')
-            ->assertJsonPath('data.allocation.property.status', 'reserved')
+            ->assertJsonPath('data.allocation.property.status', 'available')
             ->assertJsonPath('data.allocation.property.available_count', 2)
             ->assertJsonPath('data.allocation.property.reserved_count', 0);
     }

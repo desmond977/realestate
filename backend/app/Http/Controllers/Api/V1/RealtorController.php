@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Realtor\StoreRealtorRequest;
 use App\Http\Requests\Realtor\UpdateRealtorRequest;
@@ -81,6 +82,10 @@ class RealtorController extends Controller
 
     public function destroy(Realtor $realtor): JsonResponse
     {
+        $role = request()->user()?->role;
+
+        abort_unless($role === UserRole::Admin, 403, 'Only admins can delete realtors.');
+
         $realtor->delete();
 
         return response()->json([

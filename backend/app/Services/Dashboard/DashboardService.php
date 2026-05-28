@@ -40,7 +40,7 @@ class DashboardService
                 'total_realtors' => Realtor::query()->count(),
                 'revenue' => $revenue,
                 'outstanding_balances' => (float) Allocation::query()
-                    ->where('status', AllocationStatus::Active)
+                    ->whereIn('status', [AllocationStatus::Reserved, AllocationStatus::Active])
                     ->sum('balance'),
                 'active_allocations' => Allocation::query()->where('status', AllocationStatus::Active)->count(),
                 'completed_allocations' => Allocation::query()->where('status', AllocationStatus::Completed)->count(),
@@ -117,7 +117,7 @@ class DashboardService
                     ->where('payment_type', 'installment');
             }], 'amount')
             ->withSum(['allocations as outstanding_balances' => function ($query) {
-                $query->where('status', AllocationStatus::Active);
+                $query->whereIn('status', [AllocationStatus::Reserved, AllocationStatus::Active]);
             }], 'balance')
             ->withCount([
                 'clients',

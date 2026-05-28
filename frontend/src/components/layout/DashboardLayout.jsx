@@ -1,6 +1,5 @@
 import {
   Building2,
-  CreditCard,
   Gauge,
   Home,
   LogOut,
@@ -20,12 +19,10 @@ import { api } from '../../api/client'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'staff'] },
+  { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'accountant'] },
   { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff'] },
-  
   { label: 'Allocations', to: '/allocations', icon: Home, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Payments', to: '/payments', icon: CreditCard, roles: ['admin', 'accountant'] },
   { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'accountant'] },
   { label: 'Users', to: '/users', icon: ShieldCheck, roles: ['admin'] },
 ]
@@ -197,12 +194,14 @@ export function DashboardLayout() {
                 >
                   Profile
                 </NavLink>
-                <NavLink
-                  to="/settings"
-                  className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
-                >
-                  Settings
-                </NavLink>
+                {user?.role === 'admin' ? (
+                  <NavLink
+                    to="/settings"
+                    className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
+                  >
+                    Settings
+                  </NavLink>
+                ) : null}
                 <NavLink
                   to="/realtors"
                   className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"

@@ -118,6 +118,7 @@ export function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
   const [notice, setNotice] = useState('')
   const [modal, setModal] = useState(null)
 
@@ -153,7 +154,7 @@ export function UsersPage() {
 
   async function handleSubmit(payload) {
     setSubmitting(true)
-    setError('')
+    setModalError('')
     setNotice('')
     try {
       if (modal?.mode === 'edit') {
@@ -166,7 +167,7 @@ export function UsersPage() {
       setModal(null)
       await loadUsers(query)
     } catch (err) {
-      setError(getApiError(err, 'User could not be saved.'))
+      setModalError(getApiError(err, 'User could not be saved.'))
     } finally {
       setSubmitting(false)
     }
@@ -193,7 +194,7 @@ export function UsersPage() {
           <h2 className="mt-1 text-2xl font-semibold text-ink">User management</h2>
           <p className="mt-2 text-sm text-muted">Create users, assign roles, and control account access.</p>
         </div>
-        <button type="button" onClick={() => setModal({ mode: 'create' })} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
+        <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'create' }) }} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
           <Plus size={17} />
           Add user
         </button>
@@ -241,7 +242,7 @@ export function UsersPage() {
                   <td className="px-4 py-3"><Badge value={user.status} tone={user.status === 'active' ? 'green' : 'amber'} /></td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setModal({ mode: 'edit', user })} className="rounded-md border border-line p-2 text-muted hover:bg-canvas" aria-label={`Edit ${user.name}`}><Edit3 size={16} /></button>
+                      <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', user }) }} className="rounded-md border border-line p-2 text-muted hover:bg-canvas" aria-label={`Edit ${user.name}`}><Edit3 size={16} /></button>
                       <button type="button" onClick={() => deleteUser(user)} className="rounded-md border border-line p-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${user.name}`}><Trash2 size={16} /></button>
                     </div>
                   </td>
@@ -261,8 +262,8 @@ export function UsersPage() {
           mode={modal.mode}
           initialValues={initialValues}
           submitting={submitting}
-          error={error}
-          onClose={() => setModal(null)}
+          error={modalError}
+          onClose={() => { setModal(null); setModalError('') }}
           onSubmit={handleSubmit}
         />
       ) : null}

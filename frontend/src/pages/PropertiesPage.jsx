@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, assetUrl } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { canManageProperties } from '../auth/permissions'
 import { formatMoney } from '../utils/formatters'
 
 const statusOptions = ['available', 'reserved', 'sold']
@@ -321,6 +323,8 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting, err
 }
 
 export function PropertiesPage() {
+  const { user } = useAuth()
+  const canManage = canManageProperties(user)
   const [properties, setProperties] = useState([])
   const [meta, setMeta] = useState(null)
   const [filters, setFilters] = useState({ search: '', status: '' })
@@ -328,6 +332,7 @@ export function PropertiesPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
   const [notice, setNotice] = useState('')
   const [modal, setModal] = useState(null)
 
@@ -432,7 +437,7 @@ export function PropertiesPage() {
 
   async function handleSubmit(payload) {
     setSubmitting(true)
-    setError('')
+    setModalError('')
     setNotice('')
 
     try {
@@ -488,7 +493,7 @@ export function PropertiesPage() {
 
       setModal(null)
     } catch (err) {
-      setError(getApiError(err, 'Property could not be saved.'))
+      setModalError(getApiError(err, 'Property could not be saved.'))
     } finally {
       setSubmitting(false)
     }
@@ -521,17 +526,21 @@ export function PropertiesPage() {
             <p className="text-sm font-medium text-brand">Properties</p>
             <h2 className="mt-1 text-2xl font-semibold text-ink">Property inventory</h2>
             <p className="mt-2 text-sm text-muted">
-              Manage estates, plot counts, pricing, status, and documents from one inventory view.
+              {canManage
+                ? 'Manage estates, plot counts, pricing, status, and documents from one inventory view.'
+                : 'Review estate inventory, pricing, availability, and allocation readiness.'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setModal({ mode: 'create' })}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark"
-          >
-            <Plus size={17} />
-            Add property
-          </button>
+          {canManage ? (
+            <button
+              type="button"
+              onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark"
+            >
+              <Plus size={17} />
+              Add property
+            </button>
+          ) : null}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
@@ -664,26 +673,28 @@ export function PropertiesPage() {
                 <InventorySummary property={property} compact />
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
-                <button
-                  type="button"
-                  onClick={() => setModal({ mode: 'edit', property })}
-                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
-                  aria-label={`Edit ${property.title}`}
-                >
-                  <Edit3 size={14} />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => deleteProperty(property)}
-                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50"
-                  aria-label={`Delete ${property.title}`}
-                >
-                  <Trash2 size={14} />
-                  Delete
-                </button>
-              </div>
+              {canManage ? (
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
+                  <button
+                    type="button"
+                    onClick={() => { setModalError(''); setModal({ mode: 'edit', property }) }}
+                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
+                    aria-label={`Edit ${property.title}`}
+                  >
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteProperty(property)}
+                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50"
+                    aria-label={`Delete ${property.title}`}
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
+                </div>
+              ) : null}
             </article>
           ))}
 
@@ -703,7 +714,9 @@ export function PropertiesPage() {
                 <th className="px-4 py-3 font-semibold">Inventory</th>
                 <th className="px-4 py-3 font-semibold">Price</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                {canManage ? (
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -750,32 +763,34 @@ export function PropertiesPage() {
                   <td className="px-4 py-3">
                     <StatusBadge status={property.status} />
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setModal({ mode: 'edit', property })}
-                        className="rounded-md border border-line p-2 text-muted hover:bg-canvas hover:text-ink"
-                        aria-label={`Edit ${property.title}`}
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteProperty(property)}
-                        className="rounded-md border border-line p-2 text-red-600 hover:bg-red-50"
-                        aria-label={`Delete ${property.title}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+                  {canManage ? (
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setModalError(''); setModal({ mode: 'edit', property }) }}
+                          className="rounded-md border border-line p-2 text-muted hover:bg-canvas hover:text-ink"
+                          aria-label={`Edit ${property.title}`}
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteProperty(property)}
+                          className="rounded-md border border-line p-2 text-red-600 hover:bg-red-50"
+                          aria-label={`Delete ${property.title}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
 
               {!loading && properties.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-muted" colSpan="6">
+                  <td className="px-4 py-10 text-center text-muted" colSpan={canManage ? 6 : 5}>
                     No properties found.
                   </td>
                 </tr>
@@ -792,15 +807,15 @@ export function PropertiesPage() {
         ) : null}
       </section>
 
-      {modal ? (
+      {modal && canManage ? (
         <PropertyModal
           key={`${modal.mode}-${modal.property?.id || 'new'}`}
           mode={modal.mode}
           initialValues={modalInitialValues}
-          onClose={() => setModal(null)}
+          onClose={() => { setModal(null); setModalError('') }}
           onSubmit={handleSubmit}
           submitting={submitting}
-          error={error}
+          error={modalError}
         />
       ) : null}
     </div>

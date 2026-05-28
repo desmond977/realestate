@@ -13,8 +13,11 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
-    public function __construct(private readonly ReceiptService $receiptService)
-    {
+    public function __construct(
+        private readonly ReceiptService $receiptService,
+        private readonly PropertyInventoryService $propertyInventoryService,
+        private readonly EmailNotificationService $emailNotificationService,
+    ) {
     }
 
     /**
@@ -75,21 +78,21 @@ class PaymentService
                 ])->save();
 
                 if ($newBalance <= 0) {
-                    $allocation->property->forceFill([
-                        'reserved_count' => max($allocation->property->reserved_count - 1, 0),
-                        'sold_count' => $allocation->property->sold_count + 1,
-                    ])->save();
+                    $this->propertyInventoryService->sellReserved($allocation->property);
                 }
 
-                if (($payload['generate_receipt'] ?? true) !== false) {
-                    $this->receiptService->createForPayment($payment, $recorder, [
-                        'receipt_notes' => $payload['receipt_notes'] ?? null,
-                        'receipt_reference' => $payload['receipt_reference'] ?? null,
-                    ]);
-                }
+                $this->receiptService->createForPayment($payment, $recorder);
             }
 
             return $payment->load(['allocation.realtor', 'client.realtor', 'realtor', 'property', 'receipt']);
         });
+    }
+
+    /**
+     * Send notification for payment received (called after transaction completes)
+     */
+    public function notifyPaymentReceived(Payment $payment): void
+    {
+        $this->emailNotificationService->sendPaymentReceived($payment);
     }
 }

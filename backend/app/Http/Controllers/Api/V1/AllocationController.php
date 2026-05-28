@@ -3,10 +3,19 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AllocationStatus;
+use App\Enums\PropertyStatus;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Allocation\StoreAllocationRequest;
+use App\Http\Requests\Allocation\UpdateAllocationRequest;
 use App\Http\Resources\AllocationResource;
+use App\Http\Resources\ClientResource;
+use App\Http\Resources\PropertyResource;
+use App\Http\Resources\RealtorResource;
 use App\Models\Allocation;
+use App\Models\Client;
+use App\Models\Property;
+use App\Models\Realtor;
 use App\Services\RealEstate\AllocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,9 +51,42 @@ class AllocationController extends Controller
         return AllocationResource::collection($allocations);
     }
 
+    public function formOptions(): JsonResponse
+    {
+        $clients = Client::query()
+            ->with('realtor')
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        $properties = Property::query()
+            ->where('status', '!=', PropertyStatus::Sold)
+            ->where('available_count', '>', 0)
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        $realtors = Realtor::query()
+            ->where('status', 'active')
+            ->latest()
+            ->limit(100)
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'clients' => ClientResource::collection($clients),
+                'properties' => PropertyResource::collection($properties),
+                'realtors' => RealtorResource::collection($realtors),
+            ],
+        ]);
+    }
+
     public function store(StoreAllocationRequest $request): JsonResponse
     {
         $allocation = $this->allocationService->create($request->validated(), $request->user());
+
+        // Send email notifications (non-blocking, after transaction completes)
+        $this->allocationService->notifyAllocationCreated($allocation);
 
         return response()->json([
             'message' => 'Allocation created successfully.',
@@ -65,15 +107,39 @@ class AllocationController extends Controller
         ]);
     }
 
-    public function destroy(Allocation $allocation): JsonResponse
+    public function update(UpdateAllocationRequest $request, Allocation $allocation): JsonResponse
     {
-        $allocation = $this->allocationService->cancel($allocation);
+        $allocation = $this->allocationService->updatePaymentState(
+            $allocation,
+            $request->validated(),
+            $request->user()
+        );
 
         return response()->json([
-            'message' => 'Allocation cancelled successfully.',
+            'message' => 'Allocation updated successfully.',
             'data' => [
                 'allocation' => new AllocationResource($allocation),
             ],
+        ]);
+    }
+
+    public function destroy(Allocation $allocation): JsonResponse
+    {
+        $role = request()->user()?->role;
+
+        abort_unless($role === UserRole::Admin, 403, 'Only admins can delete allocations.');
+
+        // Prevent deletion of allocations with payments to preserve transaction history
+        if ($allocation->payments()->exists()) {
+            return response()->json([
+                'message' => 'Cannot delete allocation with recorded payments. Cancel the allocation instead.',
+            ], 422);
+        }
+
+        $allocation->delete();
+
+        return response()->json([
+            'message' => 'Allocation deleted successfully.',
         ]);
     }
 }

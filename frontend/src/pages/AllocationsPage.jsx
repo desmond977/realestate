@@ -1,10 +1,11 @@
 import {
   CalendarDays,
   CreditCard,
-  Download,
+  Edit3,
   Eye,
   Home,
   Loader2,
+  MapPin,
   Plus,
   ReceiptText,
   Search,
@@ -15,10 +16,12 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { canCancelAllocations } from '../auth/permissions'
 import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
-const allocationStatuses = ['active', 'completed', 'cancelled']
+const allocationStatuses = ['reserved', 'active', 'completed', 'cancelled']
 const paymentPlans = ['installment', 'full']
 
 const emptyForm = {
@@ -35,9 +38,6 @@ const emptyForm = {
   transaction_reference: '',
   paid_at: '',
   payment_notes: '',
-  generate_receipt: false,
-  receipt_notes: '',
-  receipt_reference: '',
 }
 
 function getApiError(error, fallback) {
@@ -52,6 +52,7 @@ function getApiError(error, fallback) {
 
 function StatusBadge({ status }) {
   const styles = {
+    reserved: 'bg-amber-50 text-amber-700 border-amber-200',
     active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     completed: 'bg-slate-100 text-slate-700 border-slate-200',
     cancelled: 'bg-red-50 text-red-700 border-red-200',
@@ -74,6 +75,20 @@ function realtorName(allocation) {
 
 function allocationReceipt(allocation) {
   return allocation?.payments?.find((payment) => payment.receipt?.id)?.receipt
+}
+
+function hasReceipt(allocation) {
+  return Boolean(allocation?.payments?.some((payment) => payment.id && payment.receipt?.id))
+}
+
+function lastPaymentDate(allocation) {
+  const latestPayment = allocation?.payments?.[0]
+
+  if (!latestPayment?.paid_at) {
+    return 'No payment yet'
+  }
+
+  return new Date(latestPayment.paid_at).toLocaleString()
 }
 
 function QuickCreateModal({ type, submitting, error, onClose, onSubmit }) {
@@ -171,12 +186,14 @@ function AllocationModal({
   properties,
   realtors,
   submitting,
+  error,
   onClose,
   onSubmit,
   onQuickCreate,
   quickSelection,
 }) {
   const [form, setForm] = useState(emptyForm)
+  const showFirstPayment = form.payment_status !== 'unpaid'
   const selectedProperty = properties.find(
     (property) => String(property.id) === String(form.property_id),
   )
@@ -225,8 +242,14 @@ function AllocationModal({
 
         if (property?.price !== undefined && property?.price !== null && property?.price !== '') {
           next.total_amount = property.price
+          if (next.payment_status === 'paid') {
+            next.initial_payment_amount = property.price
+          }
         } else {
           next.total_amount = ''
+          if (next.payment_status === 'paid') {
+            next.initial_payment_amount = ''
+          }
         }
       }
 
@@ -243,12 +266,14 @@ function AllocationModal({
         if (value === 'paid') {
           next.payment_plan = 'full'
           next.initial_payment_amount = next.total_amount
-          next.generate_receipt = true
         }
 
         if (value === 'unpaid') {
           next.initial_payment_amount = ''
-          next.generate_receipt = false
+          next.payment_method = ''
+          next.transaction_reference = ''
+          next.paid_at = ''
+          next.payment_notes = ''
         }
       }
 
@@ -268,16 +293,13 @@ function AllocationModal({
       payment_status: form.payment_status,
       allocated_at: form.allocated_at || undefined,
       notes: form.notes || undefined,
-      initial_payment_amount: form.initial_payment_amount
+      initial_payment_amount: showFirstPayment && form.initial_payment_amount
         ? Number(form.initial_payment_amount)
         : undefined,
-      payment_method: form.payment_method || undefined,
-      transaction_reference: form.transaction_reference || undefined,
-      paid_at: form.paid_at || undefined,
-      payment_notes: form.payment_notes || undefined,
-      generate_receipt: form.generate_receipt,
-      receipt_notes: form.receipt_notes || undefined,
-      receipt_reference: form.receipt_reference || undefined,
+      payment_method: showFirstPayment ? form.payment_method || undefined : undefined,
+      transaction_reference: showFirstPayment ? form.transaction_reference || undefined : undefined,
+      paid_at: showFirstPayment ? form.paid_at || undefined : undefined,
+      payment_notes: showFirstPayment ? form.payment_notes || undefined : undefined,
     }
 
     onSubmit(payload)
@@ -321,19 +343,11 @@ function AllocationModal({
                 <span className="text-sm font-medium text-ink">Property</span>
                 <select
                   value={form.property_id}
-                  onChange={(event) => {
-                    if (event.target.value === '__new_property__') {
-                      onQuickCreate('property')
-                      return
-                    }
-
-                    updateField('property_id', event.target.value)
-                  }}
+                  onChange={(event) => updateField('property_id', event.target.value)}
                   className={inputClass}
                   required
                 >
                   <option value="">Select property</option>
-                  <option value="__new_property__">+ Add New Property</option>
                   {properties.map((property) => (
                     <option key={property.id} value={property.id}>
                       {property.title}
@@ -425,12 +439,11 @@ function AllocationModal({
                     min="0"
                     step="0.01"
                     value={form.total_amount}
-                    onChange={(event) =>
-                      updateField('total_amount', event.target.value)
-                    }
-                    className={inputClass}
+                    readOnly
+                    className={`${inputClass} cursor-not-allowed bg-canvas text-muted`}
                     required
                   />
+                  <p className="mt-2 text-xs text-muted">Pulled from the selected property price.</p>
                 </label>
 
                 <label className="block">
@@ -477,97 +490,67 @@ function AllocationModal({
               </div>
             </div>
 
-            <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="grid h-9 w-9 place-items-center rounded-md bg-brand/10 text-brand">
-                  <CalendarDays size={18} />
-                </span>
-                <div>
-                  <h4 className="text-sm font-semibold text-ink">First payment</h4>
-                  <p className="text-xs text-muted">First payment and optional receipt details.</p>
+            {showFirstPayment ? (
+              <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-md bg-brand/10 text-brand">
+                    <CalendarDays size={18} />
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-ink">First payment</h4>
+                    <p className="text-xs text-muted">Receipts are generated automatically after payment.</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <label className="block">
+                    <span className="text-sm font-medium text-ink">Amount paid</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.initial_payment_amount}
+                      onChange={(event) => updateField('initial_payment_amount', event.target.value)}
+                      className={inputClass}
+                      placeholder={selectedProperty?.price ? formatMoney(selectedProperty.price) : '0'}
+                      readOnly={form.payment_status === 'paid'}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-ink">Payment date</span>
+                    <input
+                      type="date"
+                      value={form.paid_at}
+                      onChange={(event) => updateField('paid_at', event.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-ink">Payment method</span>
+                    <input
+                      value={form.payment_method}
+                      onChange={(event) =>
+                        updateField('payment_method', event.target.value)
+                      }
+                      className={inputClass}
+                      placeholder="bank_transfer, cash, pos"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-ink">Reference</span>
+                    <input
+                      value={form.transaction_reference}
+                      onChange={(event) =>
+                        updateField('transaction_reference', event.target.value)
+                      }
+                      className={inputClass}
+                      placeholder="Transaction reference"
+                    />
+                  </label>
                 </div>
               </div>
-
-              <div className="grid gap-4">
-                <label className="block">
-                  <span className="text-sm font-medium text-ink">Amount paid</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.initial_payment_amount}
-                    onChange={(event) => updateField('initial_payment_amount', event.target.value)}
-                    className={inputClass}
-                    placeholder={selectedProperty?.price ? formatMoney(selectedProperty.price) : '0'}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-ink">Payment date</span>
-                  <input
-                    type="date"
-                    value={form.paid_at}
-                    onChange={(event) => updateField('paid_at', event.target.value)}
-                    className={inputClass}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-ink">Payment method</span>
-                  <input
-                    value={form.payment_method}
-                    onChange={(event) =>
-                      updateField('payment_method', event.target.value)
-                    }
-                    className={inputClass}
-                    placeholder="bank_transfer, cash, pos"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm font-medium text-ink">Reference</span>
-                  <input
-                    value={form.transaction_reference}
-                    onChange={(event) =>
-                      updateField('transaction_reference', event.target.value)
-                    }
-                    className={inputClass}
-                    placeholder="Transaction reference"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2.5">
-                  <span className="text-sm font-medium text-ink">Generate receipt</span>
-                  <input
-                    type="checkbox"
-                    checked={form.generate_receipt}
-                    onChange={(event) => updateField('generate_receipt', event.target.checked)}
-                    className="h-4 w-4"
-                  />
-                </label>
-
-                {form.generate_receipt ? (
-                  <div className="grid gap-4">
-                    <label className="block">
-                      <span className="text-sm font-medium text-ink">Receipt reference</span>
-                      <input
-                        value={form.receipt_reference}
-                        onChange={(event) => updateField('receipt_reference', event.target.value)}
-                        className={inputClass}
-                        placeholder="Optional receipt reference"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-sm font-medium text-ink">Receipt notes</span>
-                      <textarea
-                        value={form.receipt_notes}
-                        onChange={(event) => updateField('receipt_notes', event.target.value)}
-                        rows="3"
-                        className={textAreaClass}
-                      />
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-            </div>
+            ) : null}
           </section>
 
           <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
@@ -588,6 +571,12 @@ function AllocationModal({
               placeholder="Add allocation notes"
             />
           </section>
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
 
           <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-3 border-t border-line bg-panel px-4 py-4 sm:-mx-5 sm:-mb-5 sm:flex-row sm:justify-end sm:px-5">
             <button
@@ -612,7 +601,320 @@ function AllocationModal({
   )
 }
 
+function AddPaymentModal({ allocation, submitting, error, onClose, onSubmit }) {
+  const [form, setForm] = useState({
+    amount: '',
+    payment_method: '',
+    transaction_reference: '',
+    paid_at: new Date().toISOString().slice(0, 16),
+    payment_notes: '',
+    payment_type: allocation?.payment_plan || 'installment',
+  })
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    onSubmit({
+      ...form,
+      amount: Number(form.amount),
+    })
+  }
+
+  const maxAmount = Number(allocation?.balance || 0)
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
+      <div className="mx-auto min-h-screen w-full max-w-2xl border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-line bg-panel px-4 py-4 sm:px-5">
+          <div>
+            <p className="text-sm font-medium text-brand">Add payment</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">{allocation?.client?.full_name || 'Client'}</h3>
+            <p className="mt-1 text-sm text-muted">{allocation?.property?.title || 'Property'} · Balance: {formatMoney(maxAmount)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md p-2 text-muted hover:bg-canvas" aria-label="Close payment form">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form className="space-y-4 p-4 sm:p-5" onSubmit={handleSubmit}>
+          <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+            <h4 className="mb-4 text-sm font-semibold text-ink">Payment details</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Amount *</span>
+                <input
+                  type="number"
+                  min="0.01"
+                  max={maxAmount}
+                  step="0.01"
+                  value={form.amount}
+                  onChange={(event) => updateField('amount', event.target.value)}
+                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
+                  placeholder="0.00"
+                  required
+                />
+                <p className="mt-1 text-xs text-muted">Maximum: {formatMoney(maxAmount)}</p>
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Payment type *</span>
+                <select
+                  value={form.payment_type}
+                  onChange={(event) => updateField('payment_type', event.target.value)}
+                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand capitalize"
+                >
+                  <option value="installment">Installment</option>
+                  <option value="full">Full Payment</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Payment method</span>
+                <input
+                  value={form.payment_method}
+                  onChange={(event) => updateField('payment_method', event.target.value)}
+                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
+                  placeholder="bank_transfer, cash, pos"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Payment date *</span>
+                <input
+                  type="datetime-local"
+                  value={form.paid_at}
+                  onChange={(event) => updateField('paid_at', event.target.value)}
+                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
+                  required
+                />
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-ink">Transaction reference</span>
+                <input
+                  value={form.transaction_reference}
+                  onChange={(event) => updateField('transaction_reference', event.target.value)}
+                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
+                  placeholder="e.g., TXN123456, Cheque No."
+                />
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-ink">Notes</span>
+                <textarea
+                  value={form.payment_notes}
+                  onChange={(event) => updateField('payment_notes', event.target.value)}
+                  rows="3"
+                  className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  placeholder="Additional payment details..."
+                />
+              </label>
+            </div>
+          </div>
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Record Payment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit }) {
+  const initialStatus = allocation.status === 'completed'
+    ? 'paid'
+    : Number(allocation.amount_paid || 0) > 0
+      ? 'part_payment'
+      : 'unpaid'
+  const [form, setForm] = useState({
+    payment_status: initialStatus,
+    initial_payment_amount: '',
+    payment_method: '',
+    transaction_reference: '',
+    paid_at: '',
+    payment_notes: '',
+    notes: allocation.notes || '',
+  })
+  const showPaymentFields = form.payment_status !== 'unpaid'
+  const projectedBalance = Math.max(Number(allocation.balance || 0) - Number(form.initial_payment_amount || 0), 0)
+
+  function updateField(field, value) {
+    setForm((current) => {
+      const next = { ...current, [field]: value }
+
+      if (field === 'payment_status') {
+        if (value === 'paid') {
+          next.initial_payment_amount = allocation.balance || ''
+        }
+
+        if (value === 'unpaid') {
+          next.initial_payment_amount = ''
+          next.payment_method = ''
+          next.transaction_reference = ''
+          next.paid_at = ''
+          next.payment_notes = ''
+        }
+      }
+
+      return next
+    })
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+
+    onSubmit({
+      payment_status: form.payment_status,
+      initial_payment_amount: showPaymentFields && form.initial_payment_amount
+        ? Number(form.initial_payment_amount)
+        : undefined,
+      payment_method: showPaymentFields ? form.payment_method || undefined : undefined,
+      transaction_reference: showPaymentFields ? form.transaction_reference || undefined : undefined,
+      paid_at: showPaymentFields ? form.paid_at || undefined : undefined,
+      payment_notes: showPaymentFields ? form.payment_notes || undefined : undefined,
+      notes: form.notes || undefined,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
+      <div className="mx-auto min-h-screen w-full max-w-4xl border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-line bg-panel px-4 py-4 sm:px-5">
+          <div>
+            <p className="text-sm font-medium text-brand">Edit allocation</p>
+            <h3 className="mt-1 text-lg font-semibold text-ink">{allocation.client?.full_name || 'Client'}</h3>
+            <p className="mt-1 text-sm text-muted">{allocation.property?.title || 'Property'} · {formatMoney(allocation.total_amount)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md p-2 text-muted hover:bg-canvas" aria-label="Close allocation editor">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form className="space-y-4 p-4 sm:p-5" onSubmit={handleSubmit}>
+          <section className="grid gap-3 sm:grid-cols-4">
+            {[
+              ['Current status', allocation.status],
+              ['Total paid', formatMoney(allocation.amount_paid)],
+              ['Outstanding', formatMoney(allocation.balance)],
+              ['Last payment', lastPaymentDate(allocation)],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase text-muted">{label}</p>
+                <p className="mt-2 truncate text-sm font-semibold capitalize text-ink">{value}</p>
+              </div>
+            ))}
+          </section>
+
+          <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Payment status</span>
+                <select value={form.payment_status} onChange={(event) => updateField('payment_status', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm capitalize outline-none focus:border-brand">
+                  <option value="unpaid">Unpaid</option>
+                  <option value="part_payment">Part Payment</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Outstanding balance</span>
+                <input value={formatMoney(projectedBalance)} readOnly className="mt-2 h-11 w-full cursor-not-allowed rounded-md border border-line bg-canvas px-3 text-sm text-muted outline-none" />
+              </label>
+            </div>
+
+            {showPaymentFields ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Payment amount</span>
+                  <input type="number" min="0.01" max={allocation.balance || undefined} step="0.01" value={form.initial_payment_amount} onChange={(event) => updateField('initial_payment_amount', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand" required />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Payment date</span>
+                  <input type="datetime-local" value={form.paid_at} onChange={(event) => updateField('paid_at', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand" />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Payment method</span>
+                  <input value={form.payment_method} onChange={(event) => updateField('payment_method', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand" placeholder="bank_transfer, cash, pos" />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Reference</span>
+                  <input value={form.transaction_reference} onChange={(event) => updateField('transaction_reference', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand" />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-sm font-medium text-ink">Payment notes</span>
+                  <textarea value={form.payment_notes} onChange={(event) => updateField('payment_notes', event.target.value)} rows="3" className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand" />
+                </label>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-ink">Payment history</h4>
+            <div className="mt-3 space-y-2">
+              {allocation.payments?.map((payment) => (
+                <div key={payment.id} className="flex flex-col gap-1 rounded-md border border-line bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-semibold text-ink">{formatMoney(payment.amount)}</span>
+                  <span className="text-muted">{payment.payment_method || 'No method'}</span>
+                  <span className="text-muted">{payment.receipt?.receipt_number || 'No receipt'}</span>
+                  <span className="text-muted">{payment.paid_at ? new Date(payment.paid_at).toLocaleString() : '-'}</span>
+                </div>
+              ))}
+              {!allocation.payments?.length ? (
+                <p className="rounded-md bg-canvas p-4 text-sm text-muted">No payments recorded yet. Use this form to add the first payment.</p>
+              ) : null}
+            </div>
+          </section>
+
+          <label className="block">
+            <span className="text-sm font-medium text-ink">Allocation notes</span>
+            <textarea value={form.notes} onChange={(event) => updateField('notes', event.target.value)} rows="3" className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand" />
+          </label>
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink">Cancel</button>
+            <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70">
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Save allocation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export function AllocationsPage() {
+  const { user } = useAuth()
+  const isAdminAuthorizedToCancel = canCancelAllocations(user)
   const [allocations, setAllocations] = useState([])
   const [clients, setClients] = useState([])
   const [properties, setProperties] = useState([])
@@ -628,14 +930,17 @@ export function AllocationsPage() {
   const [quickSubmitting, setQuickSubmitting] = useState(false)
   const [quickError, setQuickError] = useState('')
   const [error, setError] = useState('')
+  const [allocationFormError, setAllocationFormError] = useState('')
+  const [editAllocationError, setEditAllocationError] = useState('')
   const [notice, setNotice] = useState('')
+  const [editAllocation, setEditAllocation] = useState(null)
   const [receiptDocument, setReceiptDocument] = useState(null)
   const [documentLoading, setDocumentLoading] = useState(false)
   const [documentError, setDocumentError] = useState('')
 
   const availableProperties = useMemo(
     () => properties.filter((property) => {
-      return Number(property.available_count || 0) > 0
+      return property.status !== 'sold' && Number(property.available_count || 0) > 0
     }),
     [properties],
   )
@@ -663,17 +968,11 @@ export function AllocationsPage() {
 
   const loadFormOptions = useCallback(async () => {
     try {
-      const [clientsResponse, propertiesResponse, realtorsResponse] = await Promise.all([
-        api.get('/clients', { params: { per_page: 100 } }),
-        api.get('/properties', {
-          params: { per_page: 100 },
-        }),
-        api.get('/realtors', { params: { per_page: 100, status: 'active' } }),
-      ])
+      const response = await api.get('/allocations/form-options')
 
-      setClients(clientsResponse.data.data)
-      setProperties(propertiesResponse.data.data)
-      setRealtors(realtorsResponse.data.data)
+      setClients(response.data.data.clients)
+      setProperties(response.data.data.properties)
+      setRealtors(response.data.data.realtors)
     } catch (err) {
       setError(getApiError(err, 'Form options could not be loaded.'))
     }
@@ -701,7 +1000,7 @@ export function AllocationsPage() {
 
   async function handleSubmit(payload) {
     setSubmitting(true)
-    setError('')
+    setAllocationFormError('')
     setNotice('')
 
     try {
@@ -711,7 +1010,7 @@ export function AllocationsPage() {
       await loadAllocations(query)
       await loadFormOptions()
     } catch (err) {
-      setError(getApiError(err, 'Allocation could not be created.'))
+      setAllocationFormError(getApiError(err, 'Allocation could not be created.'))
     } finally {
       setSubmitting(false)
     }
@@ -774,6 +1073,24 @@ export function AllocationsPage() {
     }
   }
 
+  async function handleAllocationUpdate(allocation, payload) {
+    setSubmitting(true)
+    setEditAllocationError('')
+    setNotice('')
+
+    try {
+      await api.patch(`/allocations/${allocation.id}`, payload)
+      setNotice('Allocation updated successfully.')
+      setEditAllocation(null)
+      await loadAllocations(query)
+      await loadFormOptions()
+    } catch (err) {
+      setEditAllocationError(getApiError(err, 'Allocation could not be updated.'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function viewReceiptDocument(allocation) {
     const receipt = allocationReceipt(allocation)
 
@@ -812,6 +1129,7 @@ export function AllocationsPage() {
           type="button"
           onClick={() => {
             setQuickCreateSelection(null)
+            setAllocationFormError('')
             setModalOpen(true)
           }}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
@@ -872,20 +1190,132 @@ export function AllocationsPage() {
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-line bg-panel shadow-sm">
-        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+      <section className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
+        <div className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
           <div className="flex items-center gap-2">
-            <Home size={18} className="text-brand" />
-            <h3 className="text-base font-semibold text-ink">Allocations</h3>
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-brand/10 text-brand">
+              <Home size={18} />
+            </span>
+            <div>
+              <h3 className="text-base font-semibold text-ink">Allocations</h3>
+              <p className="text-xs text-muted">Buyer, property, and balance overview</p>
+            </div>
           </div>
-          <span className="text-sm text-muted">
+          <span className="rounded-md border border-line bg-canvas px-3 py-1.5 text-sm font-semibold text-muted">
             {meta?.total ?? allocations.length} total
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-3 md:hidden">
+          {allocations.map((allocation) => {
+            const receipt = allocationReceipt(allocation)
+            const receiptAvailable = hasReceipt(allocation)
+            const canEdit = allocation.status !== 'cancelled' && allocation.status !== 'completed'
+            const canCancel = ['active', 'reserved'].includes(allocation.status) && Number(allocation.amount_paid) <= 0
+
+            return (
+              <article key={allocation.id} className="w-full overflow-hidden rounded-lg border border-line bg-white p-3 shadow-sm">
+                <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3">
+                  <div className="grid h-20 w-20 place-items-center rounded-md border border-line bg-canvas text-brand">
+                    <Home size={28} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold text-ink">
+                      {allocation.property?.title || 'Property'}
+                    </h3>
+                    <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted">
+                      <MapPin size={13} className="shrink-0" />
+                      <span className="min-w-0 truncate">{allocation.property?.location || 'No location'}</span>
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusBadge status={allocation.status} />
+                      <span className="min-w-0 max-w-full truncate rounded-md bg-canvas px-2 py-1 text-xs font-medium capitalize text-muted">
+                        {allocation.payment_plan}
+                      </span>
+                    </div>
+                    <p className="mt-2 truncate text-base font-semibold text-ink">
+                      {allocation.client?.full_name || 'Client'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-xs">
+                  <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                    <p className="font-medium text-muted">Paid</p>
+                    <p className="mt-1 truncate font-semibold text-ink">{formatMoney(allocation.amount_paid)}</p>
+                  </div>
+                  <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                    <p className="font-medium text-muted">Balance</p>
+                    <p className="mt-1 truncate font-semibold text-ink">{formatMoney(allocation.balance)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid min-w-0 gap-2 text-xs">
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2">
+                    <span>Realtor</span>
+                    <span className="min-w-0 truncate font-semibold text-ink">{realtorName(allocation)}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2">
+                    <span>Allocated</span>
+                    <span className="min-w-0 truncate font-semibold text-ink">{allocation.allocated_at || 'No date'}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2">
+                    <span>Receipt</span>
+                    <span className="min-w-0 truncate font-semibold text-ink">
+                      {receipt?.receipt_number || 'No receipt'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={`mt-3 grid gap-2 border-t border-line pt-3 ${receiptAvailable ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  {receiptAvailable ? (
+                    <button
+                      type="button"
+                      onClick={() => viewReceiptDocument(allocation)}
+                      className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10"
+                      aria-label="View receipt"
+                    >
+                      <Eye size={14} />
+                      View
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => { setEditAllocationError(''); setEditAllocation(allocation) }}
+                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={!canEdit}
+                    aria-label="Edit allocation"
+                  >
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                  {isAdminAuthorizedToCancel ? (
+                    <button
+                      type="button"
+                      onClick={() => cancelAllocation(allocation)}
+                      disabled={!canCancel}
+                      className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Cancel allocation"
+                    >
+                      <Trash2 size={14} />
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            )
+          })}
+
+          {!loading && allocations.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-line bg-canvas px-4 py-10 text-center text-sm text-muted">
+              No allocations found.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="bg-canvas text-xs uppercase text-muted">
+            <thead className="border-b border-line bg-canvas text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-semibold">Client</th>
                 <th className="px-4 py-3 font-semibold">Realtor</th>
@@ -900,7 +1330,7 @@ export function AllocationsPage() {
             </thead>
             <tbody>
               {allocations.map((allocation) => (
-                <tr key={allocation.id} className="border-t border-line">
+                <tr key={allocation.id} className="border-b border-line/80 transition hover:bg-brand/5">
                   <td className="px-4 py-3">
                     <p className="font-medium text-ink">
                       {allocation.client?.full_name || 'Client'}
@@ -933,43 +1363,50 @@ export function AllocationsPage() {
                     <StatusBadge status={allocation.status} />
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    <span className="inline-flex items-center gap-2">
-                      <ReceiptText size={15} />
-                      {allocationReceipt(allocation)?.receipt_number || 'Pending'}
-                    </span>
+                    {hasReceipt(allocation) ? (
+                      <span className="inline-flex items-center gap-2">
+                        <ReceiptText size={15} />
+                        {allocationReceipt(allocation).receipt_number}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted">No receipt</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
+                      {hasReceipt(allocation) ? (
+                        <button
+                          type="button"
+                          onClick={() => viewReceiptDocument(allocation)}
+                          className="rounded-md border border-brand/20 bg-brand/5 p-2 text-brand hover:bg-brand/10"
+                          aria-label="View receipt"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      ) : null}
                       <button
                         type="button"
-                        onClick={() => viewReceiptDocument(allocation)}
-                        disabled={!allocationReceipt(allocation)}
-                        className="rounded-md border border-brand/20 bg-brand/5 p-2 text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="View receipt"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => viewReceiptDocument(allocation)}
-                        disabled={!allocationReceipt(allocation)}
+                        onClick={() => { setEditAllocationError(''); setEditAllocation(allocation) }}
                         className="rounded-md border border-line p-2 text-muted hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="Download receipt"
+                        disabled={allocation.status === 'cancelled' || allocation.status === 'completed'}
+                        aria-label="Edit allocation"
                       >
-                        <Download size={16} />
+                        <Edit3 size={16} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => cancelAllocation(allocation)}
-                        disabled={
-                          allocation.status !== 'active' ||
-                          Number(allocation.amount_paid) > 0
-                        }
-                        className="rounded-md border border-line p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="Cancel allocation"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {isAdminAuthorizedToCancel ? (
+                        <button
+                          type="button"
+                          onClick={() => cancelAllocation(allocation)}
+                          disabled={
+                            !['active', 'reserved'].includes(allocation.status) ||
+                            Number(allocation.amount_paid) > 0
+                          }
+                          className="rounded-md border border-line p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Cancel allocation"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -1000,7 +1437,8 @@ export function AllocationsPage() {
           properties={availableProperties}
           realtors={realtors}
           submitting={submitting}
-          onClose={() => setModalOpen(false)}
+          error={allocationFormError}
+          onClose={() => { setModalOpen(false); setAllocationFormError('') }}
           onSubmit={handleSubmit}
           onQuickCreate={(type) => {
             setQuickError('')
@@ -1017,6 +1455,16 @@ export function AllocationsPage() {
           error={quickError}
           onClose={() => setQuickCreateType(null)}
           onSubmit={handleQuickCreate}
+        />
+      ) : null}
+
+      {editAllocation ? (
+        <EditAllocationModal
+          allocation={editAllocation}
+          submitting={submitting}
+          error={editAllocationError}
+          onClose={() => { setEditAllocation(null); setEditAllocationError('') }}
+          onSubmit={(payload) => handleAllocationUpdate(editAllocation, payload)}
         />
       ) : null}
 

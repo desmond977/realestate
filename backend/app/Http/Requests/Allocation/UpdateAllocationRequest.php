@@ -2,12 +2,10 @@
 
 namespace App\Http\Requests\Allocation;
 
-use App\Enums\PaymentPlan;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 
-class StoreAllocationRequest extends FormRequest
+class UpdateAllocationRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -20,19 +18,14 @@ class StoreAllocationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'property_id' => ['required', 'integer', 'exists:properties,id'],
-            'client_id' => ['required', 'integer', 'exists:clients,id'],
-            'realtor_id' => ['nullable', 'integer', 'exists:realtors,id'],
-            'total_amount' => ['sometimes', 'numeric', 'min:0.01'],
-            'payment_plan' => ['required', new Enum(PaymentPlan::class)],
             'payment_status' => ['sometimes', Rule::in(['paid', 'unpaid', 'part_payment'])],
-            'allocated_at' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'initial_payment_amount' => ['nullable', 'numeric', 'min:0'],
+            'initial_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'amount' => ['nullable', 'numeric', 'min:0.01'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'transaction_reference' => ['nullable', 'string', 'max:255', 'unique:payments,transaction_reference'],
             'paid_at' => ['nullable', 'date'],
             'payment_notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
         ];
     }
 }

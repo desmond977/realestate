@@ -142,10 +142,23 @@ class ClientApiTest extends TestCase
             ->assertJsonValidationErrors(['email']);
     }
 
-    public function test_authenticated_user_can_delete_client(): void
+    public function test_admin_can_soft_delete_client_without_orphaning_related_records(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
         $client = Client::factory()->create();
+        $property = Property::factory()->create();
+        $allocation = Allocation::factory()->create([
+            'client_id' => $client->id,
+            'property_id' => $property->id,
+        ]);
+        $payment = Payment::factory()->create([
+            'allocation_id' => $allocation->id,
+            'client_id' => $client->id,
+            'property_id' => $property->id,
+        ]);
+        $receipt = Receipt::factory()->create([
+            'payment_id' => $payment->id,
+        ]);
 
         $this->deleteJson("/api/v1/clients/{$client->id}")
             ->assertOk()
@@ -153,6 +166,37 @@ class ClientApiTest extends TestCase
 
         $this->assertSoftDeleted('clients', [
             'id' => $client->id,
+        ]);
+
+        $this->assertDatabaseHas('allocations', [
+            'id' => $allocation->id,
+            'client_id' => $client->id,
+        ]);
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'client_id' => $client->id,
+        ]);
+        $this->assertDatabaseHas('receipts', [
+            'id' => $receipt->id,
+            'payment_id' => $payment->id,
+        ]);
+
+        $this->getJson('/api/v1/clients')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_staff_cannot_delete_clients(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'staff']));
+        $client = Client::factory()->create();
+
+        $this->deleteJson("/api/v1/clients/{$client->id}")
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('clients', [
+            'id' => $client->id,
+            'deleted_at' => null,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\StoreClientRequest;
 use App\Http\Requests\Client\UpdateClientRequest;
@@ -92,6 +93,10 @@ class ClientController extends Controller
 
     public function destroy(Client $client): JsonResponse
     {
+        $role = request()->user()?->role;
+
+        abort_unless($role === UserRole::Admin, 403, 'Only admins can delete clients.');
+
         $client->delete();
 
         return response()->json([

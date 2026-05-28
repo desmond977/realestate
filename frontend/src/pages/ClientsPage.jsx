@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { canDeleteClients } from '../auth/permissions'
 import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
@@ -68,7 +70,7 @@ function ContactLink({ type, value }) {
   )
 }
 
-function ClientAvatar({ name }) {
+function ClientAvatar({ name, className = 'h-11 w-11 rounded-md text-sm' }) {
   const initials = name
     ?.split(' ')
     .filter(Boolean)
@@ -78,7 +80,7 @@ function ClientAvatar({ name }) {
     .toUpperCase()
 
   return (
-    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-brand text-sm font-semibold text-white shadow-sm">
+    <div className={`grid shrink-0 place-items-center bg-brand font-semibold text-white shadow-sm ${className}`}>
       {initials || 'CL'}
     </div>
   )
@@ -436,7 +438,7 @@ function QuickRealtorModal({ submitting, error, onClose, onSubmit }) {
   )
 }
 
-function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitting, onQuickCreateRealtor }) {
+function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitting, onQuickCreateRealtor, error }) {
   const [form, setForm] = useState(initialValues)
 
   function updateField(field, value) {
@@ -566,6 +568,12 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
             />
           </label>
 
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
           <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
             <button
               type="button"
@@ -590,6 +598,8 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
 }
 
 export function ClientsPage() {
+  const { user } = useAuth()
+  const canDelete = canDeleteClients(user)
   const [clients, setClients] = useState([])
   const [meta, setMeta] = useState(null)
   const [filters, setFilters] = useState({ search: '' })
@@ -597,6 +607,7 @@ export function ClientsPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
   const [notice, setNotice] = useState('')
   const [modal, setModal] = useState(null)
   const [quickRealtorOpen, setQuickRealtorOpen] = useState(false)
@@ -682,7 +693,7 @@ export function ClientsPage() {
 
   async function handleSubmit(payload) {
     setSubmitting(true)
-    setError('')
+    setModalError('')
     setNotice('')
 
     try {
@@ -697,7 +708,7 @@ export function ClientsPage() {
       setModal(null)
       await loadClients(query)
     } catch (err) {
-      setError(getApiError(err, 'Client could not be saved.'))
+      setModalError(getApiError(err, 'Client could not be saved.'))
     } finally {
       setSubmitting(false)
     }
@@ -785,7 +796,7 @@ export function ClientsPage() {
         </div>
         <button
           type="button"
-          onClick={() => setModal({ mode: 'create' })}
+          onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           <Plus size={17} />
@@ -859,65 +870,92 @@ export function ClientsPage() {
           </span>
         </div>
 
-        <div className="divide-y divide-line md:hidden">
+        <div className="grid gap-3 p-3 md:hidden">
           {clients.map((client) => (
-            <article key={client.id} className="bg-white p-4 transition hover:bg-brand/5">
-              <div className="flex items-start gap-3">
-                <ClientAvatar name={client.full_name} />
+            <article key={client.id} className="w-full overflow-hidden rounded-lg border border-line bg-white p-3 shadow-sm">
+              <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3">
+                <ClientAvatar name={client.full_name} className="h-20 w-20 rounded-md text-base" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-ink">{client.full_name}</p>
-                      <p className="mt-1 text-xs text-muted">
-                        {client.occupation || 'Client'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => viewClientActivity(client)}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand/20 bg-brand/5 px-2.5 py-1.5 text-xs font-semibold text-brand"
-                      aria-label={`View ${client.full_name}`}
-                    >
-                      <Eye size={14} />
-                      View
-                    </button>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <ContactLink type="phone" value={client.phone} />
-                    <ContactLink type="email" value={client.email} />
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate rounded-md border border-accent/20 bg-accent/10 px-2.5 py-1.5 text-xs font-semibold text-accent">
+                  <h3 className="truncate text-sm font-semibold text-ink">{client.full_name}</h3>
+                  <p className="mt-1 truncate text-xs text-muted">
+                    {client.occupation || 'Client'}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 max-w-full truncate rounded-md bg-canvas px-2 py-1 text-xs font-medium text-muted">
+                      ID #{client.id}
+                    </span>
+                    <span className="min-w-0 max-w-full truncate rounded-md border border-accent/20 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent">
                       {realtorName(client)}
                     </span>
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setModal({ mode: 'edit', client })}
-                        className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink"
-                        aria-label={`Edit ${client.full_name}`}
-                      >
-                        <Edit3 size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteClient(client)}
-                        className="rounded-md border border-red-100 bg-white p-2 text-red-600 hover:bg-red-50"
-                        aria-label={`Delete ${client.full_name}`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
                   </div>
+                  <p className="mt-2 truncate text-base font-semibold text-ink">
+                    {client.phone || client.email || 'No contact'}
+                  </p>
                 </div>
+              </div>
+
+              <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-xs">
+                <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                  <p className="font-medium text-muted">Phone</p>
+                  <p className="mt-1 truncate font-semibold text-ink">{client.phone || 'No phone'}</p>
+                </div>
+                <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                  <p className="font-medium text-muted">Email</p>
+                  <p className="mt-1 truncate font-semibold text-ink">{client.email || 'No email'}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid min-w-0 gap-2 text-xs">
+                <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2">
+                  <span>Realtor</span>
+                  <span className="min-w-0 truncate font-semibold text-ink">{realtorName(client)}</span>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2">
+                  <span>Occupation</span>
+                  <span className="min-w-0 truncate font-semibold text-ink">{client.occupation || 'Not specified'}</span>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-canvas px-3 py-2">
+                  <span>Address</span>
+                  <span className="min-w-0 truncate font-semibold text-ink">{client.address || 'No address'}</span>
+                </div>
+              </div>
+
+              <div className={`mt-3 grid gap-2 border-t border-line pt-3 ${canDelete ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                <button
+                  type="button"
+                  onClick={() => viewClientActivity(client)}
+                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10"
+                  aria-label={`View ${client.full_name}`}
+                >
+                  <Eye size={14} />
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
+                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
+                  aria-label={`Edit ${client.full_name}`}
+                >
+                  <Edit3 size={14} />
+                  Edit
+                </button>
+                {canDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => deleteClient(client)}
+                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50"
+                    aria-label={`Delete ${client.full_name}`}
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
+                ) : null}
               </div>
             </article>
           ))}
 
           {!loading && clients.length === 0 ? (
-            <div className="px-4 py-10 text-center text-muted">
+            <div className="rounded-lg border border-dashed border-line bg-canvas px-4 py-10 text-center text-sm text-muted">
               No clients found.
             </div>
           ) : null}
@@ -983,20 +1021,22 @@ export function ClientsPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setModal({ mode: 'edit', client })}
+                        onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
                         className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink"
                         aria-label={`Edit ${client.full_name}`}
                       >
                         <Edit3 size={16} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteClient(client)}
-                        className="rounded-md border border-red-100 bg-white p-2 text-red-600 hover:bg-red-50"
-                        aria-label={`Delete ${client.full_name}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          onClick={() => deleteClient(client)}
+                          className="rounded-md border border-red-100 bg-white p-2 text-red-600 hover:bg-red-50"
+                          aria-label={`Delete ${client.full_name}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -1026,10 +1066,11 @@ export function ClientsPage() {
           key={`${modal.mode}-${modal.client?.id || 'new'}-${modal.quickRealtorId || ''}`}
           mode={modal.mode}
           initialValues={modal.quickRealtorId ? { ...modalInitialValues, realtor_id: modal.quickRealtorId } : modalInitialValues}
-          onClose={() => setModal(null)}
+          onClose={() => { setModal(null); setModalError('') }}
           onSubmit={handleSubmit}
           submitting={submitting}
           realtors={realtors}
+          error={modalError}
           onQuickCreateRealtor={() => {
             setQuickError('')
             setQuickRealtorOpen(true)

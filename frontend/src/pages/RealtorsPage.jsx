@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
+import { canDeleteRealtors } from '../auth/permissions'
 import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
@@ -115,7 +117,7 @@ function StatCard({ label, value, icon: Icon }) {
   )
 }
 
-function RealtorModal({ mode, initialValues, onClose, onSubmit, submitting }) {
+function RealtorModal({ mode, initialValues, onClose, onSubmit, submitting, error }) {
   const [form, setForm] = useState(initialValues)
 
   function updateField(field, value) {
@@ -228,6 +230,12 @@ function RealtorModal({ mode, initialValues, onClose, onSubmit, submitting }) {
               className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
             />
           </label>
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
 
           <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
             <button
@@ -401,6 +409,8 @@ function RealtorDetailsModal({ realtor, analytics, loading, error, onClose, onVi
 }
 
 export function RealtorsPage() {
+  const { user } = useAuth()
+  const canDelete = canDeleteRealtors(user)
   const [realtors, setRealtors] = useState([])
   const [meta, setMeta] = useState(null)
   const [filters, setFilters] = useState({ search: '', status: '' })
@@ -408,6 +418,7 @@ export function RealtorsPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
   const [notice, setNotice] = useState('')
   const [modal, setModal] = useState(null)
   const [detailsRealtor, setDetailsRealtor] = useState(null)
@@ -477,7 +488,7 @@ export function RealtorsPage() {
 
   async function handleSubmit(payload) {
     setSubmitting(true)
-    setError('')
+    setModalError('')
     setNotice('')
 
     try {
@@ -492,7 +503,7 @@ export function RealtorsPage() {
       setModal(null)
       await loadRealtors(query)
     } catch (err) {
-      setError(getApiError(err, 'Realtor could not be saved.'))
+      setModalError(getApiError(err, 'Realtor could not be saved.'))
     } finally {
       setSubmitting(false)
     }
@@ -558,7 +569,7 @@ export function RealtorsPage() {
         </div>
         <button
           type="button"
-          onClick={() => setModal({ mode: 'create' })}
+          onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           <Plus size={17} />
@@ -646,12 +657,14 @@ export function RealtorsPage() {
                       <button type="button" onClick={() => viewRealtor(realtor)} className="rounded-md border border-brand/20 bg-brand/5 p-2 text-brand">
                         <Eye size={15} />
                       </button>
-                      <button type="button" onClick={() => setModal({ mode: 'edit', realtor })} className="rounded-md border border-line bg-white p-2 text-muted">
+                      <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted">
                         <Edit3 size={15} />
                       </button>
-                      <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600">
-                        <Trash2 size={15} />
-                      </button>
+                      {canDelete ? (
+                        <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600">
+                          <Trash2 size={15} />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -698,12 +711,14 @@ export function RealtorsPage() {
                       <button type="button" onClick={() => viewRealtor(realtor)} className="inline-flex items-center gap-1 rounded-md border border-brand/20 bg-brand/5 px-2.5 py-2 text-sm font-semibold text-brand hover:bg-brand/10">
                         <Eye size={16} /> View
                       </button>
-                      <button type="button" onClick={() => setModal({ mode: 'edit', realtor })} className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink">
+                      <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink">
                         <Edit3 size={16} />
                       </button>
-                      <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600 hover:bg-red-50">
-                        <Trash2 size={16} />
-                      </button>
+                      {canDelete ? (
+                        <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600 hover:bg-red-50">
+                          <Trash2 size={16} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -729,9 +744,10 @@ export function RealtorsPage() {
           key={`${modal.mode}-${modal.realtor?.id || 'new'}`}
           mode={modal.mode}
           initialValues={modalInitialValues}
-          onClose={() => setModal(null)}
+          onClose={() => { setModal(null); setModalError('') }}
           onSubmit={handleSubmit}
           submitting={submitting}
+          error={modalError}
         />
       ) : null}
 

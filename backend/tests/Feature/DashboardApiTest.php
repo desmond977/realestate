@@ -142,7 +142,7 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.recent_payments.0.receipt.receipt_number', 'REC-DASHBOARD-001')
             ->assertJsonCount(3, 'data.property_status_breakdown')
             ->assertJsonCount(3, 'data.property_inventory_breakdown')
-            ->assertJsonCount(3, 'data.allocation_status_breakdown');
+            ->assertJsonCount(4, 'data.allocation_status_breakdown');
 
         $this->assertDatabaseHas('properties', [
             'id' => $availableProperty->id,

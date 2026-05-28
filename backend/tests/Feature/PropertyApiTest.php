@@ -23,7 +23,7 @@ class PropertyApiTest extends TestCase
 
     public function test_authenticated_user_can_list_properties_with_filters(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
 
         Property::factory()->create([
             'title' => 'Lekki Phase One Apartment',
@@ -50,7 +50,7 @@ class PropertyApiTest extends TestCase
 
     public function test_authenticated_user_can_create_property_with_count_inventory(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
 
         $response = $this->postJson('/api/v1/properties', [
             'title' => 'Greenfield Estate Plot',
@@ -87,7 +87,7 @@ class PropertyApiTest extends TestCase
 
     public function test_create_property_requires_valid_payload(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
 
         $this->postJson('/api/v1/properties', [
             'title' => '',
@@ -100,7 +100,7 @@ class PropertyApiTest extends TestCase
 
     public function test_property_counts_cannot_exceed_total_count(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
 
         $this->postJson('/api/v1/properties', [
             'title' => 'Invalid Count Estate',
@@ -117,7 +117,7 @@ class PropertyApiTest extends TestCase
 
     public function test_authenticated_user_can_upload_property_image(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
         Storage::fake('public');
 
         $file = UploadedFile::fake()->create('property.jpg', 100, 'image/jpeg');
@@ -142,7 +142,7 @@ class PropertyApiTest extends TestCase
 
     public function test_authenticated_user_can_show_and_update_property(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
         $property = Property::factory()->create([
             'title' => 'Old Title',
             'status' => PropertyStatus::Reserved,
@@ -171,7 +171,7 @@ class PropertyApiTest extends TestCase
 
     public function test_authenticated_user_can_delete_property(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
         $property = Property::factory()->create();
 
         $this->deleteJson("/api/v1/properties/{$property->id}")
@@ -181,5 +181,45 @@ class PropertyApiTest extends TestCase
         $this->assertSoftDeleted('properties', [
             'id' => $property->id,
         ]);
+    }
+
+    public function test_staff_cannot_access_property_routes(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'staff']));
+        $property = Property::factory()->create();
+
+        $this->getJson('/api/v1/properties')->assertForbidden();
+        $this->getJson("/api/v1/properties/{$property->id}")->assertForbidden();
+        $this->postJson('/api/v1/properties', [
+            'title' => 'Blocked Estate',
+            'type' => 'land',
+            'location' => 'Lekki',
+            'price' => 1000000,
+            'property_count' => 1,
+        ])->assertForbidden();
+        $this->patchJson("/api/v1/properties/{$property->id}", [
+            'title' => 'Blocked Update',
+        ])->assertForbidden();
+        $this->deleteJson("/api/v1/properties/{$property->id}")->assertForbidden();
+    }
+
+    public function test_accountant_can_view_but_cannot_manage_properties(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create();
+
+        $this->getJson('/api/v1/properties')->assertOk();
+        $this->getJson("/api/v1/properties/{$property->id}")->assertOk();
+        $this->postJson('/api/v1/properties', [
+            'title' => 'Blocked Estate',
+            'type' => 'land',
+            'location' => 'Lekki',
+            'price' => 1000000,
+            'property_count' => 1,
+        ])->assertForbidden();
+        $this->patchJson("/api/v1/properties/{$property->id}", [
+            'title' => 'Blocked Update',
+        ])->assertForbidden();
+        $this->deleteJson("/api/v1/properties/{$property->id}")->assertForbidden();
     }
 }

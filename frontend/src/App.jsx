@@ -5,7 +5,6 @@ import { AllocationsPage } from './pages/AllocationsPage.jsx'
 import { ClientsPage } from './pages/ClientsPage.jsx'
 import { DashboardPage } from './pages/DashboardPage.jsx'
 import { LoginPage } from './pages/LoginPage.jsx'
-import { PaymentsPage } from './pages/PaymentsPage.jsx'
 import { PropertiesPage } from './pages/PropertiesPage.jsx'
 import { ProfilePage } from './pages/ProfilePage.jsx'
 import { ReceiptsPage } from './pages/ReceiptsPage.jsx'
@@ -28,10 +27,11 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute roles={['admin', 'staff']} />}>
             <Route path="/clients" element={<ClientsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['admin', 'accountant']} />}>
             <Route path="/properties" element={<PropertiesPage />} />
           </Route>
           <Route element={<ProtectedRoute roles={['admin', 'accountant']} />}>
-            <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/receipts" element={<ReceiptsPage />} />
           </Route>
           <Route element={<ProtectedRoute roles={['admin']} />}>
