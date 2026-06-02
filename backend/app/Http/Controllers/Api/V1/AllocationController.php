@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AllocationStatus;
 use App\Enums\PropertyStatus;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Allocation\StoreAllocationRequest;
 use App\Http\Requests\Allocation\UpdateAllocationRequest;
@@ -125,21 +124,13 @@ class AllocationController extends Controller
 
     public function destroy(Allocation $allocation): JsonResponse
     {
-        $role = request()->user()?->role;
-
-        abort_unless($role === UserRole::Admin, 403, 'Only admins can delete allocations.');
-
-        // Prevent deletion of allocations with payments to preserve transaction history
-        if ($allocation->payments()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete allocation with recorded payments. Cancel the allocation instead.',
-            ], 422);
-        }
-
-        $allocation->delete();
+        $allocation = $this->allocationService->cancel($allocation);
 
         return response()->json([
-            'message' => 'Allocation deleted successfully.',
+            'message' => 'Allocation cancelled successfully.',
+            'data' => [
+                'allocation' => new AllocationResource($allocation),
+            ],
         ]);
     }
 }

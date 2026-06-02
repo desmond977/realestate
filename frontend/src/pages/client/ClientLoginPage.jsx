@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useClient } from '../../context/ClientContext';
 import { LockKeyhole as FaLock, Mail as FaEnvelope } from 'lucide-react';
-import { ClientBrandLogo, useClientBranding } from '../../components/client/ClientBrandLogo';
+import { ClientBrandLogo } from '../../components/client/ClientBrandLogo';
+import { useClientBranding } from '../../hooks/useClientBranding';
 import './ClientLoginPage.css';
 
 const ClientLoginPage = () => {

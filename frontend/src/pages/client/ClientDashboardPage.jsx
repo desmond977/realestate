@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useClientBranding } from '../../components/client/ClientBrandLogo'
+import { useClientBranding } from '../../hooks/useClientBranding'
 import { dashboardApi } from '../../services/clientApi'
 import { formatMoney } from '../../utils/formatters'
 

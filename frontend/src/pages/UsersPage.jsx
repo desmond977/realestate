@@ -34,9 +34,7 @@ function Badge({ value, tone = 'slate' }) {
 }
 
 function UserModal({ mode, initialValues, submitting, error, onClose, onSubmit }) {
-  const [form, setForm] = useState(initialValues)
-
-  useEffect(() => setForm(initialValues), [initialValues])
+  const [form, setForm] = useState(() => initialValues)
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -149,7 +147,17 @@ export function UsersPage() {
   }, [])
 
   useEffect(() => {
-    loadUsers(query)
+    let active = true
+
+    queueMicrotask(() => {
+      if (active) {
+        loadUsers(query)
+      }
+    })
+
+    return () => {
+      active = false
+    }
   }, [loadUsers, query])
 
   async function handleSubmit(payload) {
@@ -259,6 +267,7 @@ export function UsersPage() {
 
       {modal ? (
         <UserModal
+          key={`${modal.mode}-${modal.user?.id || 'new'}`}
           mode={modal.mode}
           initialValues={initialValues}
           submitting={submitting}

@@ -2,7 +2,7 @@ import { Loader2, Settings2, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { formatMoney } from '../utils/formatters'
-import { applyBranding, persistBranding } from '../utils/theme.js'
+import { applyBranding, getPersistedBranding, persistBranding } from '../utils/theme.js'
 
 const defaultConfig = {
   target_type: 'monthly',
@@ -17,9 +17,9 @@ const defaultConfig = {
 }
 
 export function SettingsPage() {
-  const [config, setConfig] = useState(defaultConfig)
+  const [config, setConfig] = useState(() => ({ ...defaultConfig, ...getPersistedBranding() }))
   const [saved, setSaved] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(true)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -31,7 +31,10 @@ export function SettingsPage() {
         const response = await api.get('/settings/company')
 
         if (active) {
-          setConfig({ ...defaultConfig, ...response.data.data.settings })
+          const nextSettings = { ...defaultConfig, ...response.data.data.settings }
+          setConfig(nextSettings)
+          applyBranding(nextSettings)
+          persistBranding(nextSettings)
           setError('')
         }
       } catch (err) {
@@ -40,7 +43,7 @@ export function SettingsPage() {
         }
       } finally {
         if (active) {
-          setLoading(false)
+          setRefreshing(false)
         }
       }
     }
@@ -53,9 +56,15 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    applyBranding(config)
-    persistBranding(config)
-  }, [config.theme_mode, config.brand_color])
+    const frame = window.requestAnimationFrame(() => {
+      applyBranding({
+        theme_mode: config.theme_mode,
+        brand_color: config.brand_color,
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [config.brand_color, config.theme_mode])
 
   function updateField(field, value) {
     setConfig((current) => ({ ...current, [field]: value }))
@@ -106,6 +115,7 @@ export function SettingsPage() {
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas px-4 py-2 text-sm text-ink">
             <Settings2 size={18} /> Company settings
+            {refreshing ? <Loader2 size={14} className="animate-spin text-muted" /> : null}
           </div>
         </div>
       </div>
@@ -299,7 +309,7 @@ export function SettingsPage() {
             ) : null}
             <button
               type="submit"
-              disabled={submitting || loading}
+              disabled={submitting}
               className="inline-flex items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark"
             >
               {submitting ? <Loader2 size={16} className="mr-2 animate-spin" /> : null}

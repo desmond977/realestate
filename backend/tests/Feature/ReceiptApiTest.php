@@ -44,7 +44,17 @@ class ReceiptApiTest extends TestCase
             'receipt_number' => 'REC-SEARCH-001',
         ]);
 
+        $otherClient = Client::factory()->create([
+            'first_name' => 'Bola',
+            'last_name' => 'Nwosu',
+            'email' => 'bola.nwosu@example.com',
+        ]);
+        $otherPayment = Payment::factory()->create([
+            'client_id' => $otherClient->id,
+        ]);
+
         Receipt::factory()->create([
+            'payment_id' => $otherPayment->id,
             'receipt_number' => 'REC-OTHER-001',
         ]);
 

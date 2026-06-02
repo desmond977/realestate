@@ -40,6 +40,12 @@ const emptyForm = {
   payment_notes: '',
 }
 
+const quickCreateDefaults = {
+  realtor: { full_name: '', phone: '', email: '', company_name: '', status: 'active' },
+  client: { first_name: '', last_name: '', phone: '', email: '', realtor_id: '' },
+  property: { title: '', type: 'land', location: '', price: '', property_count: 1, status: 'available' },
+}
+
 function getApiError(error, fallback) {
   const errors = error.response?.data?.errors
 
@@ -92,14 +98,7 @@ function lastPaymentDate(allocation) {
 }
 
 function QuickCreateModal({ type, submitting, error, onClose, onSubmit }) {
-  const defaults = {
-    realtor: { full_name: '', phone: '', email: '', company_name: '', status: 'active' },
-    client: { first_name: '', last_name: '', phone: '', email: '', realtor_id: '' },
-    property: { title: '', type: 'land', location: '', price: '', property_count: 1, status: 'available' },
-  }
-  const [form, setForm] = useState(defaults[type])
-
-  useEffect(() => setForm(defaults[type]), [type])
+  const [form, setForm] = useState(() => quickCreateDefaults[type])
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -213,24 +212,36 @@ function AllocationModal({
       return
     }
 
-    setForm((current) => {
-      const next = {
-        ...current,
-        [`${quickSelection.type}_id`]: String(quickSelection.id),
+    let active = true
+
+    queueMicrotask(() => {
+      if (!active) {
+        return
       }
 
-      if (quickSelection.type === 'property') {
-        const property = properties.find((item) => Number(item.id) === Number(quickSelection.id))
-        next.total_amount = property?.price ?? current.total_amount
-      }
+      setForm((current) => {
+        const next = {
+          ...current,
+          [`${quickSelection.type}_id`]: String(quickSelection.id),
+        }
 
-      if (quickSelection.type === 'client') {
-        const client = clients.find((item) => Number(item.id) === Number(quickSelection.id))
-        next.realtor_id = client?.realtor_id ? String(client.realtor_id) : current.realtor_id
-      }
+        if (quickSelection.type === 'property') {
+          const property = properties.find((item) => Number(item.id) === Number(quickSelection.id))
+          next.total_amount = property?.price ?? current.total_amount
+        }
 
-      return next
+        if (quickSelection.type === 'client') {
+          const client = clients.find((item) => Number(item.id) === Number(quickSelection.id))
+          next.realtor_id = client?.realtor_id ? String(client.realtor_id) : current.realtor_id
+        }
+
+        return next
+      })
     })
+
+    return () => {
+      active = false
+    }
   }, [clients, properties, quickSelection])
 
   function updateField(field, value) {
@@ -593,149 +604,6 @@ function AllocationModal({
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               Create allocation
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function AddPaymentModal({ allocation, submitting, error, onClose, onSubmit }) {
-  const [form, setForm] = useState({
-    amount: '',
-    payment_method: '',
-    transaction_reference: '',
-    paid_at: new Date().toISOString().slice(0, 16),
-    payment_notes: '',
-    payment_type: allocation?.payment_plan || 'installment',
-  })
-
-  function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault()
-    onSubmit({
-      ...form,
-      amount: Number(form.amount),
-    })
-  }
-
-  const maxAmount = Number(allocation?.balance || 0)
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
-      <div className="mx-auto min-h-screen w-full max-w-2xl border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-line bg-panel px-4 py-4 sm:px-5">
-          <div>
-            <p className="text-sm font-medium text-brand">Add payment</p>
-            <h3 className="mt-1 text-lg font-semibold text-ink">{allocation?.client?.full_name || 'Client'}</h3>
-            <p className="mt-1 text-sm text-muted">{allocation?.property?.title || 'Property'} · Balance: {formatMoney(maxAmount)}</p>
-          </div>
-          <button type="button" onClick={onClose} className="rounded-md p-2 text-muted hover:bg-canvas" aria-label="Close payment form">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form className="space-y-4 p-4 sm:p-5" onSubmit={handleSubmit}>
-          <div className="rounded-lg border border-line bg-panel p-4 shadow-sm">
-            <h4 className="mb-4 text-sm font-semibold text-ink">Payment details</h4>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Amount *</span>
-                <input
-                  type="number"
-                  min="0.01"
-                  max={maxAmount}
-                  step="0.01"
-                  value={form.amount}
-                  onChange={(event) => updateField('amount', event.target.value)}
-                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
-                  placeholder="0.00"
-                  required
-                />
-                <p className="mt-1 text-xs text-muted">Maximum: {formatMoney(maxAmount)}</p>
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Payment type *</span>
-                <select
-                  value={form.payment_type}
-                  onChange={(event) => updateField('payment_type', event.target.value)}
-                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand capitalize"
-                >
-                  <option value="installment">Installment</option>
-                  <option value="full">Full Payment</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Payment method</span>
-                <input
-                  value={form.payment_method}
-                  onChange={(event) => updateField('payment_method', event.target.value)}
-                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
-                  placeholder="bank_transfer, cash, pos"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Payment date *</span>
-                <input
-                  type="datetime-local"
-                  value={form.paid_at}
-                  onChange={(event) => updateField('paid_at', event.target.value)}
-                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
-                  required
-                />
-              </label>
-
-              <label className="block sm:col-span-2">
-                <span className="text-sm font-medium text-ink">Transaction reference</span>
-                <input
-                  value={form.transaction_reference}
-                  onChange={(event) => updateField('transaction_reference', event.target.value)}
-                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand"
-                  placeholder="e.g., TXN123456, Cheque No."
-                />
-              </label>
-
-              <label className="block sm:col-span-2">
-                <span className="text-sm font-medium text-ink">Notes</span>
-                <textarea
-                  value={form.payment_notes}
-                  onChange={(event) => updateField('payment_notes', event.target.value)}
-                  rows="3"
-                  className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
-                  placeholder="Additional payment details..."
-                />
-              </label>
-            </div>
-          </div>
-
-          {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Record Payment
             </button>
           </div>
         </form>
@@ -1450,6 +1318,7 @@ export function AllocationsPage() {
 
       {quickCreateType ? (
         <QuickCreateModal
+          key={quickCreateType}
           type={quickCreateType}
           submitting={quickSubmitting}
           error={quickError}

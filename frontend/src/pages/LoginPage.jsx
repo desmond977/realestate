@@ -2,6 +2,7 @@ import { Building2, Lock, Mail } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import loginPropertyShowcase from '../assets/login-property-showcase-transparent.png'
 import { applyBranding, getPersistedBranding } from '../utils/theme.js'
 
 export function LoginPage() {
@@ -62,10 +63,7 @@ export function LoginPage() {
             {branding?.company_logo ? (
               <div className="flex items-center gap-4">
                 <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-28 w-28 rounded-md object-contain" />
-                <div>
-                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'Company'}</p>
-                  <p className="text-sm text-muted">Real estate management</p>
-                </div>
+                
               </div>
             ) : (
               <>
@@ -144,15 +142,22 @@ export function LoginPage() {
         </div>
       </section>
 
-      <section className="hidden border-l border-line bg-brand-dark px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <section className="border-t border-line bg-brand-dark px-6 py-10 text-white sm:px-10 lg:flex lg:flex-col lg:justify-between lg:border-l lg:border-t-0 lg:px-10 lg:py-12">
         <div>
           <p className="text-sm font-medium text-white/70">Operations HQ</p>
           <h2 className="mt-4 max-w-lg text-4xl font-semibold leading-tight">
             Track real estate revenue, allocations, and client activity from one
             clean workspace.
           </h2>
+          <div className="mx-auto mt-6 max-w-sm sm:max-w-md lg:mx-0 lg:max-w-sm xl:max-w-md">
+            <img
+              src={loginPropertyShowcase}
+              alt="Modern home model held in a hand"
+              className="w-full object-contain object-center drop-shadow-2xl lg:max-h-[300px]"
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:mt-10">
           {['Properties', 'Payments', 'Receipts'].map((item) => (
             <div key={item} className="rounded-lg bg-white/10 p-4">
               <p className="text-sm font-medium">{item}</p>

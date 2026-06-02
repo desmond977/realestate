@@ -4,7 +4,9 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  Scale,
   User,
+  WalletCards,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -15,6 +17,8 @@ import { ClientBrandLogo } from './ClientBrandLogo'
 const navItems = [
   { label: 'Dashboard', to: '/client/dashboard', icon: Gauge },
   { label: 'My Properties', to: '/client/properties', icon: Building2 },
+  { label: 'Payments', to: '/client/payments', icon: WalletCards },
+  { label: 'Balances', to: '/client/balances', icon: Scale },
   { label: 'Receipts', to: '/client/receipts', icon: ReceiptText },
 ]
 

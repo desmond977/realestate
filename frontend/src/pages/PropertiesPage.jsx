@@ -105,13 +105,8 @@ function InventorySummary({ property, compact = false }) {
 }
 
 function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting, error }) {
-  const [form, setForm] = useState(initialValues)
-  const [previewUrl, setPreviewUrl] = useState(assetUrl(initialValues.image_url || initialValues.image))
-
-  useEffect(() => {
-    setForm(initialValues)
-    setPreviewUrl(assetUrl(initialValues.image_url || initialValues.image))
-  }, [initialValues])
+  const [form, setForm] = useState(() => initialValues)
+  const [previewUrl, setPreviewUrl] = useState(() => assetUrl(initialValues.image_url || initialValues.image))
 
   useEffect(() => {
     return () => {
