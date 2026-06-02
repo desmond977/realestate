@@ -2,6 +2,7 @@ import { Building2, Lock, Mail } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { applyBranding, getPersistedBranding } from '../utils/theme.js'
 
 export function LoginPage() {
   const location = useLocation()
@@ -10,20 +11,19 @@ export function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [branding, setBranding] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('estateops_dashboard_settings')) || {}
-    } catch {
-      return {}
-    }
-  })
+  const [branding, setBranding] = useState(() => getPersistedBranding())
+
+  useEffect(() => {
+    applyBranding(branding)
+  }, [branding])
 
   useEffect(() => {
     function onSettings() {
       try {
-        setBranding(JSON.parse(localStorage.getItem('estateops_dashboard_settings')) || {})
+        const parsed = getPersistedBranding()
+        setBranding(parsed)
       } catch {
-        setBranding({})
+        setBranding(getPersistedBranding())
       }
     }
 
@@ -63,7 +63,7 @@ export function LoginPage() {
               <div className="flex items-center gap-4">
                 <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-28 w-28 rounded-md object-contain" />
                 <div>
-                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'TerraOps'}</p>
+                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'Company'}</p>
                   <p className="text-sm text-muted">Real estate management</p>
                 </div>
               </div>
@@ -73,7 +73,7 @@ export function LoginPage() {
                   <Building2 size={34} />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'TerraOps'}</p>
+                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'Company'}</p>
                   <p className="text-sm text-muted">Real estate management</p>
                 </div>
               </>

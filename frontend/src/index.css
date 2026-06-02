@@ -12,20 +12,95 @@
   --color-accent: #b58b2b;
 }
 
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='light'],
+:root[data-theme='system'] {
+  color-scheme: light;
+  --color-ink: #17211b;
+  --color-muted: #647067;
+  --color-line: #dfe6df;
+  --color-panel: #ffffff;
+  --color-canvas: #f5f7f3;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-ink: #f8faf8;
+  --color-muted: #bfc1b9;
+  --color-line: #37403d;
+  --color-panel: #111916;
+  --color-canvas: #0f1610;
+}
+
+:root[data-theme='dark'] .bg-white {
+  background-color: #141c17 !important;
+}
+
+/* Monthly target card in dark mode should use a specific dark green */
+:root[data-theme='dark'] .monthly-target-card {
+  background-color: #1f241f;
+  color: #ffffff;
+}
+
+/* Ensure printed/receipt area uses brand color when requested */
+:root .receipt-print.bg-brand {
+  background-color: var(--color-brand);
+  color: #ffffff;
+}
+
+/* Keep receipt popup white even in dark mode for a clean printed view */
+:root .receipt-print.bg-white,
+:root .receipt-print {
+  background-color: rgba(255,255,255,0.98);
+  color: #17211b;
+}
+
+:root[data-theme='dark'] .receipt-print.bg-white,
+:root[data-theme='dark'] .receipt-print {
+  background-color: rgba(255,255,255,0.96) !important;
+  color: #17211b !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] {
+    color-scheme: dark;
+    --color-ink: #f8faf8;
+    --color-muted: #bfc1b9;
+    --color-line: #37403d;
+    --color-panel: #111916;
+    --color-canvas: #0f1610;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    color-scheme: light;
+    --color-ink: #17211b;
+    --color-muted: #647067;
+    --color-line: #dfe6df;
+    --color-panel: #ffffff;
+    --color-canvas: #f5f7f3;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
 
 html {
-  background: #f5f7f3;
+  background: var(--color-canvas);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #17211b;
-  background: #f5f7f3;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  font-family: var(--font-sans);
 }
 
 button,

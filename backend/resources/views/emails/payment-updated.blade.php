@@ -1,0 +1,35 @@
+@extends('emails.layouts.base')
+
+@section('title', 'Payment Updated')
+
+@section('content')
+<h1 style="margin: 0 0 20px; font-size: 22px; line-height: 1.3; color: #111111;">Payment Updated</h1>
+
+@if($recipientType === 'client')
+    <p style="margin: 0 0 16px;">Hello {{ $payment->client->full_name ?? 'Valued Client' }},</p>
+    <p style="margin: 0 0 20px;">Your payment record has been updated.</p>
+@else
+    <p style="margin: 0 0 16px;">Hello Administrative Team,</p>
+    <p style="margin: 0 0 20px;">A payment record has been updated in TerraOps.</p>
+@endif
+
+<p style="margin: 0 0 8px; font-weight: bold;">Transaction Details:</p>
+<ul style="margin: 0 0 20px 20px; padding: 0;">
+    <li>Client: {{ $payment->client->full_name ?? 'N/A' }}</li>
+    <li>Property: {{ $payment->property->title ?? 'N/A' }}</li>
+    <li>Allocation Reference: {{ $payment->allocation->reference ?? 'N/A' }}</li>
+    <li>Realtor: {{ $payment->realtor->full_name ?? 'N/A' }}</li>
+    @if($payment->receipt)
+        <li>Receipt Number: {{ $payment->receipt->receipt_number ?? 'N/A' }}</li>
+    @endif
+</ul>
+
+<p style="margin: 0 0 8px; font-weight: bold;">Important Summary:</p>
+<ul style="margin: 0 0 20px 20px; padding: 0;">
+    <li>Previous Amount: &#8358;{{ number_format($oldAmount, 2) }}</li>
+    <li>Updated Amount: &#8358;{{ number_format($payment->amount, 2) }}</li>
+    <li>Outstanding Balance: &#8358;{{ number_format($payment->allocation->balance ?? 0, 2) }}</li>
+</ul>
+
+<p style="margin: 0;">If you have questions about this update, please contact {{ $companyName ?? 'TerraOps' }}.</p>
+@endsection

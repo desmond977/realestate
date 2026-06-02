@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Client;
+use App\Models\CompanySetting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -18,24 +19,35 @@ class MonthlyClientReminderMail extends Mailable implements ShouldQueue
         public readonly Client $client,
         public readonly string $month,
         public readonly ?float $outstandingBalance = null,
+        public readonly array $outstandingAllocations = [],
     ) {
     }
 
     public function envelope(): Envelope
     {
-        $subject = $this->outstandingBalance !== null && $this->outstandingBalance > 0
-            ? "Monthly Update & Payment Reminder - {$this->month}"
-            : "Monthly Update - {$this->month}";
-
         return new Envelope(
-            subject: $subject,
+            subject: 'Happy New Month from TerraOps',
         );
     }
 
     public function content(): Content
     {
+        $settings = CompanySetting::query()->first();
+
         return new Content(
             view: 'emails.monthly-reminder',
+            text: 'emails.plain.monthly-reminder',
+            with: [
+                'client' => $this->client,
+                'month' => $this->month,
+                'outstandingBalance' => $this->outstandingBalance,
+                'outstandingAllocations' => $this->outstandingAllocations,
+                'companyName' => $settings?->company_name ?? 'TerraOps',
+                'companyEmail' => $settings?->company_email,
+                'companyPhone' => $settings?->company_phone,
+                'companyAddress' => $settings?->company_address,
+                'companyLogo' => $settings?->company_logo,
+            ],
         );
     }
 

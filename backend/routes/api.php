@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+    // Client Portal Routes
+    Route::prefix('client')->group(base_path('routes/client.php'));
+
+    // Admin/Staff Routes
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');

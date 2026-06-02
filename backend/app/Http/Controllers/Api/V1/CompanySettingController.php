@@ -37,6 +37,8 @@ class CompanySettingController extends Controller
         return CompanySetting::query()->firstOrCreate([], [
             'target_type' => 'monthly',
             'target_amount' => 250000,
+            'theme_mode' => 'system',
+            'brand_color' => '#166534',
         ]);
     }
 }

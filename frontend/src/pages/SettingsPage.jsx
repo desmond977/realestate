@@ -2,6 +2,7 @@ import { Loader2, Settings2, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { formatMoney } from '../utils/formatters'
+import { applyBranding, persistBranding } from '../utils/theme.js'
 
 const defaultConfig = {
   target_type: 'monthly',
@@ -11,6 +12,8 @@ const defaultConfig = {
   company_phone: '',
   company_address: '',
   company_logo: null,
+  theme_mode: 'system',
+  brand_color: '#166534',
 }
 
 export function SettingsPage() {
@@ -49,6 +52,11 @@ export function SettingsPage() {
     }
   }, [])
 
+  useEffect(() => {
+    applyBranding(config)
+    persistBranding(config)
+  }, [config.theme_mode, config.brand_color])
+
   function updateField(field, value) {
     setConfig((current) => ({ ...current, [field]: value }))
     setSaved(false)
@@ -62,7 +70,10 @@ export function SettingsPage() {
 
     try {
       const response = await api.put('/settings/company', config)
-      setConfig({ ...defaultConfig, ...response.data.data.settings })
+      const nextSettings = { ...defaultConfig, ...response.data.data.settings }
+      setConfig(nextSettings)
+      applyBranding(nextSettings)
+      persistBranding(nextSettings)
       window.dispatchEvent(new Event('estateopsSettingsUpdated'))
       setSaved(true)
     } catch (err) {
@@ -175,6 +186,62 @@ export function SettingsPage() {
                 </div>
               ) : null}
             </label>
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-line bg-canvas p-5">
+            <p className="text-sm font-semibold text-ink">Appearance</p>
+            <p className="mt-2 text-sm text-muted">Customize the dashboard theme and brand accent color.</p>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-line bg-white p-4">
+                <p className="text-sm font-medium text-ink">Theme mode</p>
+                <div className="mt-3 space-y-3">
+                  {['system', 'light', 'dark'].map((mode) => (
+                    <label key={mode} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-line px-4 py-3 text-sm text-ink transition hover:border-brand">
+                      <input
+                        type="radio"
+                        name="themeMode"
+                        value={mode}
+                        checked={config.theme_mode === mode}
+                        onChange={() => updateField('theme_mode', mode)}
+                        className="accent-brand"
+                      />
+                      <span className="capitalize">{mode === 'system' ? 'System default' : mode}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-line bg-white p-4">
+                <p className="text-sm font-medium text-ink">Brand accent</p>
+                <p className="mt-2 text-sm text-muted">Pick a primary brand color for buttons, links, and highlights.</p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {['#166534', '#0d6efd', '#8b5cf6', '#f59e0b', '#ef4444'].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => updateField('brand_color', color)}
+                      className={`h-10 w-10 rounded-xl border-2 ${
+                        config.brand_color === color ? 'border-brand' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      aria-label={`Select ${color}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={config.brand_color}
+                    onChange={(event) => updateField('brand_color', event.target.value)}
+                    className="h-10 w-16 cursor-pointer rounded-xl border border-line bg-white p-0"
+                  />
+                  <span className="text-sm font-medium text-ink">{config.brand_color}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 rounded-3xl border border-line bg-canvas p-5">

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AllocationStatus;
 use App\Enums\PaymentPlan;
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -60,5 +61,48 @@ class Allocation extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function paidAmount(): float
+    {
+        return (float) $this->payments()
+            ->where('status', PaymentStatus::Confirmed->value)
+            ->sum('amount');
+    }
+
+    public function outstandingAmount(): float
+    {
+        return max(0, (float) $this->total_amount - $this->paidAmount());
+    }
+
+    public function paymentProgress(): float
+    {
+        $total = (float) $this->total_amount;
+
+        if ($total <= 0) {
+            return 0.0;
+        }
+
+        return round(min(100, ($this->paidAmount() / $total) * 100), 2);
+    }
+
+    public function syncPaymentTotals(): void
+    {
+        $paid = $this->paidAmount();
+        $balance = max(0, (float) $this->total_amount - $paid);
+        $currentStatus = $this->status?->value ?? $this->status;
+        $nextStatus = $currentStatus;
+
+        if ($balance <= 0) {
+            $nextStatus = AllocationStatus::Completed;
+        } elseif ($currentStatus === AllocationStatus::Completed->value) {
+            $nextStatus = AllocationStatus::Active;
+        }
+
+        $this->forceFill([
+            'amount_paid' => $paid,
+            'balance' => $balance,
+            'status' => $nextStatus,
+        ])->save();
     }
 }

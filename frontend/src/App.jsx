@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute.jsx'
+import { ClientLayout } from './components/client/ClientLayout.jsx'
+import ProtectedClientRoute from './components/client/ProtectedClientRoute.jsx'
 import { DashboardLayout } from './components/layout/DashboardLayout.jsx'
 import { AllocationsPage } from './pages/AllocationsPage.jsx'
 import { ClientsPage } from './pages/ClientsPage.jsx'
@@ -11,11 +13,34 @@ import { ReceiptsPage } from './pages/ReceiptsPage.jsx'
 import { RealtorsPage } from './pages/RealtorsPage.jsx'
 import { SettingsPage } from './pages/SettingsPage.jsx'
 import { UsersPage } from './pages/UsersPage.jsx'
+import { ClientDashboardPage } from './pages/client/ClientDashboardPage.jsx'
+import ClientLoginPage from './pages/client/ClientLoginPage.jsx'
+import ClientProfilePage from './pages/client/ClientProfilePage.jsx'
+import { ClientPropertiesPage } from './pages/client/ClientPropertiesPage.jsx'
+import { ClientReceiptsPage } from './pages/client/ClientReceiptsPage.jsx'
+import ClientRegisterPage from './pages/client/ClientRegisterPage.jsx'
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/client/login" element={<ClientLoginPage />} />
+      <Route path="/client/register" element={<ClientRegisterPage />} />
+      <Route
+        path="/client"
+        element={
+          <ProtectedClientRoute>
+            <ClientLayout />
+          </ProtectedClientRoute>
+        }
+      >
+        <Route index element={<Navigate to="/client/dashboard" replace />} />
+        <Route path="dashboard" element={<ClientDashboardPage />} />
+        <Route path="properties" element={<ClientPropertiesPage />} />
+        <Route path="receipts" element={<ClientReceiptsPage />} />
+        <Route path="profile" element={<ClientProfilePage />} />
+        <Route path="*" element={<Navigate to="/client/dashboard" replace />} />
+      </Route>
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route index element={<DashboardPage />} />

@@ -159,7 +159,7 @@ export function DashboardPage() {
       <div className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
         <div className="grid gap-5 p-4 md:grid-cols-[1fr_320px] md:p-6 xl:grid-cols-[1fr_420px]">
           <div className="flex min-w-0 flex-col justify-center">
-            <p className="text-sm font-medium text-brand">TerraOps</p>
+            <p className="text-sm font-medium text-brand">{settings?.company_name || 'Company'}</p>
             <h2 className="mt-2 text-2xl font-semibold text-ink md:text-3xl">
               Intelligent Real Estate Operations
             </h2>
@@ -168,7 +168,7 @@ export function DashboardPage() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-line bg-ink p-4 text-white">
+          <div className="rounded-lg border border-line bg-ink p-4 text-white monthly-target-card">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase text-white/60">{activeTargetLabel}</p>

@@ -66,11 +66,19 @@ export function ReceiptDocument({ document }) {
       <header className="border-b border-line bg-panel px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
           <div className="flex items-start gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-brand text-lg font-bold text-white shadow-sm">
-              T
-            </div>
+            {document.company?.logo ? (
+              <img
+                src={document.company.logo}
+                alt={document.company?.name || 'Logo'}
+                className="h-12 w-12 shrink-0 rounded-md object-contain shadow-sm"
+              />
+            ) : (
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-brand text-lg font-bold text-white shadow-sm">
+                T
+              </div>
+            )}
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold text-ink">{document.company?.name || 'TerraOps'}</h1>
+              <h1 className="text-xl font-semibold text-ink">{document.company?.name || 'Company'}</h1>
               <p className="mt-1 text-sm text-muted">{document.company?.tagline}</p>
               <p className="mt-3 max-w-md text-xs leading-5 text-muted">{document.company?.address || 'Company address not configured'}</p>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">

@@ -25,7 +25,9 @@ class CompanySettingApiTest extends TestCase
         $this->getJson('/api/v1/settings/company')
             ->assertOk()
             ->assertJsonPath('data.settings.company_name', 'Prime Estates')
-            ->assertJsonPath('data.settings.target_amount', 5000000);
+            ->assertJsonPath('data.settings.target_amount', 5000000)
+            ->assertJsonPath('data.settings.theme_mode', 'system')
+            ->assertJsonPath('data.settings.brand_color', '#166534');
     }
 
     public function test_only_admin_can_update_company_settings(): void
@@ -48,9 +50,13 @@ class CompanySettingApiTest extends TestCase
             'company_logo' => null,
             'target_type' => 'weekly',
             'target_amount' => 750000,
+            'theme_mode' => 'dark',
+            'brand_color' => '#0d6efd',
         ])->assertOk()
             ->assertJsonPath('message', 'Company settings updated successfully.')
             ->assertJsonPath('data.settings.company_name', 'Prime Estates')
-            ->assertJsonPath('data.settings.target_type', 'weekly');
+            ->assertJsonPath('data.settings.target_type', 'weekly')
+            ->assertJsonPath('data.settings.theme_mode', 'dark')
+            ->assertJsonPath('data.settings.brand_color', '#0d6efd');
     }
 }

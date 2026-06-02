@@ -9,6 +9,7 @@ use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\RealEstate\AllocationNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +18,7 @@ class AllocationService
     public function __construct(
         private readonly PaymentService $paymentService,
         private readonly PropertyInventoryService $propertyInventoryService,
-        private readonly EmailNotificationService $emailNotificationService,
+        private readonly AllocationNotificationService $allocationNotificationService,
     ) {
     }
 
@@ -132,7 +133,7 @@ class AllocationService
      */
     public function notifyAllocationCreated(Allocation $allocation): void
     {
-        $this->emailNotificationService->sendAllocationCreated($allocation);
+        $this->allocationNotificationService->sendAllocationCreated($allocation);
     }
 
     public function cancel(Allocation $allocation): Allocation
@@ -173,6 +174,9 @@ class AllocationService
                 ]);
             }
 
+            $previousStatus = $allocation->status->value;
+            $previousAmountPaid = (float) ($allocation->amount_paid ?? 0);
+
             $updates = [];
 
             if (array_key_exists('notes', $payload)) {
@@ -211,7 +215,10 @@ class AllocationService
                 ]);
             }
 
-            return $allocation->fresh(['client.realtor', 'realtor', 'property', 'payments.receipt', 'allocator']);
+            $updatedAllocation = $allocation->fresh(['client.realtor', 'realtor', 'property', 'payments.receipt', 'allocator']);
+            $this->allocationNotificationService->sendAllocationUpdated($updatedAllocation, $previousStatus, $previousAmountPaid);
+
+            return $updatedAllocation;
         });
     }
 }

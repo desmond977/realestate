@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { api } from '../../api/client'
+import { applyBranding, getPersistedBranding, persistBranding } from '../../utils/theme.js'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
@@ -35,7 +36,7 @@ const utilityNavItems = [
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { logout, user } = useAuth()
-  const [branding, setBranding] = useState({})
+  const [branding, setBranding] = useState(() => getPersistedBranding())
 
   useEffect(() => {
     let active = true
@@ -46,10 +47,14 @@ export function DashboardLayout() {
 
         if (active) {
           setBranding(response.data.data.settings)
+          persistBranding(response.data.data.settings)
+          applyBranding(response.data.data.settings)
         }
       } catch {
         if (active) {
-          setBranding({})
+          const persisted = getPersistedBranding()
+          setBranding(persisted)
+          applyBranding(persisted)
         }
       }
     }
