@@ -17,7 +17,6 @@ class CompanySetting extends Model
         'company_logo',
         'target_type',
         'target_amount',
-        'theme_mode',
         'brand_color',
     ];
 

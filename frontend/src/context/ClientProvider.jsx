@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { clientAuthApi } from '../services/clientApi'
+import { applyBranding } from '../utils/theme'
 import { ClientContext } from './ClientContext'
 
 function readStoredUser() {
@@ -21,6 +22,20 @@ export function ClientProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('client_auth_token'))
   const [user, setUser] = useState(readStoredUser)
   const [loading, setLoading] = useState(Boolean(token))
+
+  useEffect(() => {
+    function handleAuthCleared(event) {
+      if (event.detail?.scope !== 'client') return
+
+      setToken(null)
+      setUser(null)
+      setLoading(false)
+    }
+
+    window.addEventListener('auth:cleared', handleAuthCleared)
+
+    return () => window.removeEventListener('auth:cleared', handleAuthCleared)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -69,6 +84,10 @@ export function ClientProvider({ children }) {
       localStorage.setItem('client_auth_user', JSON.stringify(nextUser))
       setToken(nextToken)
       setUser(nextUser)
+
+      if (nextUser.theme_mode) {
+        applyBranding({ theme_mode: nextUser.theme_mode })
+      }
 
       return { success: true, user: nextUser }
     } catch (error) {

@@ -27,6 +27,7 @@ class Client extends Authenticatable
         'occupation',
         'realtor_id',
         'profile_image',
+        'theme_mode',
     ];
 
     protected $hidden = [

@@ -2,7 +2,6 @@ import { Loader2, Settings2, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { formatMoney } from '../utils/formatters'
-import { applyBranding, getPersistedBranding, persistBranding } from '../utils/theme.js'
 
 const defaultConfig = {
   target_type: 'monthly',
@@ -12,12 +11,11 @@ const defaultConfig = {
   company_phone: '',
   company_address: '',
   company_logo: null,
-  theme_mode: 'system',
   brand_color: '#166534',
 }
 
 export function SettingsPage() {
-  const [config, setConfig] = useState(() => ({ ...defaultConfig, ...getPersistedBranding() }))
+  const [config, setConfig] = useState(() => ({ ...defaultConfig }))
   const [saved, setSaved] = useState(false)
   const [refreshing, setRefreshing] = useState(true)
   const [error, setError] = useState('')
@@ -33,8 +31,6 @@ export function SettingsPage() {
         if (active) {
           const nextSettings = { ...defaultConfig, ...response.data.data.settings }
           setConfig(nextSettings)
-          applyBranding(nextSettings)
-          persistBranding(nextSettings)
           setError('')
         }
       } catch (err) {
@@ -55,17 +51,6 @@ export function SettingsPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      applyBranding({
-        theme_mode: config.theme_mode,
-        brand_color: config.brand_color,
-      })
-    })
-
-    return () => window.cancelAnimationFrame(frame)
-  }, [config.brand_color, config.theme_mode])
-
   function updateField(field, value) {
     setConfig((current) => ({ ...current, [field]: value }))
     setSaved(false)
@@ -81,8 +66,6 @@ export function SettingsPage() {
       const response = await api.put('/settings/company', config)
       const nextSettings = { ...defaultConfig, ...response.data.data.settings }
       setConfig(nextSettings)
-      applyBranding(nextSettings)
-      persistBranding(nextSettings)
       window.dispatchEvent(new Event('estateopsSettingsUpdated'))
       setSaved(true)
     } catch (err) {
@@ -199,58 +182,32 @@ export function SettingsPage() {
           </div>
 
           <div className="mt-6 rounded-3xl border border-line bg-canvas p-5">
-            <p className="text-sm font-semibold text-ink">Appearance</p>
-            <p className="mt-2 text-sm text-muted">Customize the dashboard theme and brand accent color.</p>
+            <p className="text-sm font-semibold text-ink">Brand accent</p>
+            <p className="mt-2 text-sm text-muted">Pick a primary brand color for buttons, links, and highlights.</p>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-line bg-white p-4">
-                <p className="text-sm font-medium text-ink">Theme mode</p>
-                <div className="mt-3 space-y-3">
-                  {['system', 'light', 'dark'].map((mode) => (
-                    <label key={mode} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-line px-4 py-3 text-sm text-ink transition hover:border-brand">
-                      <input
-                        type="radio"
-                        name="themeMode"
-                        value={mode}
-                        checked={config.theme_mode === mode}
-                        onChange={() => updateField('theme_mode', mode)}
-                        className="accent-brand"
-                      />
-                      <span className="capitalize">{mode === 'system' ? 'System default' : mode}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {['#166534', '#0d6efd', '#8b5cf6', '#f59e0b', '#ef4444'].map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => updateField('brand_color', color)}
+                  className={`h-10 w-10 rounded-xl border-2 ${
+                    config.brand_color === color ? 'border-brand' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  aria-label={`Select ${color}`}
+                />
+              ))}
+            </div>
 
-              <div className="rounded-2xl border border-line bg-white p-4">
-                <p className="text-sm font-medium text-ink">Brand accent</p>
-                <p className="mt-2 text-sm text-muted">Pick a primary brand color for buttons, links, and highlights.</p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {['#166534', '#0d6efd', '#8b5cf6', '#f59e0b', '#ef4444'].map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => updateField('brand_color', color)}
-                      className={`h-10 w-10 rounded-xl border-2 ${
-                        config.brand_color === color ? 'border-brand' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      aria-label={`Select ${color}`}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-4 flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={config.brand_color}
-                    onChange={(event) => updateField('brand_color', event.target.value)}
-                    className="h-10 w-16 cursor-pointer rounded-xl border border-line bg-white p-0"
-                  />
-                  <span className="text-sm font-medium text-ink">{config.brand_color}</span>
-                </div>
-              </div>
+            <div className="mt-4 flex items-center gap-3">
+              <input
+                type="color"
+                value={config.brand_color}
+                onChange={(event) => updateField('brand_color', event.target.value)}
+                className="h-10 w-16 cursor-pointer rounded-xl border border-line bg-white p-0"
+              />
+              <span className="text-sm font-medium text-ink">{config.brand_color}</span>
             </div>
           </div>
 
@@ -265,10 +222,10 @@ export function SettingsPage() {
                   <input
                     type="radio"
                     name="targetType"
-                  checked={config.target_type === 'monthly'}
-                  onChange={() => updateField('target_type', 'monthly')}
-                  className="accent-brand"
-                />
+                    checked={config.target_type === 'monthly'}
+                    onChange={() => updateField('target_type', 'monthly')}
+                    className="accent-brand"
+                  />
                 </div>
                 <input
                   type="number"
@@ -285,10 +242,10 @@ export function SettingsPage() {
                   <input
                     type="radio"
                     name="targetType"
-                  checked={config.target_type === 'weekly'}
-                  onChange={() => updateField('target_type', 'weekly')}
-                  className="accent-brand"
-                />
+                    checked={config.target_type === 'weekly'}
+                    onChange={() => updateField('target_type', 'weekly')}
+                    className="accent-brand"
+                  />
                 </div>
                 <input
                   type="number"
@@ -341,7 +298,7 @@ export function SettingsPage() {
           <div className="rounded-3xl bg-white p-4 text-sm text-ink shadow-sm">
             <p className="font-semibold">Company Address</p>
             <p className="mt-1 text-muted">{config.company_address || config.company_address || 'Not set yet'}</p>
-          </div>          
+          </div>
 
           <div className="rounded-3xl bg-white p-4 text-sm text-ink shadow-sm">
             <p className="font-semibold">Active dashboard target</p>
@@ -350,6 +307,17 @@ export function SettingsPage() {
                 ? `Weekly ${formatMoney(config.target_amount)}`
                 : `Monthly ${formatMoney(config.target_amount)}`}
             </p>
+          </div>
+
+          <div className="rounded-3xl bg-white p-4 text-sm text-ink shadow-sm">
+            <p className="font-semibold">Brand color</p>
+            <div className="mt-2 flex items-center gap-2">
+              <div
+                className="h-6 w-6 rounded-md"
+                style={{ backgroundColor: config.brand_color }}
+              />
+              <span className="text-muted">{config.brand_color}</span>
+            </div>
           </div>
         </aside>
       </div>

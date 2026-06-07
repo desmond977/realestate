@@ -19,6 +19,7 @@ class UserResource extends JsonResource
             'phone' => $this->phone,
             'role' => $this->role?->value ?? $this->role,
             'status' => $this->status ?? 'active',
+            'theme_mode' => $this->theme_mode ?? 'system',
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

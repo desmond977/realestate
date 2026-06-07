@@ -302,11 +302,11 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting, err
             >
               Close
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
+<button
+               type="submit"
+               disabled={submitting || !!error}
+               className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               {mode === 'create' ? 'Create property' : 'Save property'}
             </button>

@@ -24,6 +24,7 @@ class ProfileController extends Controller
             'occupation' => $client->occupation,
             'profile_image_url' => $client->profile_image_url,
             'role' => 'client',
+            'theme_mode' => $client->theme_mode ?? 'system',
             'email_verified_at' => $client->email_verified_at?->toISOString(),
             'created_at' => $client->created_at?->toISOString(),
         ];
@@ -129,9 +130,9 @@ class ProfileController extends Controller
         ]);
     }
 
-    /**
-     * Delete profile image
-     */
+/**
+      * Delete profile image
+      */
     public function deleteProfileImage(Request $request)
     {
         $client = $request->user();
@@ -143,6 +144,24 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'Profile image deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Update theme preference
+     */
+    public function updateTheme(Request $request)
+    {
+        $validated = $request->validate([
+            'theme_mode' => 'required|in:light,dark,system',
+        ]);
+
+        $client = $request->user();
+        $client->update(['theme_mode' => $validated['theme_mode']]);
+
+        return response()->json([
+            'message' => 'Theme preference updated.',
+            'user' => $this->clientPayload($client->fresh()),
         ]);
     }
 }

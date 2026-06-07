@@ -15,7 +15,7 @@ import {
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
-import { api } from '../../api/client'
+import { api, assetUrl } from '../../api/client'
 import { applyBranding, getPersistedBranding, persistBranding } from '../../utils/theme.js'
 
 const navItems = [
@@ -46,9 +46,14 @@ export function DashboardLayout() {
         const response = await api.get('/settings/company')
 
         if (active) {
-          setBranding(response.data.data.settings)
-          persistBranding(response.data.data.settings)
-          applyBranding(response.data.data.settings)
+          const settings = response.data.data.settings
+          const userBranding = {
+            ...settings,
+            theme_mode: user?.theme_mode ?? settings.theme_mode ?? 'system',
+          }
+          setBranding(userBranding)
+          persistBranding(userBranding)
+          applyBranding(userBranding)
         }
       } catch {
         if (active) {
@@ -69,7 +74,7 @@ export function DashboardLayout() {
       active = false
       window.removeEventListener('estateopsSettingsUpdated', onSettings)
     }
-  }, [])
+  }, [user?.theme_mode])
 
   const visibleNavItems = navItems.filter((item) => item.roles.includes(user?.role))
   const visibleUtilityItems = utilityNavItems.filter((item) => item.roles.includes(user?.role))
@@ -84,7 +89,7 @@ export function DashboardLayout() {
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <div className="flex items-center">
             {branding?.company_logo ? (
-              <img src={branding.company_logo} alt={branding.company_name || 'Logo'} className="h-24 w-24 rounded-sm object-contain" />
+              <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-24 w-24 rounded-sm object-contain" />
             ) : (
               <div className="grid h-24 w-24 place-items-center rounded-lg bg-brand text-white">
                 <svg viewBox="0 0 24 24" fill="none" width="32" height="32" xmlns="http://www.w3.org/2000/svg"><path d="M3 21V9a2 2 0 0 1 2-2h3v10H3zM14 7h5a2 2 0 0 1 2 2v12H14V7zM8 3h8v4H8V3z" fill="currentColor"/></svg>

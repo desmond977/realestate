@@ -1,25 +1,40 @@
-import { useState } from 'react'
-import { Lock, User as UserIcon } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Lock, User as UserIcon, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 export function ProfilePage() {
-  const { user, updateUser } = useAuth()
+  const { user, updateUser, updateTheme } = useAuth()
   const [form, setForm] = useState(() => ({
     name: user?.name ?? '',
     email: user?.email ?? '',
     password: '',
     password_confirmation: '',
   }))
+  const [themeMode, setThemeMode] = useState(user?.theme_mode ?? 'system')
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
+  const [themeSaved, setThemeSaved] = useState(false)
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
     setSaved(false)
     setError('')
     setFieldErrors({})
+  }
+
+  async function handleThemeSubmit(event) {
+    event.preventDefault()
+    setThemeSaved(false)
+
+    try {
+      await updateTheme(themeMode)
+      setThemeSaved(true)
+      setTimeout(() => setThemeSaved(false), 2000)
+    } catch (err) {
+      setError('Unable to update theme preference.')
+    }
   }
 
   async function handleSubmit(event) {
@@ -144,11 +159,11 @@ export function ProfilePage() {
           ) : null}
 
           <div className="mt-6 flex justify-end">
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-brand/50"
-            >
+<button
+               type="submit"
+               disabled={busy || !!error}
+               className="inline-flex items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-brand/50"
+             >
               {busy ? 'Saving...' : 'Save profile'}
             </button>
           </div>
@@ -169,6 +184,37 @@ export function ProfilePage() {
             <p className="font-semibold">Created</p>
             <p className="mt-1 text-muted">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}</p>
           </div>
+
+          <form onSubmit={handleThemeSubmit} className="rounded-3xl bg-white p-4 text-sm text-ink shadow-sm">
+            <p className="mb-2 font-semibold">Theme Preference</p>
+            <p className="mb-3 text-xs text-muted">Choose your preferred theme mode.</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                onClick={() => setThemeMode('light')}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${themeMode === 'light' ? 'bg-brand text-white' : 'bg-canvas hover:bg-line'}`}
+              >
+                <Sun size={14} /> Light
+              </button>
+              <button
+                type="submit"
+                onClick={() => setThemeMode('dark')}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${themeMode === 'dark' ? 'bg-brand text-white' : 'bg-canvas hover:bg-line'}`}
+              >
+                <Moon size={14} /> Dark
+              </button>
+              <button
+                type="submit"
+                onClick={() => setThemeMode('system')}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${themeMode === 'system' ? 'bg-brand text-white' : 'bg-canvas hover:bg-line'}`}
+              >
+                System
+              </button>
+            </div>
+            {themeSaved ? (
+              <p className="mt-2 text-xs text-brand">Saved!</p>
+            ) : null}
+          </form>
         </aside>
       </div>
     </div>

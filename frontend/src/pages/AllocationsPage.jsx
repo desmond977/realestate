@@ -167,14 +167,14 @@ function QuickCreateModal({ type, submitting, error, onClose, onSubmit }) {
           ) : null}
 
           {error ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
-          <div className="flex justify-end gap-3 border-t border-line pt-4">
-            <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas">Cancel</button>
-            <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Create
-            </button>
-          </div>
-        </form>
+<div className="flex justify-end gap-3 border-t border-line pt-4">
+             <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas">Cancel</button>
+             <button type="submit" disabled={submitting || !!error} className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
+               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+               Create
+             </button>
+           </div>
+         </form>
       </div>
     </div>
   )
@@ -597,14 +597,14 @@ function AllocationModal({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Create allocation
-            </button>
+<button
+               type="submit"
+               disabled={submitting || !!error}
+               className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+             >
+               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+               Create allocation
+             </button>
           </div>
         </form>
       </div>
@@ -761,20 +761,20 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
             <textarea value={form.notes} onChange={(event) => updateField('notes', event.target.value)} rows="3" className="mt-2 w-full resize-y rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand" />
           </label>
 
-          {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
+{error ? (
+             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+               {error}
+             </div>
+           ) : null}
 
-          <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink">Cancel</button>
-            <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70">
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              Save allocation
-            </button>
-          </div>
-        </form>
+           <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
+             <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink">Cancel</button>
+             <button type="submit" disabled={submitting || !!error} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70">
+               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
+               Save allocation
+             </button>
+           </div>
+         </form>
       </div>
     </div>
   )

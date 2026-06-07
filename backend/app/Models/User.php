@@ -24,6 +24,7 @@ class User extends Authenticatable
         'phone',
         'role',
         'status',
+        'theme_mode',
         'password',
     ];
 
@@ -46,6 +47,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'role' => UserRole::class,
+        'theme_mode' => 'string',
     ];
 
     public function allocations(): HasMany
