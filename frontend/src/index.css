@@ -35,8 +35,14 @@
   --color-canvas: #0f1610;
 }
 
-:root[data-theme='dark'] .bg-white {
-  background-color: #141c17 !important;
+:root[data-theme='dark'] .receipt-modal-bg {
+  background-color: #ffffff !important;
+}
+
+/* Modal and receipt background should be white */
+:root[data-theme='dark'] .bg-white:not(.receipt-print),
+:root[data-theme='dark'] .bg-white:not(.receipt-print) * {
+  background-color: #141c17;
 }
 
 /* Monthly target card in dark mode should use a specific dark green */

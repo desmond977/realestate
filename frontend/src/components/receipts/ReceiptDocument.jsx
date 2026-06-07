@@ -1,4 +1,5 @@
 import { Download, Loader2, Printer, ReceiptText, X } from 'lucide-react'
+import { assetUrl } from '../../api/client'
 import { formatMoney } from '../../utils/formatters'
 
 function formatDate(value, withTime = false) {
@@ -68,7 +69,7 @@ export function ReceiptDocument({ document }) {
           <div className="flex items-start gap-3">
             {document.company?.logo ? (
               <img
-                src={document.company.logo}
+                src={assetUrl(document.company.logo)}
                 alt={document.company?.name || 'Logo'}
                 className="h-12 w-12 shrink-0 rounded-md object-contain shadow-sm"
               />
@@ -235,7 +236,7 @@ export function ReceiptDocumentModal({ document, loading, error, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
-      <div className="mx-auto min-h-screen w-full max-w-6xl border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
+      <div className="mx-auto min-h-screen w-full max-w-6xl border border-line bg-white shadow-2xl sm:min-h-0 sm:rounded-lg receipt-modal-bg">
         <div className="receipt-actions sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-brand/10 text-brand">
