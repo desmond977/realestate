@@ -42,19 +42,26 @@ export const receiptsApi = {
     }),
 }
 
+export const documentsApi = {
+  list: () => api.get(clientPath('/documents')),
+  view: (allocationId, templateId) =>
+    api.get(clientPath(`/documents/allocations/${allocationId}/templates/${templateId}/view`), {
+      responseType: 'text',
+    }),
+}
+
 export const balancesApi = {
   list: () => api.get(clientPath('/balances')),
   summary: () => api.get(clientPath('/balances/summary')),
 }
 
 export const profileApi = {
-   getProfile: () => api.get(clientPath('/profile')),
-   updateProfile: (payload) => api.put(clientPath('/profile'), payload),
-   updatePassword: (payload) => api.put(clientPath('/profile/password'), payload),
-   updateTheme: (themeMode) => api.patch(clientPath('/profile/theme'), { theme_mode: themeMode }),
-   updateProfileImage: (payload) =>
-     api.post(clientPath('/profile/image'), payload, {
-       headers: { 'Content-Type': 'multipart/form-data' },
-     }),
-   deleteProfileImage: () => api.delete(clientPath('/profile/image')),
+  getProfile: () => api.get(clientPath('/profile')),
+  updateProfile: (payload) => api.put(clientPath('/profile'), payload),
+  updatePassword: (payload) => api.put(clientPath('/profile/password'), payload),
+  updateProfileImage: (payload) =>
+    api.post(clientPath('/profile/image'), payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  deleteProfileImage: () => api.delete(clientPath('/profile/image')),
 }

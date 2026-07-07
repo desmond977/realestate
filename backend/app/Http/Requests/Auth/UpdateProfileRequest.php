@@ -26,6 +26,7 @@ class UpdateProfileRequest extends FormRequest
                 'unique:users,email,' . $this->user()->id,
             ],
             'password' => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()],
+            'theme_mode' => ['nullable', 'string', 'in:light,dark,system'],
         ];
     }
 }

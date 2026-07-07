@@ -59,8 +59,9 @@ class ReceiptController extends Controller
             ->with(['payment.client', 'payment.property', 'payment.allocation.property'])
             ->findOrFail($receiptId);
 
+        $documentData = $this->receiptDocumentService->build($receipt);
         $company = CompanySetting::query()->first();
-        $document = view('client.receipts.document', compact('receipt', 'company'))->render();
+        $document = view('client.receipts.document', compact('receipt', 'company', 'documentData'))->render();
 
         return response($document)
             ->header('Content-Type', 'text/html; charset=UTF-8')

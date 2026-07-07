@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
+import { propertyImageUrl } from '../../api/client'
 import { propertiesApi } from '../../services/clientApi'
+import { formatPaymentDuration } from '../../utils/paymentDuration'
 
 const money = (value) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(Number(value || 0))
+
+const DEFAULT_PROPERTY_IMAGE = '/assets/property-placeholder.svg'
 
 export function ClientPropertiesPage() {
   const [properties, setProperties] = useState([])
@@ -40,11 +44,11 @@ export function ClientPropertiesPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {properties.map((item) => {
           const property = item.property || {}
+          const imageUrl = propertyImageUrl(property)
+
           return (
-            <article key={item.allocation_id} className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
-              {property.image_url ? (
-                <img src={property.image_url} alt={property.title} className="h-44 w-full object-cover" />
-              ) : null}
+<article key={item.allocation_id} className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
+              <img src={imageUrl} alt={property.title || 'Property'} className="h-44 w-full object-cover" onError={(e) => { e.target.src = DEFAULT_PROPERTY_IMAGE }} />
               <div className="space-y-4 p-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -55,7 +59,7 @@ export function ClientPropertiesPage() {
                     {item.allocation_status?.value || item.allocation_status || 'active'}
                   </span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-4">
                   <div>
                     <p className="text-xs text-muted">Total</p>
                     <p className="font-semibold">{money(item.total_amount)}</p>
@@ -67,6 +71,10 @@ export function ClientPropertiesPage() {
                   <div>
                     <p className="text-xs text-muted">Balance</p>
                     <p className="font-semibold">{money(item.outstanding_amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">Duration</p>
+                    <p className="font-semibold">{formatPaymentDuration(item)}</p>
                   </div>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-canvas">

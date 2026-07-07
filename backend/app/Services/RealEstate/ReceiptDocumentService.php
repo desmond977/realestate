@@ -14,6 +14,13 @@ class ReceiptDocumentService
      */
     public function build(Receipt $receipt): array
     {
+        if ($receipt->snapshot) {
+            $snapshot = $receipt->snapshot;
+            $snapshot['receipt']['id'] = $receipt->id;
+
+            return $snapshot;
+        }
+
         $receipt->load([
             'issuer',
             'payment.client.realtor',
@@ -87,6 +94,11 @@ class ReceiptDocumentService
                 'total_amount' => $totalAmount,
                 'amount_paid' => $totalPaid,
                 'balance' => $balance,
+                'payment_duration' => $allocation?->payment_duration,
+                'custom_duration_value' => $allocation?->custom_duration_value,
+                'custom_duration_unit' => $allocation?->custom_duration_unit,
+                'payment_duration_label' => $allocation?->paymentDurationLabel(),
+                'payment_duration_interval' => $allocation?->paymentDurationInterval(),
             ],
             'payment' => [
                 'id' => $payment?->id,
@@ -129,16 +141,7 @@ class ReceiptDocumentService
      */
     private function company(): array
     {
-        $settings = CompanySetting::query()->first();
-
-        return [
-            'name' => $settings?->company_name ?: 'Company',
-            'tagline' => 'Intelligent Real Estate Operations',
-            'email' => $settings?->company_email,
-            'phone' => $settings?->company_phone,
-            'address' => $settings?->company_address,
-            'logo' => $settings?->company_logo,
-        ];
+        return app(\App\Services\CompanySettings::class)->get();
     }
 
     private function documentType(?string $paymentType, float $balance, ?string $allocationStatus): string

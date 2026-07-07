@@ -88,21 +88,4 @@ class AuthController extends Controller
             ],
         ]);
     }
-
-    public function updateTheme(Request $request): JsonResponse
-    {
-        $request->validate([
-            'theme_mode' => ['required', 'in:light,dark,system'],
-        ]);
-
-        $user = $request->user();
-        $user->update(['theme_mode' => $request->theme_mode]);
-
-        return response()->json([
-            'message' => 'Theme preference updated.',
-            'data' => [
-                'user' => new UserResource($user->refresh()),
-            ],
-        ]);
-    }
 }

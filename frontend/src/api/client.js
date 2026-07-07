@@ -54,6 +54,14 @@ export function assetUrl(path) {
   return new URL(normalizedPath, window.location.origin).toString();
 }
 
+export const DEFAULT_PROPERTY_IMAGE_URL = '/assets/property-placeholder.svg'
+
+export function propertyImageUrl(property) {
+  if (!property) return DEFAULT_PROPERTY_IMAGE_URL;
+  const url = property.image || property.image_url;
+  return assetUrl(url) || DEFAULT_PROPERTY_IMAGE_URL;
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,
@@ -84,7 +92,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (error.response?.status === 401) {
       clearAuthForRequest(error.config?.url);
     }
 

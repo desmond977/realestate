@@ -10,6 +10,7 @@ We appreciate your trust in us and remain committed to keeping your property rec
 Outstanding Balance:
 @forelse($outstandingAllocations as $allocation)
 - Property: {{ data_get($allocation, 'property.title', 'N/A') }}
+  Payment Duration: {{ is_object($allocation) && method_exists($allocation, 'paymentDurationLabel') ? $allocation->paymentDurationLabel() : data_get($allocation, 'payment_duration_label', 'One-time Payment') }}
   Amount Paid: NGN {{ number_format(data_get($allocation, 'amount_paid', 0), 2) }}
   Remaining Balance: NGN {{ number_format(data_get($allocation, 'balance', 0), 2) }}
 @empty

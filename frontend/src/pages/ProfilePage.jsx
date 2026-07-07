@@ -1,40 +1,27 @@
-import { useState, useEffect } from 'react'
-import { Lock, User as UserIcon, Moon, Sun } from 'lucide-react'
+import { useState } from 'react'
+import { Lock, User as UserIcon } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
+import { applyBranding, getPersistedBranding, getPersistedUserTheme, persistUserTheme } from '../utils/theme.js'
 
 export function ProfilePage() {
-  const { user, updateUser, updateTheme } = useAuth()
+  const { user, updateUser } = useAuth()
   const [form, setForm] = useState(() => ({
     name: user?.name ?? '',
     email: user?.email ?? '',
     password: '',
     password_confirmation: '',
+    theme_mode: user?.theme_mode ?? getPersistedUserTheme().theme_mode ?? 'light',
   }))
-  const [themeMode, setThemeMode] = useState(user?.theme_mode ?? 'system')
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
-  const [themeSaved, setThemeSaved] = useState(false)
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
     setSaved(false)
     setError('')
     setFieldErrors({})
-  }
-
-  async function handleThemeSubmit(event) {
-    event.preventDefault()
-    setThemeSaved(false)
-
-    try {
-      await updateTheme(themeMode)
-      setThemeSaved(true)
-      setTimeout(() => setThemeSaved(false), 2000)
-    } catch (err) {
-      setError('Unable to update theme preference.')
-    }
   }
 
   async function handleSubmit(event) {
@@ -48,6 +35,7 @@ export function ProfilePage() {
       const payload = {
         name: form.name,
         email: form.email,
+        theme_mode: form.theme_mode,
       }
 
       if (form.password) {
@@ -55,7 +43,9 @@ export function ProfilePage() {
         payload.password_confirmation = form.password_confirmation
       }
 
-      await updateUser(payload)
+      const updatedUser = await updateUser(payload)
+      persistUserTheme({ theme_mode: updatedUser.theme_mode })
+      applyBranding({ theme_mode: updatedUser.theme_mode, ...getPersistedBranding() })
       setSaved(true)
       setForm((current) => ({ ...current, password: '', password_confirmation: '' }))
     } catch (err) {
@@ -144,6 +134,26 @@ export function ProfilePage() {
                 placeholder="Confirm new password"
               />
             </label>
+
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium text-ink">Theme mode</span>
+              <p className="mt-2 text-sm text-muted">Choose your preferred dashboard appearance.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {['light', 'dark'].map((mode) => (
+                  <label key={mode} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink transition hover:border-brand">
+                    <input
+                      type="radio"
+                      name="themeMode"
+                      value={mode}
+                      checked={form.theme_mode === mode}
+                      onChange={() => updateField('theme_mode', mode)}
+                      className="accent-brand"
+                    />
+                    <span className="capitalize">{mode}</span>
+                  </label>
+                ))}
+              </div>
+            </label>
           </div>
 
           {error ? (
@@ -159,11 +169,11 @@ export function ProfilePage() {
           ) : null}
 
           <div className="mt-6 flex justify-end">
-<button
-               type="submit"
-               disabled={busy || !!error}
-               className="inline-flex items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-brand/50"
-             >
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-brand/50"
+            >
               {busy ? 'Saving...' : 'Save profile'}
             </button>
           </div>
@@ -184,37 +194,6 @@ export function ProfilePage() {
             <p className="font-semibold">Created</p>
             <p className="mt-1 text-muted">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}</p>
           </div>
-
-          <form onSubmit={handleThemeSubmit} className="rounded-3xl bg-white p-4 text-sm text-ink shadow-sm">
-            <p className="mb-2 font-semibold">Theme Preference</p>
-            <p className="mb-3 text-xs text-muted">Choose your preferred theme mode.</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                onClick={() => setThemeMode('light')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${themeMode === 'light' ? 'bg-brand text-white' : 'bg-canvas hover:bg-line'}`}
-              >
-                <Sun size={14} /> Light
-              </button>
-              <button
-                type="submit"
-                onClick={() => setThemeMode('dark')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${themeMode === 'dark' ? 'bg-brand text-white' : 'bg-canvas hover:bg-line'}`}
-              >
-                <Moon size={14} /> Dark
-              </button>
-              <button
-                type="submit"
-                onClick={() => setThemeMode('system')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium ${themeMode === 'system' ? 'bg-brand text-white' : 'bg-canvas hover:bg-line'}`}
-              >
-                System
-              </button>
-            </div>
-            {themeSaved ? (
-              <p className="mt-2 text-xs text-brand">Saved!</p>
-            ) : null}
-          </form>
         </aside>
       </div>
     </div>

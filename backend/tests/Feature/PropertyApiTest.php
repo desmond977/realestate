@@ -115,7 +115,7 @@ class PropertyApiTest extends TestCase
             ->assertJsonValidationErrors(['property_count']);
     }
 
-    public function test_authenticated_user_can_upload_property_image(): void
+public function test_authenticated_user_can_upload_property_image(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
         Storage::fake('public');
@@ -137,7 +137,28 @@ class PropertyApiTest extends TestCase
 
         $response->assertCreated();
         $this->assertNotNull($response->json('data.property.image'));
+        $this->assertNotNull($response->json('data.property.image_url'));
         Storage::disk('public')->assertExists($response->json('data.property.image'));
+
+        $this->getJson('/api/v1/properties')
+            ->assertOk()
+            ->assertJsonPath('data.0.image', $response->json('data.property.image'))
+            ->assertJsonPath('data.0.image_url', rtrim(config('app.url'), '/').Storage::disk('public')->url($response->json('data.property.image')));
+    }
+
+    public function test_property_without_image_returns_fallback_image_url(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+
+        Property::factory()->create([
+            'title' => 'No Image Property',
+            'image' => null,
+        ]);
+
+        $response = $this->getJson('/api/v1/properties');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.image_url', fn ($value) => str_ends_with($value, '/assets/property-placeholder.svg'));
     }
 
     public function test_authenticated_user_can_show_and_update_property(): void

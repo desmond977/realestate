@@ -41,6 +41,7 @@ class ReceiptController extends Controller
                 });
             })
             ->latest('issued_at')
+            ->latest('id')
             ->paginate($validated['per_page'] ?? 15)
             ->withQueryString();
 

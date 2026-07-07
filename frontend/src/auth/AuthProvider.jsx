@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
-import { applyBranding } from '../utils/theme'
+import { applyBranding, getPersistedBranding, getPersistedUserTheme, persistUserTheme } from '../utils/theme'
 import { AuthContext } from './AuthContext'
 
 function readStoredUser() {
@@ -39,6 +39,10 @@ export function AuthProvider({ children }) {
         if (active) {
           localStorage.setItem('auth_user', JSON.stringify(nextUser))
           setUser(nextUser)
+
+          const userTheme = nextUser.theme_mode ? { theme_mode: nextUser.theme_mode } : getPersistedUserTheme()
+          persistUserTheme(userTheme)
+          applyBranding({ ...userTheme, ...getPersistedBranding() })
         }
       } catch {
         if (active) {
@@ -89,35 +93,9 @@ export function AuthProvider({ children }) {
     setToken(nextToken)
     setUser(nextUser)
 
-    if (nextUser.theme_mode) {
-      applyBranding({ theme_mode: nextUser.theme_mode })
-    }
-
-    return nextUser
-  }
-
-  async function updateUser(profile) {
-    const response = await api.patch('/auth/me', profile)
-    const nextUser = response.data.data.user
-
-    localStorage.setItem('auth_user', JSON.stringify(nextUser))
-    setUser(nextUser)
-
-    if (nextUser.theme_mode) {
-      applyBranding({ theme_mode: nextUser.theme_mode })
-    }
-
-    return nextUser
-  }
-
-  async function updateTheme(themeMode) {
-    const response = await api.patch('/auth/me/theme', { theme_mode: themeMode })
-    const nextUser = response.data.data.user
-
-    localStorage.setItem('auth_user', JSON.stringify(nextUser))
-    setUser(nextUser)
-
-    applyBranding({ theme_mode: themeMode })
+    const userTheme = nextUser.theme_mode ? { theme_mode: nextUser.theme_mode } : getPersistedUserTheme()
+    persistUserTheme(userTheme)
+    applyBranding({ ...userTheme, ...getPersistedBranding() })
 
     return nextUser
   }
@@ -133,6 +111,20 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function updateUser(profile) {
+    const response = await api.patch('/auth/me', profile)
+    const nextUser = response.data.data.user
+
+    localStorage.setItem('auth_user', JSON.stringify(nextUser))
+    setUser(nextUser)
+
+    const userTheme = nextUser.theme_mode ? { theme_mode: nextUser.theme_mode } : getPersistedUserTheme()
+    persistUserTheme(userTheme)
+    applyBranding({ ...userTheme, ...getPersistedBranding() })
+
+    return nextUser
+  }
+
   const value = useMemo(
     () => ({
       isAuthenticated: Boolean(token),
@@ -140,7 +132,6 @@ export function AuthProvider({ children }) {
       login,
       logout,
       updateUser,
-      updateTheme,
       token,
       user,
     }),

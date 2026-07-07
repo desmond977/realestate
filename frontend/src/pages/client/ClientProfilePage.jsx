@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Camera as FaCamera, LockKeyhole as FaLock, Mail as FaEnvelope, Moon, Phone as FaPhone, Save as FaSave, Sun, User as FaUser } from 'lucide-react';
+import { Camera as FaCamera, LockKeyhole as FaLock, Mail as FaEnvelope, Phone as FaPhone, Save as FaSave, User as FaUser } from 'lucide-react';
 import { assetUrl } from '../../api/client';
 import { profileApi } from '../../services/clientApi';
 import { useClient } from '../../context/ClientContext';
-import { applyBranding } from '../../utils/theme';
 import './ClientProfilePage.css';
 
 const PROFILE_IMAGE_PLACEHOLDER = '/favicon.svg';
@@ -15,7 +14,6 @@ const ClientProfilePage = () => {
     email: '',
     phone: '',
   });
-  const [themeMode, setThemeMode] = useState(user?.theme_mode ?? 'system');
   const [passwordData, setPasswordData] = useState({
     current_password: '',
     password: '',
@@ -147,22 +145,6 @@ const ClientProfilePage = () => {
     }
   };
 
-  async function handleThemeChange(mode) {
-    setThemeMode(mode);
-    try {
-      const response = await profileApi.updateTheme(mode);
-      updateUser(response.data.user);
-      applyBranding({ theme_mode: mode });
-      setMessage({ type: 'success', text: 'Theme saved!' });
-      setTimeout(() => setMessage({ type: '', text: '' }), 2000);
-    } catch (err) {
-      setMessage({ 
-        type: 'error', 
-        text: err.response?.data?.message || 'Failed to save theme.' 
-      });
-    }
-  }
-
   return (
     <div className="client-profile-page">
       <div className="page-header">
@@ -255,20 +237,12 @@ const ClientProfilePage = () => {
               />
             </div>
 
-<button 
-              type="submit" 
-              className="submit-btn"
-              disabled={loading || message.type === 'error'}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
-
             <button 
               type="submit" 
               className="submit-btn"
-              disabled={loading || message.type === 'error'}
+              disabled={loading}
             >
-              {loading ? 'Updating...' : 'Update Password'}
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </form>
         </div>
@@ -343,35 +317,6 @@ const ClientProfilePage = () => {
                 {user?.email_verified_at ? 'Verified' : 'Not Verified'}
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* Theme Preference */}
-        <div className="profile-section full-width">
-          <h2>Theme Preference</h2>
-          <p className="theme-hint">Choose your preferred theme mode.</p>
-          <div className="theme-options">
-            <button
-              type="button"
-              className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`}
-              onClick={() => handleThemeChange('light')}
-            >
-              <Sun size={16} /> Light
-            </button>
-            <button
-              type="button"
-              className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`}
-              onClick={() => handleThemeChange('dark')}
-            >
-              <Moon size={16} /> Dark
-            </button>
-            <button
-              type="button"
-              className={`theme-btn ${themeMode === 'system' ? 'active' : ''}`}
-              onClick={() => handleThemeChange('system')}
-            >
-              System
-            </button>
           </div>
         </div>
       </div>

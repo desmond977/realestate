@@ -10,8 +10,11 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Realtor;
+use App\Services\CompanySettings;
+use App\Services\TenantManager;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardService
 {
@@ -20,13 +23,16 @@ class DashboardService
      */
     public function summary(): array
     {
-        $revenue = (float) Payment::query()
-            ->where('status', PaymentStatus::Confirmed)
-            ->sum('amount');
+        $key = 'dashboard_summary:' . (app(TenantManager::class)->currentId() ?? 'default');
 
-        $monthlyTarget = 5000000.0;
+        return Cache::remember($key, now()->addSeconds(60), function () {
+            $company = app(CompanySettings::class)->get();
+            $monthlyTarget = (float) ($company['target_amount'] ?? 5000000.0);
+            $revenue = (float) Payment::query()
+                ->where('status', PaymentStatus::Confirmed)
+                ->sum('amount');
 
-        return [
+            return [
             'stats' => [
                 'total_properties' => Property::query()->count(),
                 'available_properties' => Property::query()->where('status', PropertyStatus::Available)->count(),
@@ -54,6 +60,7 @@ class DashboardService
             'recent_allocations' => $this->recentAllocations(),
             'top_realtors' => $this->topRealtors(),
         ];
+        });
     }
 
     /**

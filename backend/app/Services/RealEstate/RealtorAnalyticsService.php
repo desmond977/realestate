@@ -73,6 +73,11 @@ class RealtorAnalyticsService
                         : 0,
                     'amount_paid' => (float) $allocation->amount_paid,
                     'balance' => (float) $allocation->balance,
+                    'payment_duration' => $allocation->payment_duration,
+                    'custom_duration_value' => $allocation->custom_duration_value,
+                    'custom_duration_unit' => $allocation->custom_duration_unit,
+                    'payment_duration_label' => $allocation->paymentDurationLabel(),
+                    'payment_duration_interval' => $allocation->paymentDurationInterval(),
                     'status' => $allocation->status?->value ?? $allocation->status,
                     'latest_receipt' => $allocation->payments
                         ->sortByDesc('paid_at')

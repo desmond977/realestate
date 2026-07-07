@@ -12,10 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->string('password')->nullable()->after('email');
-            $table->string('profile_image')->nullable()->after('password');
-            $table->timestamp('email_verified_at')->nullable()->after('profile_image');
-            $table->rememberToken()->after('profile_image');
+            if (! Schema::hasColumn('clients', 'password')) {
+                $table->string('password')->nullable()->after('email');
+            }
+
+            if (! Schema::hasColumn('clients', 'profile_image')) {
+                $table->string('profile_image')->nullable()->after('password');
+            }
+
+            if (! Schema::hasColumn('clients', 'email_verified_at')) {
+                $table->timestamp('email_verified_at')->nullable()->after('profile_image');
+            }
+
+            if (! Schema::hasColumn('clients', 'remember_token')) {
+                $table->rememberToken()->after('profile_image');
+            }
         });
     }
 
@@ -25,7 +36,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn(['password', 'profile_image', 'email_verified_at', 'remember_token']);
+            foreach (['password', 'profile_image', 'email_verified_at', 'remember_token'] as $column) {
+                if (Schema::hasColumn('clients', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };

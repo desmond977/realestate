@@ -17,6 +17,7 @@
         @forelse($outstandingAllocations as $allocation)
             <li>
                 Property: {{ data_get($allocation, 'property.title', 'N/A') }}<br>
+                Payment Duration: {{ is_object($allocation) && method_exists($allocation, 'paymentDurationLabel') ? $allocation->paymentDurationLabel() : data_get($allocation, 'payment_duration_label', 'One-time Payment') }}<br>
                 Amount Paid: &#8358;{{ number_format(data_get($allocation, 'amount_paid', 0), 2) }}<br>
                 Remaining Balance: &#8358;{{ number_format(data_get($allocation, 'balance', 0), 2) }}
             </li>

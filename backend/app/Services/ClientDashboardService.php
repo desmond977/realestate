@@ -64,6 +64,7 @@ class ClientDashboardService
         return $this->client->receipts()
             ->with(['payment.allocation.property', 'payment.property'])
             ->latest('issued_at')
+            ->latest('id')
             ->limit(5)
             ->get();
     }
@@ -105,6 +106,7 @@ class ClientDashboardService
         return $this->client->receipts()
             ->with(['payment.allocation.property', 'payment.property'])
             ->latest('issued_at')
+            ->latest('id')
             ->get();
     }
 

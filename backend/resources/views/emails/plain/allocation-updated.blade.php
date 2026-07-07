@@ -13,8 +13,8 @@ A property allocation has been updated in TerraOps.
 Transaction Details:
 - Client: {{ $allocation->client->full_name ?? 'N/A' }}
 - Property: {{ $allocation->property->title ?? 'N/A' }}
-- Allocation Reference: {{ $allocation->reference ?? 'N/A' }}
 - Realtor: {{ $allocation->realtor->full_name ?? 'N/A' }}
+- Payment Duration: {{ $allocation->paymentDurationLabel() }}
 - Allocation Date: {{ $allocation->allocated_at?->format('M d, Y') ?? 'N/A' }}
 
 Important Summary:

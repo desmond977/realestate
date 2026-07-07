@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,7 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Client extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, BelongsToTenant;
 
     protected $fillable = [
         'first_name',
@@ -27,7 +29,6 @@ class Client extends Authenticatable
         'occupation',
         'realtor_id',
         'profile_image',
-        'theme_mode',
     ];
 
     protected $hidden = [
@@ -72,6 +73,11 @@ class Client extends Authenticatable
     public function receipts(): HasManyThrough
     {
         return $this->hasManyThrough(Receipt::class, Payment::class, 'client_id', 'payment_id');
+    }
+
+    public function generatedDocuments(): HasMany
+    {
+        return $this->hasMany(GeneratedDocument::class, 'customer_id');
     }
 
     public function getFullNameAttribute(): string

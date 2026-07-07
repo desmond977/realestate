@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { clientAuthApi } from '../services/clientApi'
-import { applyBranding } from '../utils/theme'
 import { ClientContext } from './ClientContext'
 
 function readStoredUser() {
@@ -84,10 +83,6 @@ export function ClientProvider({ children }) {
       localStorage.setItem('client_auth_user', JSON.stringify(nextUser))
       setToken(nextToken)
       setUser(nextUser)
-
-      if (nextUser.theme_mode) {
-        applyBranding({ theme_mode: nextUser.theme_mode })
-      }
 
       return { success: true, user: nextUser }
     } catch (error) {

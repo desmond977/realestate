@@ -4,7 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { assetUrl } from '../api/client'
 import loginPropertyShowcase from '../assets/login-property-showcase-transparent.png'
-import { applyBranding, getPersistedBranding } from '../utils/theme.js'
+import { applyBranding, getPersistedBranding, getPersistedUserTheme } from '../utils/theme.js'
 
 export function LoginPage() {
   const location = useLocation()
@@ -16,7 +16,7 @@ export function LoginPage() {
   const [branding, setBranding] = useState(() => getPersistedBranding())
 
   useEffect(() => {
-    applyBranding(branding)
+    applyBranding({ ...getPersistedUserTheme(), ...branding })
   }, [branding])
 
   useEffect(() => {
@@ -60,18 +60,23 @@ export function LoginPage() {
     <main className="grid min-h-screen bg-canvas lg:grid-cols-[1.1fr_0.9fr]">
       <section className="flex items-center px-6 py-10 sm:px-10 lg:px-16">
         <div className="w-full max-w-md">
-<div className="mb-8 flex items-center gap-3">
+          <div className="mb-8 flex items-center gap-3">
             {branding?.company_logo ? (
-              <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-28 w-28 rounded-md object-contain" />
-            ) : (
-              <div className="grid h-28 w-28 place-items-center rounded-md bg-brand text-white">
-                <Building2 size={34} />
+              <div className="flex items-center gap-4">
+                <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-28 w-28 rounded-md object-contain" />
+                
               </div>
+            ) : (
+              <>
+                <div className="grid h-28 w-28 place-items-center rounded-lg bg-brand text-white">
+                  <Building2 size={34} />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-ink">{branding.company_name || 'Company'}</p>
+                  <p className="text-sm text-muted">Real estate management</p>
+                </div>
+              </>
             )}
-            <div>
-              <p className="text-lg font-semibold text-ink">{branding.company_name || 'Company'}</p>
-              <p className="text-sm text-muted">Real estate management</p>
-            </div>
           </div>
 
           <h1 className="text-3xl font-semibold text-ink">Welcome back</h1>

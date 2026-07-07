@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Client\AuthController;
 use App\Http\Controllers\Api\V1\Client\BalanceController;
 use App\Http\Controllers\Api\V1\Client\DashboardController;
+use App\Http\Controllers\Api\V1\Client\DocumentController;
 use App\Http\Controllers\Api\V1\Client\PaymentController;
 use App\Http\Controllers\Api\V1\Client\ProfileController;
 use App\Http\Controllers\Api\V1\Client\PropertyController;
@@ -66,6 +67,12 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
     Route::prefix('balances')->group(function () {
         Route::get('/', [BalanceController::class, 'index']);
         Route::get('/summary', [BalanceController::class, 'summary']);
+    });
+
+    // Documents
+    Route::prefix('documents')->group(function () {
+        Route::get('/', [DocumentController::class, 'index']);
+        Route::get('/allocations/{allocation}/templates/{template}/view', [DocumentController::class, 'view']);
     });
 
     // Profile

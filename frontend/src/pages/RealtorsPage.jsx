@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
-import { canDeleteRealtors } from '../auth/permissions'
+import { canDeleteRealtors, canManageRealtors } from '../auth/permissions'
 import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
@@ -245,11 +245,11 @@ function RealtorModal({ mode, initialValues, onClose, onSubmit, submitting, erro
             >
               Cancel
             </button>
-<button
-               type="submit"
-               disabled={submitting || !!error}
-               className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
-             >
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               {mode === 'create' ? 'Create realtor' : 'Save changes'}
             </button>
@@ -411,6 +411,7 @@ function RealtorDetailsModal({ realtor, analytics, loading, error, onClose, onVi
 export function RealtorsPage() {
   const { user } = useAuth()
   const canDelete = canDeleteRealtors(user)
+  const canManage = canManageRealtors(user)
   const [realtors, setRealtors] = useState([])
   const [meta, setMeta] = useState(null)
   const [filters, setFilters] = useState({ search: '', status: '' })
@@ -567,14 +568,16 @@ export function RealtorsPage() {
             Manage referral partners, linked clients, property sales, and revenue contribution.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          <Plus size={17} />
-          Add realtor
-        </button>
+        {canManage ? (
+          <button
+            type="button"
+            onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
+          >
+            <Plus size={17} />
+            Add realtor
+          </button>
+        ) : null}
       </div>
 
       <form
@@ -657,9 +660,11 @@ export function RealtorsPage() {
                       <button type="button" onClick={() => viewRealtor(realtor)} className="rounded-md border border-brand/20 bg-brand/5 p-2 text-brand">
                         <Eye size={15} />
                       </button>
-                      <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted">
-                        <Edit3 size={15} />
-                      </button>
+                      {canManage ? (
+                        <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted">
+                          <Edit3 size={15} />
+                        </button>
+                      ) : null}
                       {canDelete ? (
                         <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600">
                           <Trash2 size={15} />
@@ -711,9 +716,11 @@ export function RealtorsPage() {
                       <button type="button" onClick={() => viewRealtor(realtor)} className="inline-flex items-center gap-1 rounded-md border border-brand/20 bg-brand/5 px-2.5 py-2 text-sm font-semibold text-brand hover:bg-brand/10">
                         <Eye size={16} /> View
                       </button>
-                      <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink">
-                        <Edit3 size={16} />
-                      </button>
+                      {canManage ? (
+                        <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink">
+                          <Edit3 size={16} />
+                        </button>
+                      ) : null}
                       {canDelete ? (
                         <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600 hover:bg-red-50">
                           <Trash2 size={16} />
@@ -768,7 +775,7 @@ export function RealtorsPage() {
 
       {(receiptDocument || documentLoading || documentError) ? (
         <ReceiptDocumentModal
-          document={receiptDocument}
+          receiptDocument={receiptDocument}
           loading={documentLoading}
           error={documentError}
           onClose={() => {

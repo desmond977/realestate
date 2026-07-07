@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -11,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, BelongsToTenant;
 
     /**
      * The attributes that are mass assignable.
@@ -24,8 +26,8 @@ class User extends Authenticatable
         'phone',
         'role',
         'status',
-        'theme_mode',
         'password',
+        'theme_mode',
     ];
 
     /**
@@ -47,7 +49,6 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'role' => UserRole::class,
-        'theme_mode' => 'string',
     ];
 
     public function allocations(): HasMany
@@ -63,5 +64,10 @@ class User extends Authenticatable
     public function receipts(): HasMany
     {
         return $this->hasMany(Receipt::class, 'issued_by');
+    }
+
+    public function generatedDocuments(): HasMany
+    {
+        return $this->hasMany(GeneratedDocument::class, 'generated_by');
     }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { paymentsApi } from '../../services/clientApi'
+import { formatPaymentDuration } from '../../utils/paymentDuration'
 
 const money = (value) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(Number(value || 0))
@@ -55,6 +56,7 @@ export function ClientPaymentsPage() {
                   <th className="px-4 py-3">Property</th>
                   <th className="px-4 py-3">Amount</th>
                   <th className="px-4 py-3">Method</th>
+                  <th className="px-4 py-3">Duration</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
                 </tr>
@@ -66,13 +68,14 @@ export function ClientPaymentsPage() {
                       <td className="px-4 py-3">{payment.property?.title || payment.allocation?.property?.title || 'Property payment'}</td>
                       <td className="px-4 py-3 font-semibold">{money(payment.amount)}</td>
                       <td className="px-4 py-3">{payment.payment_method || 'N/A'}</td>
+                      <td className="px-4 py-3">{formatPaymentDuration(payment.allocation)}</td>
                       <td className="px-4 py-3 capitalize">{payment.status}</td>
                       <td className="px-4 py-3">{payment.paid_at ? new Date(payment.paid_at).toLocaleDateString() : 'N/A'}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="px-4 py-6 text-center text-muted">No payments found.</td>
+                    <td colSpan="6" className="px-4 py-6 text-center text-muted">No payments found.</td>
                   </tr>
                 )}
               </tbody>

@@ -13,7 +13,6 @@ A payment record has been updated in TerraOps.
 Transaction Details:
 - Client: {{ $payment->client->full_name ?? 'N/A' }}
 - Property: {{ $payment->property->title ?? 'N/A' }}
-- Allocation Reference: {{ $payment->allocation->reference ?? 'N/A' }}
 - Realtor: {{ $payment->realtor->full_name ?? 'N/A' }}
 @if($payment->receipt)
 - Receipt Number: {{ $payment->receipt->receipt_number ?? 'N/A' }}

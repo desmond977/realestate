@@ -1,18 +1,17 @@
 import {
-  Building2,
-  Edit3,
-  FileText,
-  Image as ImageIcon,
-  Layers3,
-  Loader2,
-  MapPin,
-  Plus,
-  Search,
-  Trash2,
-  X,
-} from 'lucide-react'
+   Building2,
+   Edit3,
+   FileText,
+   Layers3,
+   Loader2,
+   MapPin,
+   Plus,
+   Search,
+   Trash2,
+   X,
+ } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, assetUrl } from '../api/client'
+import { api, assetUrl, propertyImageUrl } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { canManageProperties } from '../auth/permissions'
 import { formatMoney } from '../utils/formatters'
@@ -63,24 +62,17 @@ function StatusBadge({ status }) {
 }
 
 function PropertyImage({ property, className = 'h-14 w-20 rounded-md' }) {
-  const imageUrl = assetUrl(property.image_url || property.image)
+   const imageUrl = propertyImageUrl(property)
 
-  if (imageUrl) {
-    return (
-      <img
-        src={imageUrl}
-        alt={property.title}
-        className={`${className} shrink-0 object-cover`}
-      />
-    )
-  }
-
-  return (
-    <div className={`${className} grid shrink-0 place-items-center border border-line bg-canvas text-muted`}>
-      <ImageIcon className="h-5 w-5" />
-    </div>
-  )
-}
+   return (
+     <img
+       src={imageUrl}
+       alt={property.title}
+       className={`${className} shrink-0 object-cover`}
+       onError={(e) => { e.target.src = '/assets/property-placeholder.svg' }}
+     />
+   )
+ }
 
 function InventorySummary({ property, compact = false }) {
   return (
@@ -106,7 +98,7 @@ function InventorySummary({ property, compact = false }) {
 
 function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting, error }) {
   const [form, setForm] = useState(() => initialValues)
-  const [previewUrl, setPreviewUrl] = useState(() => assetUrl(initialValues.image_url || initialValues.image))
+  const [previewUrl, setPreviewUrl] = useState(() => assetUrl(initialValues.image || initialValues.image_url))
 
   useEffect(() => {
     return () => {
@@ -302,11 +294,11 @@ function PropertyModal({ mode, initialValues, onClose, onSubmit, submitting, err
             >
               Close
             </button>
-<button
-               type="submit"
-               disabled={submitting || !!error}
-               className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
-             >
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               {mode === 'create' ? 'Create property' : 'Save property'}
             </button>
@@ -344,7 +336,7 @@ export function PropertiesPage() {
         land_size: modal.property.land_size || '',
         document_type: modal.property.document_type || '',
         image: modal.property.image || '',
-        image_url: modal.property.image_url || modal.property.image || '',
+        image_url: modal.property.image || modal.property.image_url || '',
         image_file: null,
       }
     }

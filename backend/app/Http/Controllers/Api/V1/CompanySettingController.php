@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateCompanySettingRequest;
 use App\Http\Resources\CompanySettingResource;
 use App\Models\CompanySetting;
+use App\Services\CompanySettings;
 use Illuminate\Http\JsonResponse;
 
 class CompanySettingController extends Controller
@@ -24,6 +25,8 @@ class CompanySettingController extends Controller
         $settings = $this->settings();
         $settings->update($request->validated());
 
+        app(CompanySettings::class)->forget();
+
         return response()->json([
             'message' => 'Company settings updated successfully.',
             'data' => [
@@ -37,6 +40,7 @@ class CompanySettingController extends Controller
         return CompanySetting::query()->firstOrCreate([], [
             'target_type' => 'monthly',
             'target_amount' => 250000,
+            'theme_mode' => 'system',
             'brand_color' => '#166534',
         ]);
     }

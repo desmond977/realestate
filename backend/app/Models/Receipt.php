@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Receipt extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
         'payment_id',
@@ -16,11 +18,13 @@ class Receipt extends Model
         'receipt_number',
         'issued_at',
         'metadata',
+        'snapshot',
     ];
 
     protected $casts = [
         'issued_at' => 'datetime',
         'metadata' => 'array',
+        'snapshot' => 'array',
     ];
 
     public function payment(): BelongsTo

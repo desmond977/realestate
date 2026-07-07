@@ -11,6 +11,7 @@ const DashboardLayout = lazyNamed(() => import('./components/layout/DashboardLay
 const AllocationsPage = lazyNamed(() => import('./pages/AllocationsPage.jsx'), 'AllocationsPage')
 const ClientsPage = lazyNamed(() => import('./pages/ClientsPage.jsx'), 'ClientsPage')
 const DashboardPage = lazyNamed(() => import('./pages/DashboardPage.jsx'), 'DashboardPage')
+const DocumentsPage = lazyNamed(() => import('./pages/DocumentsPage.jsx'), 'DocumentsPage')
 const LoginPage = lazyNamed(() => import('./pages/LoginPage.jsx'), 'LoginPage')
 const PropertiesPage = lazyNamed(() => import('./pages/PropertiesPage.jsx'), 'PropertiesPage')
 const ProfilePage = lazyNamed(() => import('./pages/ProfilePage.jsx'), 'ProfilePage')
@@ -20,6 +21,7 @@ const SettingsPage = lazyNamed(() => import('./pages/SettingsPage.jsx'), 'Settin
 const UsersPage = lazyNamed(() => import('./pages/UsersPage.jsx'), 'UsersPage')
 const ClientDashboardPage = lazyNamed(() => import('./pages/client/ClientDashboardPage.jsx'), 'ClientDashboardPage')
 const ClientBalancesPage = lazyNamed(() => import('./pages/client/ClientBalancesPage.jsx'), 'ClientBalancesPage')
+const ClientDocumentsPage = lazyNamed(() => import('./pages/client/ClientDocumentsPage.jsx'), 'ClientDocumentsPage')
 const ClientLoginPage = lazy(() => import('./pages/client/ClientLoginPage.jsx'))
 const ClientPaymentsPage = lazyNamed(() => import('./pages/client/ClientPaymentsPage.jsx'), 'ClientPaymentsPage')
 const ClientProfilePage = lazy(() => import('./pages/client/ClientProfilePage.jsx'))
@@ -55,6 +57,7 @@ function App() {
           <Route path="properties" element={<ClientPropertiesPage />} />
           <Route path="payments" element={<ClientPaymentsPage />} />
           <Route path="balances" element={<ClientBalancesPage />} />
+          <Route path="documents" element={<ClientDocumentsPage />} />
           <Route path="receipts" element={<ClientReceiptsPage />} />
           <Route path="profile" element={<ClientProfilePage />} />
           <Route path="*" element={<Navigate to="/client/dashboard" replace />} />
@@ -68,14 +71,17 @@ function App() {
             <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/allocations" element={<AllocationsPage />} />
             </Route>
-            <Route element={<ProtectedRoute roles={['admin', 'staff']} />}>
+            <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/clients" element={<ClientsPage />} />
             </Route>
-            <Route element={<ProtectedRoute roles={['admin', 'accountant']} />}>
+            <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/properties" element={<PropertiesPage />} />
             </Route>
-            <Route element={<ProtectedRoute roles={['admin', 'accountant']} />}>
+            <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/receipts" element={<ReceiptsPage />} />
+            </Route>
+            <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
+              <Route path="/documents" element={<DocumentsPage />} />
             </Route>
             <Route element={<ProtectedRoute roles={['admin']} />}>
               <Route path="/settings" element={<SettingsPage />} />

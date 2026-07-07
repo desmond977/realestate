@@ -1,9 +1,21 @@
 export function canViewProperties(user) {
-  return ['admin', 'accountant'].includes(user?.role)
+  return ['admin', 'staff', 'accountant'].includes(user?.role)
 }
 
 export function canManageProperties(user) {
   return user?.role === 'admin'
+}
+
+export function canManageAllocations(user) {
+  return user?.role === 'admin'
+}
+
+export function canManageRealtors(user) {
+  return ['admin', 'staff'].includes(user?.role)
+}
+
+export function canManageClients(user) {
+  return ['admin', 'staff'].includes(user?.role)
 }
 
 export function canDeleteClients(user) {

@@ -1,5 +1,6 @@
 import {
   Building2,
+  FileText,
   Gauge,
   Home,
   LogOut,
@@ -16,15 +17,16 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { api, assetUrl } from '../../api/client'
-import { applyBranding, getPersistedBranding, persistBranding } from '../../utils/theme.js'
+import { applyBranding, getPersistedBranding, getPersistedUserTheme, persistBranding } from '../../utils/theme.js'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'accountant'] },
+  { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff'] },
+  { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Allocations', to: '/allocations', icon: Home, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'accountant'] },
+  { label: 'Documents', to: '/documents', icon: FileText, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Users', to: '/users', icon: ShieldCheck, roles: ['admin'] },
 ]
 
@@ -46,20 +48,15 @@ export function DashboardLayout() {
         const response = await api.get('/settings/company')
 
         if (active) {
-          const settings = response.data.data.settings
-          const userBranding = {
-            ...settings,
-            theme_mode: user?.theme_mode ?? settings.theme_mode ?? 'system',
-          }
-          setBranding(userBranding)
-          persistBranding(userBranding)
-          applyBranding(userBranding)
+          setBranding(response.data.data.settings)
+          persistBranding(response.data.data.settings)
+          applyBranding({ ...getPersistedUserTheme(), brand_color: response.data.data.settings.brand_color })
         }
       } catch {
         if (active) {
           const persisted = getPersistedBranding()
           setBranding(persisted)
-          applyBranding(persisted)
+          applyBranding({ ...getPersistedUserTheme(), ...persisted })
         }
       }
     }
@@ -74,7 +71,7 @@ export function DashboardLayout() {
       active = false
       window.removeEventListener('estateopsSettingsUpdated', onSettings)
     }
-  }, [user?.theme_mode])
+  }, [])
 
   const visibleNavItems = navItems.filter((item) => item.roles.includes(user?.role))
   const visibleUtilityItems = utilityNavItems.filter((item) => item.roles.includes(user?.role))

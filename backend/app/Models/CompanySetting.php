@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CompanySetting extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
         'company_name',
@@ -17,6 +19,7 @@ class CompanySetting extends Model
         'company_logo',
         'target_type',
         'target_amount',
+        'theme_mode',
         'brand_color',
     ];
 

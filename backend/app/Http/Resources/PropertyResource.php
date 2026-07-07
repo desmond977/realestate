@@ -28,13 +28,32 @@ class PropertyResource extends JsonResource
             'land_size' => $this->land_size,
             'document_type' => $this->document_type,
             'image' => $this->image,
-            'image_url' => $this->image ? (
-                filter_var($this->image, FILTER_VALIDATE_URL)
-                    ? $this->image
-                    : Storage::disk('public')->url($this->image)
-            ) : null,
+            'image_url' => $this->image ? $this->resolvePublicImageUrl($this->image) : $this->getDefaultImageUrl(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    private function getDefaultImageUrl(): string
+    {
+        $baseUrl = config('app.url');
+        $baseUrl = rtrim($baseUrl, '/');
+
+        return $baseUrl . '/assets/property-placeholder.svg';
+    }
+
+    private function resolvePublicImageUrl(string $path): string
+    {
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        $storageUrl = Storage::disk('public')->url($path);
+
+        if (filter_var($storageUrl, FILTER_VALIDATE_URL)) {
+            return $storageUrl;
+        }
+
+        return rtrim(config('app.url'), '/') . '/' . ltrim($storageUrl, '/');
     }
 }

@@ -17,8 +17,8 @@
 <ul style="margin: 0 0 20px 20px; padding: 0;">
     <li>Client: {{ $allocation->client->full_name ?? 'N/A' }}</li>
     <li>Property: {{ $allocation->property->title ?? 'N/A' }}</li>
-    <li>Allocation Reference: {{ $allocation->reference ?? 'N/A' }}</li>
     <li>Realtor: {{ $allocation->realtor->full_name ?? 'N/A' }}</li>
+    <li>Payment Duration: {{ $allocation->paymentDurationLabel() }}</li>
     <li>Allocation Date: {{ $allocation->allocated_at?->format('M d, Y') ?? 'N/A' }}</li>
 </ul>
 

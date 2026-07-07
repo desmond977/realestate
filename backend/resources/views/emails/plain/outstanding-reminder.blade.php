@@ -6,8 +6,8 @@ This is a reminder that you have an outstanding balance on your property allocat
 
 Transaction Details:
 - Property: {{ $allocation->property->title ?? 'N/A' }}
-- Allocation Reference: {{ $allocation->reference ?? 'N/A' }}
 - Realtor: {{ $allocation->realtor->full_name ?? 'N/A' }}
+- Payment Duration: {{ $allocation->paymentDurationLabel() }}
 
 Important Summary:
 - Property Price: NGN {{ number_format($allocation->total_amount, 2) }}

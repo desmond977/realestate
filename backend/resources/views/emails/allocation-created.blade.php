@@ -20,9 +20,9 @@
     <li>Client: {{ $allocation->client->full_name ?? 'N/A' }}</li>
     <li>Property: {{ $allocation->property->title ?? 'N/A' }}</li>
     <li>Location: {{ $allocation->property->location ?? 'N/A' }}</li>
-    <li>Allocation Reference: {{ $allocation->reference ?? 'N/A' }}</li>
     <li>Realtor: {{ $allocation->realtor->full_name ?? 'N/A' }}</li>
     <li>Payment Plan: {{ ucfirst($allocation->payment_plan->value ?? 'installment') }}</li>
+    <li>Payment Duration: {{ $allocation->paymentDurationLabel() }}</li>
     <li>Payment Status: {{ ucfirst($allocation->status->value ?? 'active') }}</li>
     <li>Allocation Date: {{ $allocation->allocated_at ? $allocation->allocated_at->format('M d, Y') : 'N/A' }}</li>
 </ul>

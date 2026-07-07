@@ -11,12 +11,28 @@ use App\Models\Property;
 use App\Models\Realtor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class AllocationPaymentApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function fakeScreenshot(): UploadedFile
+    {
+        return UploadedFile::fake()->create('screenshot.jpg', 100, 'image/jpeg');
+    }
+
+    private function postAllocation(array $data)
+    {
+        return $this->withHeaders(['Accept' => 'application/json'])->post('/api/v1/allocations', $data);
+    }
+
+    private function patchAllocation(string $id, array $data)
+    {
+        return $this->withHeaders(['Accept' => 'application/json'])->patch("/api/v1/allocations/{$id}", $data);
+    }
 
     public function test_guest_cannot_access_allocations_or_payments(): void
     {
@@ -65,14 +81,15 @@ class AllocationPaymentApiTest extends TestCase
         $realtor = Realtor::factory()->create(['full_name' => 'Central Agent']);
         $client = Client::factory()->create(['realtor_id' => $realtor->id]);
 
-        $response = $this->postJson('/api/v1/allocations', [
+        $response = $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '3_months',
             'initial_payment_amount' => 2500000,
             'payment_method' => 'bank_transfer',
-            'transaction_reference' => 'TXN-INITIAL-001',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ]);
 
         $response
@@ -81,6 +98,10 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonPath('data.allocation.amount_paid', 2500000)
             ->assertJsonPath('data.allocation.realtor_id', $realtor->id)
             ->assertJsonPath('data.allocation.realtor.full_name', 'Central Agent')
+            ->assertJsonPath('data.allocation.payment_duration', '3_months')
+            ->assertJsonPath('data.allocation.payment_duration_label', '3 Months')
+            ->assertJsonPath('data.allocation.payment_duration_interval.value', 3)
+            ->assertJsonPath('data.allocation.payment_duration_interval.unit', 'months')
             ->assertJsonPath('data.allocation.balance', 7500000)
             ->assertJsonPath('data.allocation.status', 'active')
             ->assertJsonPath('data.allocation.property.status', 'reserved')
@@ -94,12 +115,52 @@ class AllocationPaymentApiTest extends TestCase
             ->assertJsonCount(1, 'data.allocation.payments');
 
         $this->assertDatabaseHas('payments', [
-            'transaction_reference' => 'TXN-INITIAL-001',
             'amount' => 2500000,
             'realtor_id' => $realtor->id,
+            'transaction_reference' => null,
+            'notes' => null,
         ]);
 
+        $this->assertDatabaseHas('allocations', [
+            'client_id' => $client->id,
+            'payment_duration' => '3_months',
+            'custom_duration_value' => null,
+            'custom_duration_unit' => null,
+        ]);
+        $this->assertNotNull(Allocation::query()->where('client_id', $client->id)->first()?->payment_screenshot);
+
         $this->assertDatabaseCount('receipts', 1);
+    }
+
+    public function test_allocation_payment_duration_is_required_and_custom_duration_is_structured(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+        ]);
+        $client = Client::factory()->create();
+
+        $this->postAllocation([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_screenshot' => $this->fakeScreenshot(),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['payment_duration']);
+
+        $this->postAllocation([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_duration' => 'custom',
+            'custom_duration_value' => 0,
+            'custom_duration_unit' => 'fortnights',
+            'payment_screenshot' => $this->fakeScreenshot(),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['custom_duration_value', 'custom_duration_unit']);
     }
 
     public function test_full_payment_allocation_requires_full_initial_payment(): void
@@ -111,14 +172,37 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $this->postJson('/api/v1/allocations', [
+        $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'full',
+            'payment_duration' => 'one_time',
             'initial_payment_amount' => 5000000,
+            'payment_screenshot' => $this->fakeScreenshot(),
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['initial_payment_amount']);
+    }
+
+    public function test_payment_screenshot_is_required_when_creating_allocation_with_payment(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+        ]);
+        $client = Client::factory()->create();
+
+        $this->postAllocation([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_duration' => '1_month',
+            'payment_status' => 'part_payment',
+            'initial_payment_amount' => 1000000,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['payment_screenshot']);
     }
 
     public function test_allocation_can_link_selected_realtor_to_client_and_payment(): void
@@ -131,13 +215,15 @@ class AllocationPaymentApiTest extends TestCase
         $client = Client::factory()->create(['realtor_id' => null]);
         $realtor = Realtor::factory()->create(['full_name' => 'Allocation Realtor']);
 
-        $response = $this->postJson('/api/v1/allocations', [
+        $response = $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'realtor_id' => $realtor->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '1_month',
             'initial_payment_amount' => 1000000,
+            'payment_screenshot' => $this->fakeScreenshot(),
         ]);
 
         $response
@@ -150,6 +236,71 @@ class AllocationPaymentApiTest extends TestCase
             'id' => $client->id,
             'realtor_id' => $realtor->id,
         ]);
+    }
+
+    public function test_duplicate_active_allocation_for_same_client_and_property_is_rejected(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+            'available_count' => 2,
+            'reserved_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+
+        $payload = [
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_duration' => '1_month',
+            'payment_status' => 'unpaid',
+        ];
+
+        $this->postAllocation($payload)->assertCreated();
+
+        $this->postAllocation($payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['client_id', 'property_id']);
+
+        $this->assertDatabaseCount('allocations', 1);
+
+        $property->refresh();
+        $this->assertSame(1, $property->available_count);
+        $this->assertSame(1, $property->reserved_count);
+    }
+
+    public function test_cancelled_allocation_does_not_block_reallocating_same_client_and_property(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'accountant']));
+        $property = Property::factory()->create([
+            'status' => PropertyStatus::Available,
+            'price' => 10000000,
+            'available_count' => 1,
+            'reserved_count' => 0,
+        ]);
+        $client = Client::factory()->create();
+
+        Allocation::factory()->create([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'amount_paid' => 0,
+            'balance' => 10000000,
+            'status' => AllocationStatus::Cancelled,
+        ]);
+
+        $this->postAllocation([
+            'property_id' => $property->id,
+            'client_id' => $client->id,
+            'total_amount' => 10000000,
+            'payment_plan' => 'installment',
+            'payment_duration' => '1_month',
+            'payment_status' => 'unpaid',
+        ])->assertCreated();
+
+        $this->assertDatabaseCount('allocations', 2);
     }
 
     public function test_property_with_no_available_count_cannot_be_allocated(): void
@@ -165,11 +316,13 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $this->postJson('/api/v1/allocations', [
+        $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '1_month',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['property_id']);
     }
@@ -187,12 +340,14 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $this->postJson('/api/v1/allocations', [
+        $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '2_months',
             'payment_status' => 'unpaid',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['property_id']);
     }
@@ -206,12 +361,14 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $this->postJson('/api/v1/allocations', [
+        $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '2_months',
             'payment_status' => 'unpaid',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['total_amount']);
     }
@@ -229,11 +386,14 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $response = $this->postJson('/api/v1/allocations', [
+        $response = $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => 'custom',
+            'custom_duration_value' => 10,
+            'custom_duration_unit' => 'weeks',
             'payment_status' => 'unpaid',
             'initial_payment_amount' => 500000,
         ]);
@@ -242,6 +402,11 @@ class AllocationPaymentApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.allocation.status', 'reserved')
             ->assertJsonPath('data.allocation.amount_paid', 0)
+            ->assertJsonPath('data.allocation.payment_duration', 'custom')
+            ->assertJsonPath('data.allocation.custom_duration_value', 10)
+            ->assertJsonPath('data.allocation.custom_duration_unit', 'weeks')
+            ->assertJsonPath('data.allocation.payment_duration_interval.value', 10)
+            ->assertJsonPath('data.allocation.payment_duration_interval.unit', 'weeks')
             ->assertJsonPath('data.allocation.balance', 10000000)
             ->assertJsonPath('data.allocation.property.available_count', 1)
             ->assertJsonPath('data.allocation.property.reserved_count', 1)
@@ -264,12 +429,14 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $response = $this->postJson('/api/v1/allocations', [
+        $response = $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '6_months',
             'payment_status' => 'paid',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ]);
 
         $response
@@ -307,18 +474,24 @@ class AllocationPaymentApiTest extends TestCase
             'status' => AllocationStatus::Reserved,
         ]);
 
-        $response = $this->patchJson("/api/v1/allocations/{$allocation->id}", [
+        $response = $this->patchAllocation($allocation->id, [
+            'payment_duration' => 'custom',
+            'custom_duration_value' => 18,
+            'custom_duration_unit' => 'months',
             'payment_status' => 'part_payment',
             'initial_payment_amount' => 2500000,
             'payment_method' => 'bank_transfer',
-            'payment_notes' => 'First installment',
             'notes' => 'Buyer requested installment plan.',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ]);
 
         $response
             ->assertOk()
             ->assertJsonPath('message', 'Allocation updated successfully.')
             ->assertJsonPath('data.allocation.status', 'active')
+            ->assertJsonPath('data.allocation.payment_duration', 'custom')
+            ->assertJsonPath('data.allocation.custom_duration_value', 18)
+            ->assertJsonPath('data.allocation.custom_duration_unit', 'months')
             ->assertJsonPath('data.allocation.amount_paid', 2500000)
             ->assertJsonPath('data.allocation.balance', 7500000)
             ->assertJsonPath('data.allocation.notes', 'Buyer requested installment plan.')
@@ -331,7 +504,7 @@ class AllocationPaymentApiTest extends TestCase
         $this->assertDatabaseHas('payments', [
             'allocation_id' => $allocation->id,
             'amount' => 2500000,
-            'notes' => 'First installment',
+            'notes' => null,
         ]);
     }
 
@@ -356,10 +529,11 @@ class AllocationPaymentApiTest extends TestCase
             'status' => AllocationStatus::Reserved,
         ]);
 
-        $response = $this->patchJson("/api/v1/allocations/{$allocation->id}", [
+        $response = $this->patchAllocation($allocation->id, [
             'payment_status' => 'paid',
             'initial_payment_amount' => 10000000,
             'payment_method' => 'pos',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ]);
 
         $response
@@ -394,10 +568,11 @@ class AllocationPaymentApiTest extends TestCase
             'status' => AllocationStatus::Reserved,
         ]);
 
-        $this->patchJson("/api/v1/allocations/{$allocation->id}", [
+        $this->patchAllocation($allocation->id, [
             'payment_status' => 'paid',
             'initial_payment_amount' => 10000000,
             'payment_method' => 'pos',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ])->assertOk()
             ->assertJsonPath('data.allocation.property.status', 'available')
             ->assertJsonPath('data.allocation.property.available_count', 0)
@@ -467,11 +642,13 @@ class AllocationPaymentApiTest extends TestCase
         ]);
         $client = Client::factory()->create();
 
-        $response = $this->postJson('/api/v1/allocations', [
+        $response = $this->postAllocation([
             'property_id' => $property->id,
             'client_id' => $client->id,
             'total_amount' => 10000000,
             'payment_plan' => 'installment',
+            'payment_duration' => '1_week',
+            'payment_screenshot' => $this->fakeScreenshot(),
         ]);
 
         $response

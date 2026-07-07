@@ -17,6 +17,7 @@ class ReceiptResource extends JsonResource
             'receipt_number' => $this->receipt_number,
             'issued_at' => $this->issued_at?->toISOString(),
             'metadata' => $this->metadata,
+            'snapshot' => $this->snapshot,
             'payment' => new PaymentResource($this->whenLoaded('payment')),
             'issued_by' => new UserResource($this->whenLoaded('issuer')),
         ];

@@ -44,7 +44,7 @@ return [
 
         'beanstalkd' => [
             'driver' => 'beanstalkd',
-            'host' => 'localhost',
+            'host' => env('BEANSTALKD_HOST', ''),
             'queue' => 'default',
             'retry_after' => 90,
             'block_for' => 0,
@@ -55,7 +55,7 @@ return [
             'driver' => 'sqs',
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'prefix' => env('SQS_PREFIX', 'https://sqs.us-east-1.amazonaws.com/your-account-id'),
+            'prefix' => env('SQS_PREFIX', ''),
             'queue' => env('SQS_QUEUE', 'default'),
             'suffix' => env('SQS_SUFFIX'),
             'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),

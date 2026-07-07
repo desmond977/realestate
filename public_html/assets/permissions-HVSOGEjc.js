@@ -1,0 +1,1 @@
+function e(e){return e?.role===`admin`}function t(e){return e?.role===`admin`}function n(e){return e?.role===`admin`}function r(e){return e?.role===`admin`}export{e as i,t as n,n as r,r as t};

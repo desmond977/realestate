@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\ClientController;
 use App\Http\Controllers\Api\V1\CompanySettingController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\ReceiptController;
@@ -47,26 +48,49 @@ Route::prefix('v1')->group(function () {
         Route::get('allocations/form-options', [AllocationController::class, 'formOptions'])
             ->middleware('role:admin,staff,accountant');
         Route::apiResource('allocations', AllocationController::class)
-            ->only(['index', 'store', 'show', 'update', 'destroy'])
+            ->only(['index', 'show'])
             ->middleware('role:admin,staff,accountant');
-        Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware('role:admin,staff');
-        Route::apiResource('clients', ClientController::class)->middleware('role:admin,staff');
+        Route::apiResource('allocations', AllocationController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->middleware('role:admin');
+        Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware('role:admin,staff,accountant');
+        Route::apiResource('clients', ClientController::class)
+            ->only(['index', 'show'])
+            ->middleware('role:admin,staff,accountant');
+        Route::apiResource('clients', ClientController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->middleware('role:admin,staff');
         Route::get('realtors/{realtor}/analytics', [RealtorController::class, 'analytics'])->middleware('role:admin,staff');
-        Route::apiResource('realtors', RealtorController::class)->middleware('role:admin,staff');
+        Route::apiResource('realtors', RealtorController::class)
+            ->only(['index', 'show'])
+            ->middleware('role:admin,staff,accountant');
+        Route::apiResource('realtors', RealtorController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->middleware('role:admin,staff');
         Route::apiResource('users', UserController::class)->middleware('role:admin');
         Route::apiResource('payments', PaymentController::class)
             ->only(['index', 'store', 'show'])
             ->middleware('role:admin,accountant');
         Route::apiResource('properties', PropertyController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,accountant');
+            ->middleware('role:admin,staff,accountant');
         Route::apiResource('properties', PropertyController::class)
             ->only(['store', 'update', 'destroy'])
             ->middleware('role:admin');
+        Route::get('documents', [DocumentController::class, 'index'])->middleware('role:admin,staff,accountant');
+        Route::get('document-templates', [DocumentController::class, 'templatesIndex'])->middleware('role:admin');
+        Route::post('document-templates', [DocumentController::class, 'storeTemplate'])->middleware('role:admin');
+        Route::patch('document-templates/{template}', [DocumentController::class, 'updateTemplate'])->middleware('role:admin');
+        Route::delete('document-templates/{template}', [DocumentController::class, 'destroyTemplate'])->middleware('role:admin');
+        Route::get('allocations/{allocation}/documents', [DocumentController::class, 'show'])->middleware('role:admin,staff,accountant');
+        Route::patch('allocations/{allocation}/documents', [DocumentController::class, 'update'])->middleware('role:admin,staff,accountant');
+        Route::post('allocations/{allocation}/documents/{template}/generate', [DocumentController::class, 'generate'])->middleware('role:admin,staff,accountant');
+        Route::get('allocations/{allocation}/documents/{template}/view', [DocumentController::class, 'view'])->middleware('role:admin,staff,accountant');
+        Route::get('allocations/{allocation}/documents/{template}/download', [DocumentController::class, 'download'])->middleware('role:admin,staff,accountant');
         Route::get('receipts/{receipt}/document', [ReceiptController::class, 'document'])
             ->middleware('role:admin,staff,accountant');
         Route::apiResource('receipts', ReceiptController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,accountant');
+            ->middleware('role:admin,staff,accountant');
     });
 });

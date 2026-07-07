@@ -15,7 +15,10 @@ use App\Models\Client;
 use App\Models\CompanySetting;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class EmailNotificationService
 {
@@ -26,60 +29,55 @@ class EmailNotificationService
     public function sendAllocationCreated(Allocation $allocation): void
     {
         if ($allocation->client->email) {
-            Mail::to($allocation->client->email)
-                ->queue(new AllocationCreatedMail($allocation, 'client'));
+            $this->queueMail($allocation->client->email, new AllocationCreatedMail($allocation, 'client'));
         }
 
         $adminEmails = User::where('role', UserRole::Admin)->pluck('email')->filter()->unique();
         foreach ($adminEmails as $email) {
-            Mail::to($email)->queue(new AllocationCreatedMail($allocation, 'admin'));
+            $this->queueMail($email, new AllocationCreatedMail($allocation, 'admin'));
         }
     }
 
     public function sendAllocationUpdated(Allocation $allocation, string $previousStatus, float $previousAmountPaid): void
     {
         if ($allocation->client->email) {
-            Mail::to($allocation->client->email)
-                ->queue(new AllocationUpdatedMail($allocation, $previousStatus, $previousAmountPaid, 'client'));
+            $this->queueMail($allocation->client->email, new AllocationUpdatedMail($allocation, $previousStatus, $previousAmountPaid, 'client'));
         }
 
         $adminEmails = User::where('role', UserRole::Admin)->pluck('email')->filter()->unique();
         foreach ($adminEmails as $email) {
-            Mail::to($email)->queue(new AllocationUpdatedMail($allocation, $previousStatus, $previousAmountPaid, 'admin'));
+            $this->queueMail($email, new AllocationUpdatedMail($allocation, $previousStatus, $previousAmountPaid, 'admin'));
         }
     }
 
     public function sendPaymentReceived(Payment $payment): void
     {
         if ($payment->client->email) {
-            Mail::to($payment->client->email)
-                ->queue(new PaymentReceivedMail($payment, 'client'));
+            $this->queueMail($payment->client->email, new PaymentReceivedMail($payment, 'client'));
         }
 
         $adminEmails = User::where('role', UserRole::Admin)->pluck('email')->filter()->unique();
         foreach ($adminEmails as $email) {
-            Mail::to($email)->queue(new PaymentReceivedMail($payment, 'admin'));
+            $this->queueMail($email, new PaymentReceivedMail($payment, 'admin'));
         }
     }
 
     public function sendPaymentUpdated(Payment $payment, float $oldAmount): void
     {
         if ($payment->client->email) {
-            Mail::to($payment->client->email)
-                ->queue(new PaymentUpdatedMail($payment, $oldAmount, 'client'));
+            $this->queueMail($payment->client->email, new PaymentUpdatedMail($payment, $oldAmount, 'client'));
         }
 
         $adminEmails = User::where('role', UserRole::Admin)->pluck('email')->filter()->unique();
         foreach ($adminEmails as $email) {
-            Mail::to($email)->queue(new PaymentUpdatedMail($payment, $oldAmount, 'admin'));
+            $this->queueMail($email, new PaymentUpdatedMail($payment, $oldAmount, 'admin'));
         }
     }
 
     public function sendOutstandingReminder(Allocation $allocation): void
     {
         if ($allocation->client->email && $allocation->balance > 0) {
-            Mail::to($allocation->client->email)
-                ->queue(new OutstandingBalanceReminderMail($allocation));
+            $this->queueMail($allocation->client->email, new OutstandingBalanceReminderMail($allocation));
         }
     }
 
@@ -91,8 +89,7 @@ class EmailNotificationService
 
         $month = now()->format('F Y');
 
-        Mail::to($client->email)
-            ->queue(new MonthlyClientReminderMail($client, $month, $outstandingBalance, $outstandingAllocations));
+        $this->queueMail($client->email, new MonthlyClientReminderMail($client, $month, $outstandingBalance, $outstandingAllocations));
     }
 
     public function sendAdminMonthlySummary(array $summary): void
@@ -100,7 +97,7 @@ class EmailNotificationService
         $adminEmails = User::where('role', UserRole::Admin)->pluck('email')->filter()->unique();
 
         foreach ($adminEmails as $email) {
-            Mail::to($email)->queue(new AdminMonthlySummaryMail($summary));
+            $this->queueMail($email, new AdminMonthlySummaryMail($summary));
         }
     }
 
@@ -115,5 +112,27 @@ class EmailNotificationService
             'company_address' => $settings?->company_address,
             'company_logo' => $settings?->company_logo,
         ];
+    }
+
+    private function queueMail(string $email, Mailable $mail): void
+    {
+        if (config('queue.default') === 'sync') {
+            Log::warning('Email notification skipped because QUEUE_CONNECTION=sync would send mail during the web request.', [
+                'email' => $email,
+                'mail' => $mail::class,
+            ]);
+
+            return;
+        }
+
+        try {
+            Mail::to($email)->queue($mail);
+        } catch (Throwable $exception) {
+            Log::warning('Email notification could not be queued.', [
+                'email' => $email,
+                'mail' => $mail::class,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

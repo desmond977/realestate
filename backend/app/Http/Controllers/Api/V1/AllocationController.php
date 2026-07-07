@@ -19,6 +19,7 @@ use App\Services\RealEstate\AllocationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Enum;
 
 class AllocationController extends Controller
@@ -82,9 +83,14 @@ class AllocationController extends Controller
 
     public function store(StoreAllocationRequest $request): JsonResponse
     {
-        $allocation = $this->allocationService->create($request->validated(), $request->user());
+        $validated = $request->validated();
 
-        // Send email notifications (non-blocking, after transaction completes)
+        if ($request->hasFile('payment_screenshot') && $request->file('payment_screenshot')->isValid()) {
+            $validated['payment_screenshot'] = $request->file('payment_screenshot')->store('payment-screenshots', 'public');
+        }
+
+        $allocation = $this->allocationService->create($validated, $request->user());
+
         $this->allocationService->notifyAllocationCreated($allocation);
 
         return response()->json([
@@ -108,9 +114,19 @@ class AllocationController extends Controller
 
     public function update(UpdateAllocationRequest $request, Allocation $allocation): JsonResponse
     {
+        $validated = $request->validated();
+
+        if ($request->hasFile('payment_screenshot') && $request->file('payment_screenshot')->isValid()) {
+            if ($allocation->payment_screenshot && Storage::disk('public')->exists($allocation->payment_screenshot)) {
+                Storage::disk('public')->delete($allocation->payment_screenshot);
+            }
+
+            $validated['payment_screenshot'] = $request->file('payment_screenshot')->store('payment-screenshots', 'public');
+        }
+
         $allocation = $this->allocationService->updatePaymentState(
             $allocation,
-            $request->validated(),
+            $validated,
             $request->user()
         );
 

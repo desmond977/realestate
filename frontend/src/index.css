@@ -35,14 +35,8 @@
   --color-canvas: #0f1610;
 }
 
-:root[data-theme='dark'] .receipt-modal-bg {
-  background-color: #ffffff !important;
-}
-
-/* Modal and receipt background should be white */
-:root[data-theme='dark'] .bg-white:not(.receipt-print),
-:root[data-theme='dark'] .bg-white:not(.receipt-print) * {
-  background-color: #141c17;
+:root[data-theme='dark'] .bg-white {
+  background-color: #141c17 !important;
 }
 
 /* Monthly target card in dark mode should use a specific dark green */
@@ -60,13 +54,13 @@
 /* Keep receipt popup white even in dark mode for a clean printed view */
 :root .receipt-print.bg-white,
 :root .receipt-print {
-  background-color: #ffffff;
+  background-color: rgba(255,255,255,0.98);
   color: #17211b;
 }
 
 :root[data-theme='dark'] .receipt-print.bg-white,
 :root[data-theme='dark'] .receipt-print {
-  background-color: #ffffff !important;
+  background-color: rgba(255,255,255,0.96) !important;
   color: #17211b !important;
 }
 

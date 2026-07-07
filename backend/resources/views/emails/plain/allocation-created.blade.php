@@ -14,9 +14,9 @@ Transaction Details:
 - Client: {{ $allocation->client->full_name ?? 'N/A' }}
 - Property: {{ $allocation->property->title ?? 'N/A' }}
 - Location: {{ $allocation->property->location ?? 'N/A' }}
-- Allocation Reference: {{ $allocation->reference ?? 'N/A' }}
 - Realtor: {{ $allocation->realtor->full_name ?? 'N/A' }}
 - Payment Plan: {{ ucfirst($allocation->payment_plan->value ?? 'installment') }}
+- Payment Duration: {{ $allocation->paymentDurationLabel() }}
 - Payment Status: {{ ucfirst($allocation->status->value ?? $allocation->status) }}
 - Allocation Date: {{ $allocation->allocated_at ? $allocation->allocated_at->format('M d, Y') : 'N/A' }}
 

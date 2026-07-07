@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReceiptService
 {
+    public function __construct(private readonly ReceiptSnapshotService $receiptSnapshotService)
+    {
+    }
+
     /**
      * @param array<string, mixed> $metadata
      */
@@ -24,11 +28,14 @@ class ReceiptService
                 return $payment->receipt;
             }
 
+            $issuedAt = now();
+            $receiptNumber = $this->generateReceiptNumber($payment);
+
             return Receipt::query()->create([
                 'payment_id' => $payment->id,
                 'issued_by' => $issuer?->id,
-                'receipt_number' => $this->generateReceiptNumber($payment),
-                'issued_at' => now(),
+                'receipt_number' => $receiptNumber,
+                'issued_at' => $issuedAt,
                 'metadata' => [
                     'amount' => (float) $payment->amount,
                     'allocation_id' => $payment->allocation_id,
@@ -37,6 +44,7 @@ class ReceiptService
                     'property_id' => $payment->property_id,
                     'payment_method' => $payment->payment_method,
                 ] + $metadata,
+                'snapshot' => $this->receiptSnapshotService->build($payment, $receiptNumber, $issuedAt, $issuer),
             ]);
         });
     }

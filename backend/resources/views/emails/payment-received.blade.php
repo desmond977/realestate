@@ -19,13 +19,9 @@
 <ul style="margin: 0 0 20px 20px; padding: 0;">
     <li>Client: {{ $payment->client->full_name ?? 'N/A' }}</li>
     <li>Property: {{ $payment->property->title ?? 'N/A' }}</li>
-    <li>Allocation Reference: {{ $payment->allocation->reference ?? 'N/A' }}</li>
     <li>Realtor: {{ $payment->realtor->full_name ?? 'N/A' }}</li>
     <li>Payment Date: {{ $payment->paid_at ? $payment->paid_at->format('M d, Y h:i A') : 'N/A' }}</li>
     <li>Payment Method: {{ $payment->payment_method ?? 'N/A' }}</li>
-    @if($payment->transaction_reference)
-        <li>Transaction Reference: {{ $payment->transaction_reference }}</li>
-    @endif
     @if($payment->receipt)
         <li>Receipt Number: {{ $payment->receipt->receipt_number ?? 'N/A' }}</li>
     @endif

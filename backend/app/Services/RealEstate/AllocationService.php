@@ -10,6 +10,7 @@ use App\Models\Client;
 use App\Models\Property;
 use App\Models\User;
 use App\Services\RealEstate\AllocationNotificationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -27,7 +28,8 @@ class AllocationService
      */
     public function create(array $payload, ?User $allocator = null): Allocation
     {
-        return DB::transaction(function () use ($payload, $allocator) {
+        try {
+            return DB::transaction(function () use ($payload, $allocator) {
             $property = Property::query()->lockForUpdate()->findOrFail($payload['property_id']);
             $client = Client::query()->lockForUpdate()->findOrFail($payload['client_id']);
 
@@ -40,6 +42,24 @@ class AllocationService
             if ($property->available_count < 1) {
                 throw ValidationException::withMessages([
                     'property_id' => ['No available plots remain for this property.'],
+                ]);
+            }
+
+            $existingAllocation = Allocation::query()
+                ->where('property_id', $property->id)
+                ->where('client_id', $client->id)
+                ->whereIn('status', [
+                    AllocationStatus::Reserved->value,
+                    AllocationStatus::Active->value,
+                    AllocationStatus::Completed->value,
+                ])
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingAllocation) {
+                throw ValidationException::withMessages([
+                    'client_id' => ['This client already has an allocation for the selected property.'],
+                    'property_id' => ['This property is already allocated to the selected client.'],
                 ]);
             }
 
@@ -104,11 +124,19 @@ class AllocationService
                 'amount_paid' => 0,
                 'balance' => $totalAmount,
                 'payment_plan' => $paymentPlan,
+                'payment_duration' => $payload['payment_duration'],
+                'custom_duration_value' => $payload['payment_duration'] === 'custom'
+                    ? $payload['custom_duration_value']
+                    : null,
+                'custom_duration_unit' => $payload['payment_duration'] === 'custom'
+                    ? $payload['custom_duration_unit']
+                    : null,
                 'status' => $paymentStatus === 'unpaid'
                     ? AllocationStatus::Reserved->value
                     : AllocationStatus::Active->value,
                 'allocated_at' => $payload['allocated_at'] ?? now()->toDateString(),
                 'notes' => $payload['notes'] ?? null,
+                'payment_screenshot' => $payload['payment_screenshot'] ?? null,
             ]);
 
             $this->propertyInventoryService->reserveOne($property);
@@ -118,14 +146,22 @@ class AllocationService
                     'amount' => $initialPaymentAmount,
                     'payment_type' => $paymentPlan,
                     'payment_method' => $payload['payment_method'] ?? null,
-                    'transaction_reference' => $payload['transaction_reference'] ?? null,
                     'paid_at' => $payload['paid_at'] ?? now(),
-                    'notes' => $payload['payment_notes'] ?? null,
                 ], $allocator);
             }
 
             return $allocation->fresh(['client.realtor', 'realtor', 'property', 'payments.receipt']);
-        });
+            });
+        } catch (QueryException $exception) {
+            if (str_contains($exception->getMessage(), 'allocations_active_duplicate_key_unique')) {
+                throw ValidationException::withMessages([
+                    'client_id' => ['This client already has an allocation for the selected property.'],
+                    'property_id' => ['This property is already allocated to the selected client.'],
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     /**
@@ -183,6 +219,20 @@ class AllocationService
                 $updates['notes'] = $payload['notes'];
             }
 
+            if (array_key_exists('payment_screenshot', $payload)) {
+                $updates['payment_screenshot'] = $payload['payment_screenshot'];
+            }
+
+            if (array_key_exists('payment_duration', $payload)) {
+                $updates['payment_duration'] = $payload['payment_duration'];
+                $updates['custom_duration_value'] = $payload['payment_duration'] === 'custom'
+                    ? $payload['custom_duration_value']
+                    : null;
+                $updates['custom_duration_unit'] = $payload['payment_duration'] === 'custom'
+                    ? $payload['custom_duration_unit']
+                    : null;
+            }
+
             if (($payload['payment_status'] ?? null) === 'unpaid' && (float) ($allocation->amount_paid ?? 0) <= 0) {
                 $updates['status'] = AllocationStatus::Reserved->value;
             }
@@ -205,9 +255,7 @@ class AllocationService
                     'amount' => $paymentAmount,
                     'payment_type' => $payload['payment_type'] ?? $allocation->payment_plan->value,
                     'payment_method' => $payload['payment_method'] ?? null,
-                    'transaction_reference' => $payload['transaction_reference'] ?? null,
                     'paid_at' => $payload['paid_at'] ?? now(),
-                    'notes' => $payload['payment_notes'] ?? null,
                 ], $user);
             } elseif (in_array($paymentStatus, ['paid', 'part_payment'], true)) {
                 throw ValidationException::withMessages([

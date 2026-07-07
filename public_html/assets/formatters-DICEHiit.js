@@ -1,0 +1,1 @@
+var e=new Intl.NumberFormat(`en-NG`,{style:`currency`,currency:`NGN`,maximumFractionDigits:0});function t(t){return e.format(Number(t||0))}export{t};

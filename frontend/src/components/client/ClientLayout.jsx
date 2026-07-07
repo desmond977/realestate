@@ -1,5 +1,6 @@
 import {
   Building2,
+  FileText,
   Gauge,
   LogOut,
   Menu,
@@ -19,6 +20,7 @@ const navItems = [
   { label: 'My Properties', to: '/client/properties', icon: Building2 },
   { label: 'Payments', to: '/client/payments', icon: WalletCards },
   { label: 'Balances', to: '/client/balances', icon: Scale },
+  { label: 'Documents', to: '/client/documents', icon: FileText },
   { label: 'Receipts', to: '/client/receipts', icon: ReceiptText },
 ]
 

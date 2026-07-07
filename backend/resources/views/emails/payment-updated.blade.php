@@ -17,7 +17,6 @@
 <ul style="margin: 0 0 20px 20px; padding: 0;">
     <li>Client: {{ $payment->client->full_name ?? 'N/A' }}</li>
     <li>Property: {{ $payment->property->title ?? 'N/A' }}</li>
-    <li>Allocation Reference: {{ $payment->allocation->reference ?? 'N/A' }}</li>
     <li>Realtor: {{ $payment->realtor->full_name ?? 'N/A' }}</li>
     @if($payment->receipt)
         <li>Receipt Number: {{ $payment->receipt->receipt_number ?? 'N/A' }}</li>

@@ -97,7 +97,7 @@ function UserModal({ mode, initialValues, submitting, error, onClose, onSubmit }
 
           <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose} className="rounded-md border border-line px-4 py-2.5 text-sm font-medium text-muted hover:bg-canvas">Cancel</button>
-            <button type="submit" disabled={submitting || !!error} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-70">
+            <button type="submit" disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-70">
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               {mode === 'create' ? 'Create user' : 'Save user'}
             </button>

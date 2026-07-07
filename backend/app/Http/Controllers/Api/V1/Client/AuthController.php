@@ -23,7 +23,6 @@ class AuthController extends Controller
             'address' => $client->address,
             'occupation' => $client->occupation,
             'role' => 'client',
-            'theme_mode' => $client->theme_mode ?? 'system',
             'profile_image_url' => $client->profile_image_url,
             'created_at' => $client->created_at?->toISOString(),
             'email_verified_at' => $client->email_verified_at?->toISOString(),
@@ -138,7 +137,6 @@ class AuthController extends Controller
             'company_logo' => $settings?->company_logo,
             'company_email' => $settings?->company_email,
             'company_phone' => $settings?->company_phone,
-            'brand_color' => $settings?->brand_color ?? '#166534',
         ]);
     }
 }

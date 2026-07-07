@@ -10,7 +10,7 @@ enum UserRole: string
 
     public function canViewProperties(): bool
     {
-        return in_array($this, [self::Admin, self::Accountant], true);
+        return in_array($this, [self::Admin, self::Staff, self::Accountant], true);
     }
 
     public function canManageProperties(): bool

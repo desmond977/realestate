@@ -12,8 +12,8 @@
 <p style="margin: 0 0 8px; font-weight: bold;">Transaction Details:</p>
 <ul style="margin: 0 0 20px 20px; padding: 0;">
     <li>Property: {{ $allocation->property->title ?? 'N/A' }}</li>
-    <li>Allocation Reference: {{ $allocation->reference ?? 'N/A' }}</li>
     <li>Realtor: {{ $allocation->realtor->full_name ?? 'N/A' }}</li>
+    <li>Payment Duration: {{ $allocation->paymentDurationLabel() }}</li>
 </ul>
 
 <p style="margin: 0 0 8px; font-weight: bold;">Important Summary:</p>

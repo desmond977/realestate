@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
-import { canDeleteClients } from '../auth/permissions'
+import { canDeleteClients, canManageClients } from '../auth/permissions'
 import { ReceiptDocumentModal } from '../components/receipts/ReceiptDocument'
 import { formatMoney } from '../utils/formatters'
 
@@ -582,11 +582,11 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
             >
               Cancel
             </button>
-<button
-               type="submit"
-               disabled={submitting || !!error}
-               className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
-             >
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
               {mode === 'create' ? 'Create client' : 'Save changes'}
             </button>
@@ -600,6 +600,7 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
 export function ClientsPage() {
   const { user } = useAuth()
   const canDelete = canDeleteClients(user)
+  const canManage = canManageClients(user)
   const [clients, setClients] = useState([])
   const [meta, setMeta] = useState(null)
   const [filters, setFilters] = useState({ search: '' })
@@ -794,14 +795,16 @@ export function ClientsPage() {
             Manage buyer profiles, contact details, and relationship history.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          <Plus size={17} />
-          Add client
-        </button>
+        {canManage ? (
+          <button
+            type="button"
+            onClick={() => { setModalError(''); setModal({ mode: 'create' }) }}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
+          >
+            <Plus size={17} />
+            Add client
+          </button>
+        ) : null}
       </div>
 
       <form
@@ -930,15 +933,17 @@ export function ClientsPage() {
                   <Eye size={14} />
                   View
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
-                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
-                  aria-label={`Edit ${client.full_name}`}
-                >
-                  <Edit3 size={14} />
-                  Edit
-                </button>
+                {canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
+                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
+                    aria-label={`Edit ${client.full_name}`}
+                  >
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                ) : null}
                 {canDelete ? (
                   <button
                     type="button"
@@ -1019,14 +1024,16 @@ export function ClientsPage() {
                         <Eye size={16} />
                         View
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
-                        className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink"
-                        aria-label={`Edit ${client.full_name}`}
-                      >
-                        <Edit3 size={16} />
-                      </button>
+                      {canManage ? (
+                        <button
+                          type="button"
+                          onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
+                          className="rounded-md border border-line bg-white p-2 text-muted hover:bg-canvas hover:text-ink"
+                          aria-label={`Edit ${client.full_name}`}
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      ) : null}
                       {canDelete ? (
                         <button
                           type="button"
@@ -1104,7 +1111,7 @@ export function ClientsPage() {
 
       {(receiptDocument || documentLoading || documentError) ? (
         <ReceiptDocumentModal
-          document={receiptDocument}
+          receiptDocument={receiptDocument}
           loading={documentLoading}
           error={documentError}
           onClose={() => {
