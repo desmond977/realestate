@@ -21,7 +21,7 @@ class UpdatePaymentRequest extends FormRequest
             'payment_type' => ['sometimes', new Enum(PaymentPlan::class)],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'status' => ['sometimes', new Enum(PaymentStatus::class)],
-            'transaction_reference' => ['nullable', 'string', 'max:255', 'unique:payments,transaction_reference,' . $this->route('payment')->id],
+            'transaction_reference' => ['nullable', 'string', 'max:255', 'unique:payments,transaction_reference,'.$this->route('payment')->id],
             'paid_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ];

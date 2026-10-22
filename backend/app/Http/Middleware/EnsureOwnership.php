@@ -18,17 +18,17 @@ class EnsureOwnership
     {
         $user = $request->user();
 
-        if (!$user instanceof Client) {
+        if (! $user instanceof Client) {
             return response()->json([
-                'message' => 'Access forbidden. Client access required.'
+                'message' => 'Access forbidden. Client access required.',
             ], 403);
         }
 
         $routeParameter = $request->route($parameterName);
 
-        if (!$routeParameter) {
+        if (! $routeParameter) {
             return response()->json([
-                'message' => 'Resource not found.'
+                'message' => 'Resource not found.',
             ], 404);
         }
 
@@ -39,9 +39,9 @@ class EnsureOwnership
             // Find the model by ID
             $model = $modelClass::find($routeParameter);
 
-            if (!$model) {
+            if (! $model) {
                 return response()->json([
-                    'message' => 'Resource not found.'
+                    'message' => 'Resource not found.',
                 ], 404);
             }
         }
@@ -63,9 +63,9 @@ class EnsureOwnership
             }
         }
 
-        if (!$isOwned) {
+        if (! $isOwned) {
             return response()->json([
-                'message' => 'You do not have access to this resource.'
+                'message' => 'You do not have access to this resource.',
             ], 403);
         }
 

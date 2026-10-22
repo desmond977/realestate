@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\CompanySetting;
 use App\Models\Client;
+use App\Models\CompanySetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -99,7 +99,7 @@ class AuthController extends Controller
             'user' => $this->clientPayload($client),
             'token' => $token,
             'token_type' => 'Bearer',
-            'message' => 'Registration successful!'
+            'message' => 'Registration successful!',
         ], 201);
     }
 
@@ -111,7 +111,7 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Successfully logged out.'
+            'message' => 'Successfully logged out.',
         ]);
     }
 

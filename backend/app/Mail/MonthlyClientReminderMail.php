@@ -20,8 +20,7 @@ class MonthlyClientReminderMail extends Mailable implements ShouldQueue
         public readonly string $month,
         public readonly ?float $outstandingBalance = null,
         public readonly array $outstandingAllocations = [],
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

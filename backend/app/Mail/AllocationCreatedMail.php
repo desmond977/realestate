@@ -18,13 +18,12 @@ class AllocationCreatedMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly Allocation $allocation,
         public readonly string $recipientType, // 'client' or 'admin'
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
         $subject = $this->recipientType === 'admin'
-            ? 'New Allocation Created - ' . ($this->allocation->client->full_name ?? 'Client')
+            ? 'New Allocation Created - '.($this->allocation->client->full_name ?? 'Client')
             : 'Allocation Confirmation - Property Reserved';
 
         return new Envelope(

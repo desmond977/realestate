@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 class AuthService
 {
     /**
-     * @param array{name: string, email: string, password: string, role?: string} $payload
+     * @param  array{name: string, email: string, password: string, role?: string}  $payload
      */
     public function register(array $payload): User
     {

@@ -23,7 +23,7 @@ class UpdateProfileRequest extends FormRequest
                 'required',
                 'email',
                 'max:255',
-                'unique:users,email,' . $this->user()->id,
+                'unique:users,email,'.$this->user()->id,
             ],
             'password' => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()],
             'theme_mode' => ['nullable', 'string', 'in:light,dark,system'],

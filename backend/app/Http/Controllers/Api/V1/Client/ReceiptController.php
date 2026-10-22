@@ -6,15 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ReceiptResource;
 use App\Models\CompanySetting;
 use App\Models\Receipt;
-use App\Services\RealEstate\ReceiptDocumentService;
 use App\Services\ClientDashboardService;
+use App\Services\RealEstate\ReceiptDocumentService;
 use Illuminate\Http\Request;
 
 class ReceiptController extends Controller
 {
-    public function __construct(private readonly ReceiptDocumentService $receiptDocumentService)
-    {
-    }
+    public function __construct(private readonly ReceiptDocumentService $receiptDocumentService) {}
 
     /**
      * Get all receipts for the client
@@ -65,7 +63,7 @@ class ReceiptController extends Controller
 
         return response($document)
             ->header('Content-Type', 'text/html; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="receipt_' . $receipt->receipt_number . '.html"');
+            ->header('Content-Disposition', 'attachment; filename="receipt_'.$receipt->receipt_number.'.html"');
     }
 
     /**

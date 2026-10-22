@@ -32,6 +32,19 @@ export const paymentsApi = {
   show: (paymentId) => api.get(clientPath(`/payments/${paymentId}`)),
 }
 
+export const paymentProofSubmissionsApi = {
+  options: () => api.get(clientPath('/payment-proof-submissions/options')),
+  list: (page = 1) => api.get(clientPath('/payment-proof-submissions'), { params: { page } }),
+  submit: (payload) =>
+    api.post(clientPath('/payment-proof-submissions'), payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  proof: (submissionId) =>
+    api.get(clientPath(`/payment-proof-submissions/${submissionId}/proof`), {
+      responseType: 'blob',
+    }),
+}
+
 export const receiptsApi = {
   list: () => api.get(clientPath('/receipts')),
   show: (receiptId) => api.get(clientPath(`/receipts/${receiptId}`)),

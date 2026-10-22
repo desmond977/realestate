@@ -42,9 +42,9 @@ class ClientActivityService
         );
 
         $properties = $client->allocations
-            ->pluck('property')
-            ->filter()
-            ->unique('id')
+            ->sortByDesc('allocated_at')
+            ->unique('property_id')
+            ->filter(fn ($allocation) => $allocation->property)
             ->values();
 
         return [
@@ -60,7 +60,21 @@ class ClientActivityService
                 'outstanding_balance' => (float) $activeAllocations->sum('balance'),
                 'receipts_generated' => $client->receipts->count(),
             ],
-            'properties' => PropertyResource::collection($properties),
+            'properties' => $properties->map(function ($allocation) {
+                $property = (new PropertyResource($allocation->property))->resolve();
+                $originalPrice = (float) ($allocation->original_price ?? $allocation->total_amount);
+
+                return [
+                    ...$property,
+                    'price' => $originalPrice,
+                    'allocation_id' => $allocation->id,
+                    'original_price' => $originalPrice,
+                    'discount_type' => $allocation->discount_type,
+                    'discount_value' => (float) ($allocation->discount_value ?? 0),
+                    'discount_amount' => (float) ($allocation->discount_amount ?? 0),
+                    'final_payable_amount' => (float) $allocation->total_amount,
+                ];
+            }),
             'allocations' => AllocationResource::collection($client->allocations->sortByDesc('allocated_at')->values()),
             'payments' => PaymentResource::collection($client->payments->sortByDesc('paid_at')->values()),
             'installments' => $this->installmentHistory($client),
@@ -85,7 +99,12 @@ class ClientActivityService
                 'payment_duration_label' => $allocation->paymentDurationLabel(),
                 'payment_duration_interval' => $allocation->paymentDurationInterval(),
                 'status' => $allocation->status?->value ?? $allocation->status,
+                'original_price' => (float) ($allocation->original_price ?? $allocation->total_amount),
+                'discount_type' => $allocation->discount_type,
+                'discount_value' => (float) ($allocation->discount_value ?? 0),
+                'discount_amount' => (float) ($allocation->discount_amount ?? 0),
                 'total_amount' => (float) $allocation->total_amount,
+                'final_payable_amount' => (float) $allocation->total_amount,
                 'amount_paid' => (float) $allocation->amount_paid,
                 'balance' => (float) $allocation->balance,
                 'payments_count' => $allocation->payments->count(),

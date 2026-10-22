@@ -11,9 +11,12 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Realtor;
+use App\Models\RealtorLeaderboardSnapshot;
 use App\Models\Receipt;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -148,5 +151,84 @@ class DashboardApiTest extends TestCase
             'id' => $availableProperty->id,
             'status' => 'available',
         ]);
+    }
+    public function test_dashboard_uses_current_month_realtor_leaderboard_and_archives_previous_month(): void
+    {
+        Cache::flush();
+        Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+        Sanctum::actingAs(User::factory()->create());
+
+        $julyLeader = Realtor::factory()->create(['full_name' => 'July Leader']);
+        $augustLeader = Realtor::factory()->create(['full_name' => 'August Leader']);
+        $julyClient = Client::factory()->create(['realtor_id' => $julyLeader->id]);
+        $augustClient = Client::factory()->create(['realtor_id' => $augustLeader->id]);
+        $property = Property::factory()->create();
+
+        $julyAllocation = Allocation::factory()->create([
+            'client_id' => $julyClient->id,
+            'property_id' => $property->id,
+            'realtor_id' => $julyLeader->id,
+            'total_amount' => 4000000,
+            'amount_paid' => 4000000,
+            'balance' => 0,
+            'status' => AllocationStatus::Completed,
+            'allocated_at' => Carbon::parse('2026-07-12'),
+            'created_at' => Carbon::parse('2026-07-12'),
+            'updated_at' => Carbon::parse('2026-07-12'),
+        ]);
+
+        Payment::factory()->create([
+            'allocation_id' => $julyAllocation->id,
+            'client_id' => $julyClient->id,
+            'property_id' => $property->id,
+            'realtor_id' => $julyLeader->id,
+            'amount' => 4000000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-07-12'),
+        ]);
+
+        $augustAllocation = Allocation::factory()->create([
+            'client_id' => $augustClient->id,
+            'property_id' => $property->id,
+            'realtor_id' => $augustLeader->id,
+            'total_amount' => 7000000,
+            'amount_paid' => 7000000,
+            'balance' => 0,
+            'status' => AllocationStatus::Completed,
+            'allocated_at' => Carbon::parse('2026-08-08'),
+            'created_at' => Carbon::parse('2026-08-08'),
+            'updated_at' => Carbon::parse('2026-08-08'),
+        ]);
+
+        Payment::factory()->create([
+            'allocation_id' => $augustAllocation->id,
+            'client_id' => $augustClient->id,
+            'property_id' => $property->id,
+            'realtor_id' => $augustLeader->id,
+            'amount' => 7000000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-08-08'),
+        ]);
+
+        $response = $this->getJson('/api/v1/dashboard');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.realtor_leaderboard_period.key', '2026-08')
+            ->assertJsonPath('data.top_realtors.0.full_name', 'August Leader')
+            ->assertJsonPath('data.top_realtors.0.monthly_properties_sold_count', 1)
+            ->assertJsonPath('data.top_realtors.0.monthly_confirmed_revenue', 7000000)
+            ->assertJsonMissingPath('data.top_realtors.1');
+
+        $snapshot = RealtorLeaderboardSnapshot::query()
+            ->whereDate('leaderboard_month', '2026-07-01')
+            ->first();
+
+        $this->assertNotNull($snapshot);
+        $this->assertSame(1, $snapshot->entries_count);
+        $this->assertSame('July Leader', $snapshot->leaderboard[0]['full_name']);
+        $this->assertEquals(4000000.0, $snapshot->leaderboard[0]['monthly_confirmed_revenue']);
+
+        Carbon::setTestNow();
     }
 }

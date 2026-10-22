@@ -9,19 +9,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('properties', function (Blueprint $table) {
-            if (!Schema::hasColumn('properties', 'property_count')) {
+            if (! Schema::hasColumn('properties', 'property_count')) {
                 $table->unsignedInteger('property_count')->default(1)->after('price');
             }
 
-            if (!Schema::hasColumn('properties', 'available_count')) {
+            if (! Schema::hasColumn('properties', 'available_count')) {
                 $table->unsignedInteger('available_count')->default(1)->after('property_count');
             }
 
-            if (!Schema::hasColumn('properties', 'reserved_count')) {
+            if (! Schema::hasColumn('properties', 'reserved_count')) {
                 $table->unsignedInteger('reserved_count')->default(0)->after('available_count');
             }
 
-            if (!Schema::hasColumn('properties', 'sold_count')) {
+            if (! Schema::hasColumn('properties', 'sold_count')) {
                 $table->unsignedInteger('sold_count')->default(0)->after('reserved_count');
             }
         });

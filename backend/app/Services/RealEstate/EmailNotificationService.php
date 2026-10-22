@@ -3,9 +3,9 @@
 namespace App\Services\RealEstate;
 
 use App\Enums\UserRole;
+use App\Mail\AdminMonthlySummaryMail;
 use App\Mail\AllocationCreatedMail;
 use App\Mail\AllocationUpdatedMail;
-use App\Mail\AdminMonthlySummaryMail;
 use App\Mail\MonthlyClientReminderMail;
 use App\Mail\OutstandingBalanceReminderMail;
 use App\Mail\PaymentReceivedMail;
@@ -22,9 +22,7 @@ use Throwable;
 
 class EmailNotificationService
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function sendAllocationCreated(Allocation $allocation): void
     {
@@ -83,7 +81,7 @@ class EmailNotificationService
 
     public function sendMonthlyReminder(Client $client, ?float $outstandingBalance = null, array $outstandingAllocations = []): void
     {
-        if (!$client->email) {
+        if (! $client->email) {
             return;
         }
 

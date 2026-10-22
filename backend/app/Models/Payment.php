@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
-
 use App\Enums\PaymentPlan;
 use App\Enums\PaymentStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Payment extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     protected $fillable = [
         'allocation_id',

@@ -137,8 +137,10 @@ export function DashboardPage() {
   )
 
   const topRealtors = summary?.top_realtors || []
+  const leaderboardPeriod = summary?.realtor_leaderboard_period
+  const previousLeaderboardSnapshot = summary?.previous_realtor_leaderboard_snapshot
   const topPropertiesSold = Math.max(
-    ...topRealtors.map((realtor) => realtor.properties_sold_count || 0),
+    ...topRealtors.map((realtor) => realtor.monthly_properties_sold_count || 0),
     1,
   )
   const activeTargetType = settings?.target_type || 'monthly'
@@ -236,18 +238,24 @@ export function DashboardPage() {
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Realtor leaderboard</p>
                 <p className="mt-1 text-xs md:text-sm text-muted">
-                  Ranked by completed property sales.
+                  Ranked by completed sales for {leaderboardPeriod?.label || 'this month'}.
                 </p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 md:px-3 md:py-1 text-xs font-semibold text-brand">
                 <Trophy size={14} />
-                Monthly
+                {leaderboardPeriod?.label || 'Monthly'}
               </span>
             </div>
 
+            {previousLeaderboardSnapshot ? (
+              <p className="mt-3 text-xs text-muted">
+                Previous month saved: {previousLeaderboardSnapshot.label} ({previousLeaderboardSnapshot.entries_count} entries)
+              </p>
+            ) : null}
+
             <div className="mt-3 md:mt-6 space-y-2 md:space-y-3">
               {topRealtors.map((realtor, index) => {
-                const propertiesSold = realtor.properties_sold_count || 0
+                const propertiesSold = realtor.monthly_properties_sold_count || 0
                 const width = topPropertiesSold ? (propertiesSold / topPropertiesSold) * 100 : 0
 
                 return (
@@ -278,12 +286,12 @@ export function DashboardPage() {
                       />
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs text-muted">
-                      <span>{formatMoney(realtor.confirmed_revenue || 0)} revenue</span>
+                      <span>{formatMoney(realtor.monthly_confirmed_revenue || 0)} this month</span>
                       <span>{formatMoney(realtor.outstanding_balances || 0)} outstanding</span>
                     </div>
                     <div className="mt-1 flex items-center justify-between text-xs text-muted">
-                      <span>{formatMoney(realtor.installment_totals || 0)} installments</span>
-                      <span>{realtor.clients_count ?? 0} clients</span>
+                      <span>{formatMoney(realtor.monthly_installment_totals || 0)} installments</span>
+                      <span>{realtor.monthly_clients_count ?? 0} new clients</span>
                     </div>
                   </div>
                 )
@@ -291,7 +299,7 @@ export function DashboardPage() {
 
               {!loading && topRealtors.length === 0 ? (
                 <div className="rounded-xl bg-canvas p-4 text-sm text-muted">
-                  No completed realtor property sales yet.
+                  No realtor leaderboard activity for this month yet.
                 </div>
               ) : null}
             </div>

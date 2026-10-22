@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
-
 use App\Enums\AllocationStatus;
 use App\Enums\PaymentPlan;
 use App\Enums\PaymentStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Allocation extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToTenant;
+    use BelongsToTenant, HasFactory, SoftDeletes;
 
     public const PAYMENT_DURATIONS = [
         'one_time',
@@ -73,6 +72,10 @@ class Allocation extends Model
         'client_id',
         'realtor_id',
         'allocated_by',
+        'original_price',
+        'discount_type',
+        'discount_value',
+        'discount_amount',
         'total_amount',
         'amount_paid',
         'balance',
@@ -87,6 +90,9 @@ class Allocation extends Model
     ];
 
     protected $casts = [
+        'original_price' => 'decimal:2',
+        'discount_value' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'balance' => 'decimal:2',

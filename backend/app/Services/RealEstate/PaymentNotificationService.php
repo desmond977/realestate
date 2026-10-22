@@ -6,9 +6,7 @@ use App\Models\Payment;
 
 class PaymentNotificationService
 {
-    public function __construct(private readonly EmailNotificationService $emailNotificationService)
-    {
-    }
+    public function __construct(private readonly EmailNotificationService $emailNotificationService) {}
 
     public function sendPaymentReceived(Payment $payment): void
     {

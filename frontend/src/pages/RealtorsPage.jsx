@@ -377,8 +377,14 @@ function RealtorDetailsModal({ realtor, analytics, loading, error, onClose, onVi
                             {property.status}
                           </span>
                         </div>
-                        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-                          <span className="rounded-md bg-canvas p-2">{formatMoney(property.price || 0)}</span>
+                        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                          <span className="rounded-md bg-canvas p-2">Original {formatMoney(property.original_price ?? property.price ?? 0)}</span>
+                          <span className="rounded-md bg-brand/5 p-2 font-semibold text-brand">Final {formatMoney(property.final_payable_amount ?? property.price ?? 0)}</span>
+                          {Number(property.discount_amount || 0) > 0 ? (
+                            <span className="rounded-md bg-canvas p-2">
+                              Discount {property.discount_type === 'percentage' ? `${property.discount_value}% · ` : ''}{formatMoney(property.discount_amount)}
+                            </span>
+                          ) : null}
                           <span className="rounded-md bg-canvas p-2">{property.payment_progress}% paid</span>
                           <span className="rounded-md bg-canvas p-2">Balance {formatMoney(property.balance || 0)}</span>
                         </div>

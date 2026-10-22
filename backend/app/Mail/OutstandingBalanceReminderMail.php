@@ -17,8 +17,7 @@ class OutstandingBalanceReminderMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public readonly Allocation $allocation,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

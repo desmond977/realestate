@@ -11,7 +11,6 @@ function getApiError(error, fallback) {
   if (errors) {
     return Object.values(errors).flat().join(' ')
   }
-
   return error.response?.data?.message || fallback
 }
 
@@ -39,34 +38,64 @@ function downloadBlob(blob, fileName) {
 }
 
 function printHtml(html) {
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-
-  if (!printWindow) {
+  if (!html) {
     return
   }
 
-  printWindow.document.open()
-  printWindow.document.write(html)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
+  const iframe = document.createElement('iframe')
+  iframe.title = 'Print document'
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '1px'
+  iframe.style.height = '1px'
+  iframe.style.border = '0'
+  iframe.style.opacity = '0'
+
+  let printed = false
+  const runPrint = () => {
+    if (printed) {
+      return
+    }
+
+    printed = true
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
+    window.setTimeout(() => iframe.remove(), 1000)
+  }
+
+  iframe.onload = () => window.setTimeout(runPrint, 150)
+  document.body.appendChild(iframe)
+
+  const printDocument = iframe.contentWindow?.document
+
+  if (!printDocument) {
+    iframe.remove()
+    return
+  }
+
+  printDocument.open()
+  printDocument.write(html)
+  printDocument.close()
+
+  window.setTimeout(runPrint, 500)
 }
 
 function DocumentPreviewModal({ html, title, loading, error, onClose, onPrint }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 py-6">
-      <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-xl">
-        <header className="flex items-center justify-between border-b border-line px-4 py-3">
-          <div>
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-ink/40 px-0 py-0 sm:items-center sm:px-4 sm:py-6">
+      <section className="flex max-h-screen w-full max-w-5xl flex-col overflow-hidden border border-line bg-panel shadow-xl sm:max-h-[92vh] sm:rounded-lg">
+        <header className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-medium uppercase text-muted">Document Preview</p>
-            <h2 className="text-base font-semibold text-ink">{title}</h2>
+            <h2 className="truncate text-base font-semibold text-ink">{title}</h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {html ? (
               <button
                 type="button"
                 onClick={onPrint}
-                className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-muted hover:bg-canvas hover:text-ink sm:flex-none"
               >
                 <Printer size={16} />
                 Print
@@ -75,13 +104,13 @@ function DocumentPreviewModal({ html, title, loading, error, onClose, onPrint })
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
+              className="h-10 flex-1 rounded-md border border-line px-3 text-sm font-medium text-muted hover:bg-canvas hover:text-ink sm:flex-none"
             >
               Close
             </button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto bg-canvas p-4">
+        <div className="min-h-0 flex-1 overflow-auto bg-canvas p-3 sm:p-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted">
               <Loader2 size={16} className="animate-spin" />
@@ -95,7 +124,7 @@ function DocumentPreviewModal({ html, title, loading, error, onClose, onPrint })
           ) : null}
           {html ? (
             <div
-              className="mx-auto max-w-[850px] overflow-hidden rounded-md border border-line bg-white shadow-sm"
+              className="document-preview-content mx-auto w-full max-w-[850px] overflow-x-auto rounded-md border border-line bg-white shadow-sm"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           ) : null}
@@ -117,7 +146,7 @@ function TemplateEditModal({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/40 px-4 py-6">
       <section className="mx-auto w-full max-w-2xl rounded-lg border border-line bg-panel shadow-xl">
         <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium uppercase text-muted">Edit template</p>
             <h2 className="text-base font-semibold text-ink">{template.name}</h2>
           </div>
@@ -491,11 +520,11 @@ export function DocumentsPage() {
         </span>
       </div>
 
-      <section className={isAdmin ? 'grid gap-5 xl:grid-cols-[0.9fr_1.5fr]' : 'grid gap-5 xl:grid-cols-[1fr]'}>
+      <section className={isAdmin ? 'grid min-w-0 gap-5 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]' : 'grid min-w-0 gap-5 xl:grid-cols-[1fr]'}>
         {isAdmin ? (
-          <div className="rounded-3xl border border-line bg-panel p-4 shadow-sm md:p-5 xl:max-w-[420px]">
+          <div className="min-w-0 rounded-2xl border border-line bg-panel p-4 shadow-sm md:p-5">
             <div className="flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-base font-semibold text-ink">Template management</h2>
                 <p className="mt-1 text-sm text-muted">Create or activate document templates for allocations.</p>
               </div>
@@ -617,8 +646,8 @@ export function DocumentsPage() {
           </div>
         ) : null}
 
-        <div>
-          <div className="grid gap-3 rounded-3xl border border-line bg-panel p-4 shadow-sm md:grid-cols-[1.6fr_1fr_auto] md:p-5 lg:items-center">
+        <div className="min-w-0">
+          <div className="grid min-w-0 gap-3 rounded-2xl border border-line bg-panel p-4 shadow-sm md:grid-cols-[minmax(0,1.6fr)_minmax(180px,1fr)_auto] md:p-5 lg:items-center">
             <label className="relative block">
               <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
@@ -671,7 +700,7 @@ export function DocumentsPage() {
             </div>
           ) : null}
 
-          <section className="overflow-hidden rounded-3xl border border-line bg-panel shadow-sm mt-4">
+          <section className="mt-4 overflow-hidden rounded-2xl border border-line bg-panel shadow-sm">
             <div className="border-b border-line bg-white px-4 py-4 sm:px-5 sm:py-5">
               <h2 className="text-base font-semibold text-ink">Document templates by allocation</h2>
               <p className="mt-1 text-sm text-muted">Enable a template here before generating it for the customer.</p>
@@ -692,12 +721,12 @@ export function DocumentsPage() {
 
             <div className="divide-y divide-line">
               {filteredRows.map((row) => (
-                <article key={row.allocation.id} className="bg-white p-4 sm:p-5">
+                <article key={row.allocation.id} className="min-w-0 bg-white p-4 sm:p-5">
                   <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-medium uppercase text-muted">Allocation #{row.allocation.id}</p>
                       <h3 className="mt-1 text-base font-semibold text-ink md:text-lg">{allocationCustomer(row.allocation)}</h3>
-                      <p className="mt-1 text-sm text-muted">
+                      <p className="mt-1 break-words text-sm text-muted">
                         {allocationProperty(row.allocation)} / {row.allocation?.property?.location || 'No location'}
                       </p>
                     </div>
@@ -706,19 +735,19 @@ export function DocumentsPage() {
                     </span>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
                     {(row.templates || []).map((item) => {
                       const template = item.template
                       const isBusy = busyKey.startsWith(`${row.allocation.id}-${template.id}`)
                       const historyCount = item.history?.length || 0
 
                       return (
-                        <div key={template.id} className="rounded-3xl border border-line bg-canvas p-4 shadow-sm">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div key={template.id} className="min-w-0 rounded-2xl border border-line bg-canvas p-3 shadow-sm sm:p-4">
+                          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-ink">{template.name}</p>
                               <p className="mt-1 text-xs text-muted">
-                                {item.latest_document ? generatedAt(item.latest_document) : 'Not generated'} · {historyCount} history
+                                {item.latest_document ? generatedAt(item.latest_document) : 'Not generated'} / {historyCount} history
                               </p>
                             </div>
                             <button
@@ -737,12 +766,12 @@ export function DocumentsPage() {
                             </button>
                           </div>
 
-                          <div className="mt-4 flex flex-wrap gap-2">
+                          <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                             <button
                               type="button"
                               disabled={!item.enabled || isBusy}
                               onClick={() => generateDocument(row, template)}
-                              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-brand bg-brand px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-brand bg-brand px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {isBusy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                               {item.latest_document ? 'Regen' : 'Gen'}
@@ -751,7 +780,7 @@ export function DocumentsPage() {
                               type="button"
                               disabled={!item.enabled}
                               onClick={() => viewDocument(row, template)}
-                              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line bg-white px-3 text-xs font-medium text-muted hover:bg-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-medium text-muted hover:bg-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <Eye size={14} />
                               View
@@ -760,7 +789,7 @@ export function DocumentsPage() {
                               type="button"
                               disabled={!item.enabled}
                               onClick={() => viewDocument(row, template, true)}
-                              className="inline-flex h-10 items-center justify-center rounded-2xl border border-line bg-white px-3 text-muted hover:bg-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                              className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-muted hover:bg-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
                               aria-label={`Print ${template.name}`}
                             >
                               <Printer size={14} />
@@ -769,7 +798,7 @@ export function DocumentsPage() {
                               type="button"
                               disabled={!item.enabled || isBusy}
                               onClick={() => downloadDocument(row, template)}
-                              className="inline-flex h-10 items-center justify-center rounded-2xl border border-line bg-white px-3 text-muted hover:bg-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                              className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-muted hover:bg-panel hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
                               aria-label={`Download ${template.name}`}
                             >
                               <Download size={14} />

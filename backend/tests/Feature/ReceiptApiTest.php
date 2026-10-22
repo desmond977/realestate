@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
-use App\Models\Allocation;
-use App\Models\Receipt;
 use App\Models\Realtor;
+use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;

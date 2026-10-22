@@ -3,7 +3,6 @@
 namespace App\Services\RealEstate;
 
 use App\Enums\AllocationStatus;
-use App\Enums\PaymentPlan;
 use App\Enums\PaymentStatus;
 use App\Models\Allocation;
 use App\Models\Payment;
@@ -17,11 +16,10 @@ class PaymentService
         private readonly ReceiptService $receiptService,
         private readonly PropertyInventoryService $propertyInventoryService,
         private readonly EmailNotificationService $emailNotificationService,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public function recordForAllocation(Allocation $allocation, array $payload, ?User $recorder = null): Payment
     {

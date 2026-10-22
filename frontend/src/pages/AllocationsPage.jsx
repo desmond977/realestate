@@ -27,11 +27,28 @@ import { customDurationUnits, formatPaymentDuration, paymentDurationOptions } fr
 const allocationStatuses = ['reserved', 'active', 'completed', 'cancelled']
 const paymentPlans = ['installment', 'full']
 
+function allocationPricing(originalPrice, discountType, discountValue) {
+  const originalCents = Math.max(0, Math.round(Number(originalPrice || 0) * 100))
+  const value = Math.max(0, Number(discountValue || 0))
+  const discountCents = discountType === 'percentage'
+    ? Math.round(originalCents * Math.min(value, 100) / 100)
+    : discountType === 'fixed'
+      ? Math.min(originalCents, Math.round(value * 100))
+      : 0
+
+  return {
+    discountAmount: discountCents / 100,
+    finalPayableAmount: Math.max(0, originalCents - discountCents) / 100,
+  }
+}
+
 const emptyForm = {
   property_id: '',
   client_id: '',
   realtor_id: '',
   total_amount: '',
+  discount_type: '',
+  discount_value: '',
   payment_plan: 'installment',
   payment_duration: 'one_time',
   custom_duration_value: '',
@@ -218,6 +235,7 @@ function AllocationModal({
   const selectedRealtor = realtors.find(
     (realtor) => String(realtor.id) === String(form.realtor_id),
   )
+  const pricing = allocationPricing(form.total_amount, form.discount_type, form.discount_value)
   const inputClass =
     'mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10'
   const textAreaClass =
@@ -244,6 +262,13 @@ function AllocationModal({
         if (quickSelection.type === 'property') {
           const property = properties.find((item) => Number(item.id) === Number(quickSelection.id))
           next.total_amount = property?.price ?? current.total_amount
+          if (next.payment_status === 'paid' || next.payment_plan === 'full') {
+            next.initial_payment_amount = allocationPricing(
+              next.total_amount,
+              next.discount_type,
+              next.discount_value,
+            ).finalPayableAmount
+          }
         }
 
         if (quickSelection.type === 'client') {
@@ -269,14 +294,32 @@ function AllocationModal({
 
         if (property?.price !== undefined && property?.price !== null && property?.price !== '') {
           next.total_amount = property.price
-          if (next.payment_status === 'paid') {
-            next.initial_payment_amount = property.price
+          if (next.payment_status === 'paid' || next.payment_plan === 'full') {
+            next.initial_payment_amount = allocationPricing(
+              property.price,
+              next.discount_type,
+              next.discount_value,
+            ).finalPayableAmount
           }
         } else {
           next.total_amount = ''
-          if (next.payment_status === 'paid') {
+          if (next.payment_status === 'paid' || next.payment_plan === 'full') {
             next.initial_payment_amount = ''
           }
+        }
+      }
+
+      if (field === 'discount_type' && value === '') {
+        next.discount_value = ''
+      }
+
+      if (field === 'discount_type' || field === 'discount_value') {
+        if (next.payment_status === 'paid' || next.payment_plan === 'full') {
+          next.initial_payment_amount = allocationPricing(
+            next.total_amount,
+            next.discount_type,
+            next.discount_value,
+          ).finalPayableAmount
         }
       }
 
@@ -286,7 +329,11 @@ function AllocationModal({
       }
 
       if (field === 'payment_plan' && value === 'full') {
-        next.initial_payment_amount = next.total_amount
+        next.initial_payment_amount = allocationPricing(
+          next.total_amount,
+          next.discount_type,
+          next.discount_value,
+        ).finalPayableAmount
       }
 
       if (field === 'payment_duration' && value !== 'custom') {
@@ -297,7 +344,11 @@ function AllocationModal({
       if (field === 'payment_status') {
         if (value === 'paid') {
           next.payment_plan = 'full'
-          next.initial_payment_amount = next.total_amount
+          next.initial_payment_amount = allocationPricing(
+            next.total_amount,
+            next.discount_type,
+            next.discount_value,
+          ).finalPayableAmount
         }
 
         if (value === 'unpaid') {
@@ -319,6 +370,8 @@ function AllocationModal({
       client_id: Number(form.client_id),
       realtor_id: form.realtor_id ? Number(form.realtor_id) : undefined,
       total_amount: Number(form.total_amount),
+      discount_type: form.discount_type || null,
+      discount_value: form.discount_type ? Number(form.discount_value || 0) : 0,
       payment_plan: form.payment_plan,
       payment_duration: form.payment_duration,
       custom_duration_value: form.payment_duration === 'custom' && form.custom_duration_value
@@ -463,13 +516,13 @@ function AllocationModal({
                 </span>
                 <div>
                   <h4 className="text-sm font-semibold text-ink">Payment setup</h4>
-                  <p className="text-xs text-muted">Set the total amount and payment plan.</p>
+                  <p className="text-xs text-muted">Apply an optional promotion before setting the payment plan.</p>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="text-sm font-medium text-ink">Total amount</span>
+                  <span className="text-sm font-medium text-ink">Original property price</span>
                   <input
                     type="number"
                     min="0"
@@ -479,8 +532,45 @@ function AllocationModal({
                     className={`${inputClass} cursor-not-allowed bg-canvas text-muted`}
                     required
                   />
-                  <p className="mt-2 text-xs text-muted">Pulled from the selected property price.</p>
+                  <p className="mt-2 text-xs text-muted">Captured from the selected property's current price.</p>
                 </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">Promotional discount</span>
+                  <select
+                    value={form.discount_type}
+                    onChange={(event) => updateField('discount_type', event.target.value)}
+                    className={`${inputClass} capitalize`}
+                  >
+                    <option value="">No discount</option>
+                    <option value="fixed">Fixed amount</option>
+                    <option value="percentage">Percentage</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-ink">
+                    {form.discount_type === 'percentage' ? 'Discount percentage' : 'Discount amount'}
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max={form.discount_type === 'percentage' ? 100 : form.total_amount || undefined}
+                      step="0.01"
+                      value={form.discount_value}
+                      onChange={(event) => updateField('discount_value', event.target.value)}
+                      disabled={!form.discount_type}
+                      className={`${inputClass} disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted`}
+                    />
+                    {form.discount_type === 'percentage' ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">%</span> : null}
+                  </div>
+                </label>
+
+                <div className="rounded-md border border-brand/20 bg-brand/5 p-3 text-sm sm:col-span-2">
+                  <p className="flex justify-between gap-3"><span className="text-muted">Discount amount</span><strong>{formatMoney(pricing.discountAmount)}</strong></p>
+                  <p className="mt-1 flex justify-between gap-3 text-base"><span className="font-medium text-ink">Final payable amount</span><strong className="text-brand">{formatMoney(pricing.finalPayableAmount)}</strong></p>
+                </div>
 
                 <label className="block">
                   <span className="text-sm font-medium text-ink">Payment plan</span>
@@ -596,7 +686,8 @@ function AllocationModal({
                       value={form.initial_payment_amount}
                       onChange={(event) => updateField('initial_payment_amount', event.target.value)}
                       className={inputClass}
-                      placeholder={selectedProperty?.price ? formatMoney(selectedProperty.price) : '0'}
+                      max={pricing.finalPayableAmount || undefined}
+                      placeholder={selectedProperty?.price ? formatMoney(pricing.finalPayableAmount) : '0'}
                       readOnly={form.payment_status === 'paid'}
                     />
                   </label>
@@ -694,8 +785,12 @@ function AllocationModal({
 }
 
 function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit }) {
+  const canChangeDiscount = !(allocation.payments?.length) && Number(allocation.amount_paid || 0) <= 0
+  const originalPrice = allocation.original_price ?? allocation.total_amount
   const [form, setForm] = useState({
     payment_status: 'unpaid',
+    discount_type: allocation.discount_type || '',
+    discount_value: allocation.discount_value ? String(allocation.discount_value) : '',
     payment_duration: allocation.payment_duration || 'one_time',
     custom_duration_value: allocation.custom_duration_value || '',
     custom_duration_unit: allocation.custom_duration_unit || 'months',
@@ -705,8 +800,10 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
     notes: allocation.notes || '',
     payment_screenshot_file: null,
   })
+  const pricing = allocationPricing(originalPrice, form.discount_type, form.discount_value)
   const showPaymentFields = form.payment_status !== 'unpaid'
-  const projectedBalance = Math.max(Number(allocation.balance || 0) - Number(form.initial_payment_amount || 0), 0)
+  const currentBalance = canChangeDiscount ? pricing.finalPayableAmount : Number(allocation.balance || 0)
+  const projectedBalance = Math.max(currentBalance - Number(form.initial_payment_amount || 0), 0)
 
   function updateField(field, value) {
     setForm((current) => {
@@ -714,7 +811,7 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
 
       if (field === 'payment_status') {
         if (value === 'paid') {
-          next.initial_payment_amount = allocation.balance || ''
+          next.initial_payment_amount = currentBalance || ''
         }
 
         if (value === 'unpaid') {
@@ -722,6 +819,18 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
           next.payment_method = ''
           next.paid_at = ''
         }
+      }
+
+      if (field === 'discount_type' && value === '') {
+        next.discount_value = ''
+      }
+
+      if ((field === 'discount_type' || field === 'discount_value') && next.payment_status === 'paid') {
+        next.initial_payment_amount = allocationPricing(
+          originalPrice,
+          next.discount_type,
+          next.discount_value,
+        ).finalPayableAmount
       }
 
       if (field === 'payment_duration' && value !== 'custom') {
@@ -745,6 +854,10 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
         ? form.custom_duration_unit
         : undefined,
       payment_status: form.payment_status,
+      ...(canChangeDiscount ? {
+        discount_type: form.discount_type || null,
+        discount_value: form.discount_type ? Number(form.discount_value || 0) : 0,
+      } : {}),
       initial_payment_amount: showPaymentFields && form.initial_payment_amount
         ? Number(form.initial_payment_amount)
         : undefined,
@@ -762,7 +875,7 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
           <div>
             <p className="text-sm font-medium text-brand">Edit allocation</p>
             <h3 className="mt-1 text-lg font-semibold text-ink">{allocation.client?.full_name || 'Client'}</h3>
-            <p className="mt-1 text-sm text-muted">{allocation.property?.title || 'Property'} · {formatMoney(allocation.total_amount)}</p>
+            <p className="mt-1 text-sm text-muted">{allocation.property?.title || 'Property'} · Final payable {formatMoney(allocation.total_amount)}</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-md p-2 text-muted hover:bg-canvas" aria-label="Close allocation editor">
             <X size={20} />
@@ -783,6 +896,42 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
                 <p className="mt-2 truncate text-sm font-semibold capitalize text-ink">{value}</p>
               </div>
             ))}
+          </section>
+
+          <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
+            <h4 className="text-sm font-semibold text-ink">Allocation pricing</h4>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted">Original property price</p>
+                <p className="font-semibold text-ink">{formatMoney(originalPrice)}</p>
+              </div>
+              {canChangeDiscount ? (
+                <>
+                  <label className="block">
+                    <span className="text-sm font-medium text-ink">Promotional discount</span>
+                    <select value={form.discount_type} onChange={(event) => updateField('discount_type', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm capitalize outline-none focus:border-brand">
+                      <option value="">No discount</option>
+                      <option value="fixed">Fixed amount</option>
+                      <option value="percentage">Percentage</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-ink">{form.discount_type === 'percentage' ? 'Discount percentage' : 'Discount amount'}</span>
+                    <input type="number" min="0" max={form.discount_type === 'percentage' ? 100 : originalPrice} step="0.01" value={form.discount_value} onChange={(event) => updateField('discount_value', event.target.value)} disabled={!form.discount_type} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand disabled:cursor-not-allowed disabled:bg-canvas" />
+                  </label>
+                </>
+              ) : (
+                <p className="self-center rounded-md bg-canvas p-3 text-sm text-muted">Discounts are locked after a payment is recorded to preserve payment history.</p>
+              )}
+              <div>
+                <p className="text-xs text-muted">Discount amount</p>
+                <p className="font-semibold text-ink">{formatMoney(canChangeDiscount ? pricing.discountAmount : allocation.discount_amount || 0)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted">Final payable amount</p>
+                <p className="font-semibold text-brand">{formatMoney(canChangeDiscount ? pricing.finalPayableAmount : allocation.total_amount)}</p>
+              </div>
+            </div>
           </section>
 
           <section className="rounded-lg border border-line bg-panel p-4 shadow-sm">
@@ -833,7 +982,7 @@ function EditAllocationModal({ allocation, submitting, error, onClose, onSubmit 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-medium text-ink">Payment amount</span>
-                  <input type="number" min="0.01" max={allocation.balance || undefined} step="0.01" value={form.initial_payment_amount} onChange={(event) => updateField('initial_payment_amount', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand" required />
+                  <input type="number" min="0.01" max={currentBalance || undefined} step="0.01" value={form.initial_payment_amount} onChange={(event) => updateField('initial_payment_amount', event.target.value)} className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-brand" required />
                 </label>
                 <label className="block">
                   <span className="text-sm font-medium text-ink">Payment date</span>
@@ -1035,6 +1184,7 @@ export function AllocationsPage() {
           'client_id',
           'realtor_id',
           'total_amount',
+          'discount_value',
           'payment_plan',
           'payment_duration',
           'custom_duration_value',
@@ -1053,6 +1203,7 @@ export function AllocationsPage() {
           }
         })
 
+        body.append('discount_type', payload.discount_type ?? '')
         body.append('payment_screenshot', payload.payment_screenshot_file)
         await api.post('/allocations', body)
       } else {
@@ -1138,6 +1289,7 @@ export function AllocationsPage() {
         body.append('_method', 'PATCH')
         const fields = [
           'payment_duration',
+          'discount_value',
           'custom_duration_value',
           'custom_duration_unit',
           'payment_status',
@@ -1153,6 +1305,9 @@ export function AllocationsPage() {
           }
         })
 
+        if (Object.prototype.hasOwnProperty.call(payload, 'discount_type')) {
+          body.append('discount_type', payload.discount_type ?? '')
+        }
         body.append('payment_screenshot', payload.payment_screenshot_file)
         await api.post(`/allocations/${allocation.id}`, body)
       } else {
@@ -1360,6 +1515,25 @@ export function AllocationsPage() {
 
                 <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-xs">
                   <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                    <p className="font-medium text-muted">Original price</p>
+                    <p className="mt-1 truncate font-semibold text-ink">{formatMoney(allocation.original_price ?? allocation.total_amount)}</p>
+                  </div>
+                  <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
+                    <p className="font-medium text-muted">Final payable</p>
+                    <p className="mt-1 truncate font-semibold text-brand">{formatMoney(allocation.final_payable_amount ?? allocation.total_amount)}</p>
+                  </div>
+                  {Number(allocation.discount_amount || 0) > 0 ? (
+                    <div className="min-w-0 rounded-md border border-brand/20 bg-brand/5 px-3 py-2">
+                      <p className="font-medium text-muted">Promotional discount</p>
+                      <p className="mt-1 truncate font-semibold text-brand">
+                        {allocation.discount_type === 'percentage' ? `${allocation.discount_value}% · ` : ''}{formatMoney(allocation.discount_amount)}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-2 grid min-w-0 grid-cols-2 gap-2 text-xs">
+                  <div className="min-w-0 rounded-md border border-line bg-canvas px-3 py-2">
                     <p className="font-medium text-muted">Paid</p>
                     <p className="mt-1 truncate font-semibold text-ink">{formatMoney(allocation.amount_paid)}</p>
                   </div>
@@ -1484,6 +1658,13 @@ export function AllocationsPage() {
                     <p className="mt-1 text-xs text-muted">
                       {allocation.property?.location || 'No location'}
                     </p>
+                    <p className="mt-1 text-xs text-muted">
+                      Original {formatMoney(allocation.original_price ?? allocation.total_amount)}
+                      {Number(allocation.discount_amount || 0) > 0
+                        ? ` · Discount ${formatMoney(allocation.discount_amount)}`
+                        : ''}
+                    </p>
+                    <p className="text-xs font-semibold text-brand">Final {formatMoney(allocation.final_payable_amount ?? allocation.total_amount)}</p>
                   </td>
                   <td className="px-4 py-3 capitalize text-muted">
                     <p>{allocation.payment_plan}</p>

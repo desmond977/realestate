@@ -2,18 +2,17 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
-
 use App\Enums\UserRole;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, BelongsToTenant;
+    use BelongsToTenant, HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.

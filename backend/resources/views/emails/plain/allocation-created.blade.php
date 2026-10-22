@@ -21,7 +21,11 @@ Transaction Details:
 - Allocation Date: {{ $allocation->allocated_at ? $allocation->allocated_at->format('M d, Y') : 'N/A' }}
 
 Important Summary:
-- Property Price: NGN {{ number_format($allocation->total_amount, 2) }}
+- Original Property Price: NGN {{ number_format($allocation->original_price ?? $allocation->total_amount, 2) }}
+@if((float) ($allocation->discount_amount ?? 0) > 0)
+- Promotional Discount: NGN {{ number_format($allocation->discount_amount, 2) }}{{ $allocation->discount_type === 'percentage' ? ' (' . number_format((float) $allocation->discount_value, 2) . '%)' : '' }}
+@endif
+- Final Payable Amount: NGN {{ number_format($allocation->total_amount, 2) }}
 - Amount Paid: NGN {{ number_format($allocation->amount_paid, 2) }}
 - Outstanding Balance: NGN {{ number_format($allocation->balance, 2) }}
 

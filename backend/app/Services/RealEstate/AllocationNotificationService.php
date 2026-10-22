@@ -6,9 +6,7 @@ use App\Models\Allocation;
 
 class AllocationNotificationService
 {
-    public function __construct(private readonly EmailNotificationService $emailNotificationService)
-    {
-    }
+    public function __construct(private readonly EmailNotificationService $emailNotificationService) {}
 
     public function sendAllocationCreated(Allocation $allocation): void
     {

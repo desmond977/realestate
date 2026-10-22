@@ -12,9 +12,13 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Send monthly client reminders on the 1st of every month at 9:00 AM
         $schedule->command('reminders:monthly')
             ->monthlyOn(1, '09:00')
+            ->emailOutputOnFailure(config('mail.from.address'))
+            ->withoutOverlapping();
+
+        $schedule->command('reminders:payment')
+            ->dailyAt('08:00')
             ->emailOutputOnFailure(config('mail.from.address'))
             ->withoutOverlapping();
     }

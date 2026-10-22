@@ -7,9 +7,16 @@ use App\Http\Controllers\Api\V1\CompanySettingController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PaymentApprovalController;
 use App\Http\Controllers\Api\V1\PropertyController;
-use App\Http\Controllers\Api\V1\ReceiptController;
 use App\Http\Controllers\Api\V1\RealtorController;
+use App\Http\Controllers\Api\V1\ReceiptController;
+use App\Http\Controllers\Api\V1\RentalAgreementController;
+use App\Http\Controllers\Api\V1\RentalDashboardController;
+use App\Http\Controllers\Api\V1\RentalPaymentController;
+use App\Http\Controllers\Api\V1\ServiceChargeCategoryController;
+use App\Http\Controllers\Api\V1\ServiceChargeController;
+use App\Http\Controllers\Api\V1\ServiceChargePaymentController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +49,16 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('dashboard', DashboardController::class)->middleware('role:admin,staff,accountant');
+        Route::get('rental-dashboard', RentalDashboardController::class)->middleware('role:admin,staff,accountant');
+        Route::get('payment-approvals/{submission}/proof', [PaymentApprovalController::class, 'proof'])
+            ->middleware('role:admin')
+            ->name('admin.payment-approvals.proof');
+        Route::get('payment-approvals', [PaymentApprovalController::class, 'index'])
+            ->middleware('role:admin');
+        Route::post('payment-approvals/{submission}/approve', [PaymentApprovalController::class, 'approve'])
+            ->middleware('role:admin');
+        Route::post('payment-approvals/{submission}/reject', [PaymentApprovalController::class, 'reject'])
+            ->middleware('role:admin');
         Route::get('settings/company', [CompanySettingController::class, 'show'])->middleware('role:admin,staff,accountant');
         Route::put('settings/company', [CompanySettingController::class, 'update'])->middleware('role:admin');
 
@@ -92,5 +109,41 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('receipts', ReceiptController::class)
             ->only(['index', 'show'])
             ->middleware('role:admin,staff,accountant');
+        Route::get('rentals/form-options', [RentalAgreementController::class, 'formOptions'])
+            ->middleware('role:admin,staff,accountant');
+        Route::apiResource('rentals', RentalAgreementController::class)
+            ->only(['index', 'show'])
+            ->middleware('role:admin,staff,accountant');
+        Route::apiResource('rentals', RentalAgreementController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->middleware('role:admin');
+        Route::get('rental-payment-periods', [RentalPaymentController::class, 'index'])
+            ->middleware('role:admin,staff,accountant');
+        Route::get('rental-payment-periods/{period}', [RentalPaymentController::class, 'show'])
+            ->middleware('role:admin,staff,accountant');
+        Route::post('rental-payment-periods/{period}/payments', [RentalPaymentController::class, 'store'])
+            ->middleware('role:admin,accountant');
+        Route::get('service-charge-categories', [ServiceChargeCategoryController::class, 'index'])
+            ->middleware('role:admin,staff,accountant');
+        Route::post('service-charge-categories', [ServiceChargeCategoryController::class, 'store'])
+            ->middleware('role:admin');
+        Route::put('service-charge-categories/{category}', [ServiceChargeCategoryController::class, 'update'])
+            ->middleware('role:admin');
+        Route::delete('service-charge-categories/{category}', [ServiceChargeCategoryController::class, 'destroy'])
+            ->middleware('role:admin');
+        Route::get('service-charges/form-options', [ServiceChargeController::class, 'formOptions'])
+            ->middleware('role:admin,staff,accountant');
+        Route::get('service-charges', [ServiceChargeController::class, 'index'])
+            ->middleware('role:admin,staff,accountant');
+        Route::post('service-charges', [ServiceChargeController::class, 'store'])
+            ->middleware('role:admin,staff');
+        Route::get('service-charges/{serviceCharge}', [ServiceChargeController::class, 'show'])
+            ->middleware('role:admin,staff,accountant');
+        Route::put('service-charges/{serviceCharge}', [ServiceChargeController::class, 'update'])
+            ->middleware('role:admin,staff');
+        Route::delete('service-charges/{serviceCharge}', [ServiceChargeController::class, 'destroy'])
+            ->middleware('role:admin');
+        Route::post('service-charges/{serviceCharge}/payments', [ServiceChargePaymentController::class, 'store'])
+            ->middleware('role:admin,accountant');
     });
 });

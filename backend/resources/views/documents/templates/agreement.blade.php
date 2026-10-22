@@ -18,6 +18,8 @@
         <div class="meta-row"><div class="meta-label">Allocation Date</div><div class="meta-value">{{ $data['allocation_date'] }}</div></div>
     </div>
 
+    @include('documents.templates.pricing-summary')
+
     <div class="section">
         <h2>Payment Summary</h2>
         <div class="meta-grid">

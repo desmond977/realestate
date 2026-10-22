@@ -16,12 +16,11 @@ class AdminMonthlySummaryMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public readonly array $summary,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'TerraOps Monthly Admin Summary - ' . ($this->summary['month'] ?? now()->format('F Y')));
+        return new Envelope(subject: 'TerraOps Monthly Admin Summary - '.($this->summary['month'] ?? now()->format('F Y')));
     }
 
     public function content(): Content

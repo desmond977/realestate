@@ -59,9 +59,21 @@ export function ClientPropertiesPage() {
                     {item.allocation_status?.value || item.allocation_status || 'active'}
                   </span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
-                    <p className="text-xs text-muted">Total</p>
+                    <p className="text-xs text-muted">Original price</p>
+                    <p className="font-semibold">{money(item.original_price ?? property.price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">Promotional discount</p>
+                    <p className="font-semibold">
+                      {Number(item.discount_amount || 0) > 0
+                        ? `${item.discount_type === 'percentage' ? `${item.discount_value}% · ` : ''}${money(item.discount_amount)}`
+                        : 'None'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">Final payable</p>
                     <p className="font-semibold">{money(item.total_amount)}</p>
                   </div>
                   <div>

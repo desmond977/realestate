@@ -3,21 +3,20 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class Client extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, BelongsToTenant;
+    use BelongsToTenant, HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'first_name',
@@ -51,6 +50,21 @@ class Client extends Authenticatable
     public function allocations(): HasMany
     {
         return $this->hasMany(Allocation::class);
+    }
+
+    public function rentalAgreements(): HasMany
+    {
+        return $this->hasMany(RentalAgreement::class);
+    }
+
+    public function serviceCharges(): HasMany
+    {
+        return $this->hasMany(ServiceCharge::class);
+    }
+
+    public function paymentProofSubmissions(): HasMany
+    {
+        return $this->hasMany(PaymentProofSubmission::class);
     }
 
     public function realtor(): BelongsTo

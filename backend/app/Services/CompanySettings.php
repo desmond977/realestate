@@ -9,7 +9,7 @@ class CompanySettings
 {
     private function cacheKey(): string
     {
-        return 'company_settings:' . (app(TenantManager::class)->currentId() ?? 'default');
+        return 'company_settings:'.(app(TenantManager::class)->currentId() ?? 'default');
     }
 
     public function get(): array

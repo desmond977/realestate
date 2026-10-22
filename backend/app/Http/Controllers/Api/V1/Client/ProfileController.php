@@ -87,9 +87,9 @@ class ProfileController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        if (!Hash::check($validated['current_password'], $client->password)) {
+        if (! Hash::check($validated['current_password'], $client->password)) {
             return response()->json([
-                'message' => 'Current password is incorrect.'
+                'message' => 'Current password is incorrect.',
             ], 422);
         }
 

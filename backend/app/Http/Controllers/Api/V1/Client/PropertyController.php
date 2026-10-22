@@ -19,7 +19,7 @@ class PropertyController extends Controller
 
         $allocations = $service->getAllocations();
 
-        $properties = $allocations->map(fn($allocation) => [
+        $properties = $allocations->map(fn ($allocation) => [
             'allocation_id' => $allocation->id,
             'allocation_reference' => $allocation->reference,
             'allocation_status' => $allocation->status,
@@ -30,10 +30,15 @@ class PropertyController extends Controller
             'payment_duration_label' => $allocation->paymentDurationLabel(),
             'payment_duration_interval' => $allocation->paymentDurationInterval(),
             'property' => new PropertyResource($allocation->property),
+            'original_price' => (float) ($allocation->original_price ?? $allocation->total_amount),
+            'discount_type' => $allocation->discount_type,
+            'discount_value' => (float) ($allocation->discount_value ?? 0),
+            'discount_amount' => (float) ($allocation->discount_amount ?? 0),
             'payment_progress' => $allocation->paymentProgress(),
             'paid_amount' => $allocation->paidAmount(),
             'outstanding_amount' => $allocation->outstandingAmount(),
             'total_amount' => $allocation->total_amount,
+            'final_payable_amount' => (float) $allocation->total_amount,
         ]);
 
         return response()->json([
@@ -58,7 +63,12 @@ class PropertyController extends Controller
                 'id' => $allocation->id,
                 'reference' => $allocation->reference,
                 'status' => $allocation->status,
+                'original_price' => (float) ($allocation->original_price ?? $allocation->total_amount),
+                'discount_type' => $allocation->discount_type,
+                'discount_value' => (float) ($allocation->discount_value ?? 0),
+                'discount_amount' => (float) ($allocation->discount_amount ?? 0),
                 'total_amount' => $allocation->total_amount,
+                'final_payable_amount' => (float) $allocation->total_amount,
                 'paid_amount' => $allocation->paidAmount(),
                 'outstanding_amount' => $allocation->outstandingAmount(),
                 'payment_progress' => $allocation->paymentProgress(),

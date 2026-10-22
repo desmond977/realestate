@@ -4,6 +4,7 @@ namespace App\Http\Requests\Allocation;
 
 use App\Enums\PaymentPlan;
 use App\Models\Allocation;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -12,7 +13,8 @@ class StoreAllocationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return ! $this->hasDiscountInput()
+            || ($this->user() instanceof User && $this->user()->role?->value === 'admin');
     }
 
     /**
@@ -25,6 +27,8 @@ class StoreAllocationRequest extends FormRequest
             'client_id' => ['required', 'integer', 'exists:clients,id'],
             'realtor_id' => ['nullable', 'integer', 'exists:realtors,id'],
             'total_amount' => ['sometimes', 'numeric', 'min:0.01'],
+            'discount_type' => ['sometimes', 'nullable', Rule::in(['fixed', 'percentage'])],
+            'discount_value' => ['sometimes', 'nullable', 'numeric', 'min:0', 'decimal:0,2', 'required_with:discount_type'],
             'payment_plan' => ['required', new Enum(PaymentPlan::class)],
             'payment_duration' => ['required', Rule::in(Allocation::PAYMENT_DURATIONS)],
             'custom_duration_value' => [
@@ -62,5 +66,10 @@ class StoreAllocationRequest extends FormRequest
 
         return in_array($this->input('payment_status'), ['paid', 'part_payment'], true)
             || (! $this->has('payment_status') && (float) $this->input('initial_payment_amount', 0) > 0);
+    }
+
+    private function hasDiscountInput(): bool
+    {
+        return $this->exists('discount_type') || $this->exists('discount_value');
     }
 }

@@ -24,9 +24,7 @@ use Illuminate\Validation\Rules\Enum;
 
 class AllocationController extends Controller
 {
-    public function __construct(private readonly AllocationService $allocationService)
-    {
-    }
+    public function __construct(private readonly AllocationService $allocationService) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {

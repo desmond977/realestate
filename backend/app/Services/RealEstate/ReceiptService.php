@@ -9,12 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReceiptService
 {
-    public function __construct(private readonly ReceiptSnapshotService $receiptSnapshotService)
-    {
-    }
+    public function __construct(private readonly ReceiptSnapshotService $receiptSnapshotService) {}
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function createForPayment(Payment $payment, ?User $issuer = null, array $metadata = []): Receipt
     {

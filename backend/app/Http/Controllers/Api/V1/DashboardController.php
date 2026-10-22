@@ -11,9 +11,7 @@ use Illuminate\Http\JsonResponse;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly DashboardService $dashboardService)
-    {
-    }
+    public function __construct(private readonly DashboardService $dashboardService) {}
 
     public function __invoke(): JsonResponse
     {
@@ -30,6 +28,8 @@ class DashboardController extends Controller
                 'recent_payments' => PaymentResource::collection($summary['recent_payments']),
                 'recent_allocations' => AllocationResource::collection($summary['recent_allocations']),
                 'top_realtors' => RealtorResource::collection($summary['top_realtors']),
+                'realtor_leaderboard_period' => $summary['realtor_leaderboard_period'],
+                'previous_realtor_leaderboard_snapshot' => $summary['previous_realtor_leaderboard_snapshot'],
             ],
         ]);
     }

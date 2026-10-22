@@ -17,6 +17,8 @@
         <div class="meta-row"><div class="meta-label">Balance</div><div class="meta-value">{{ $data['balance'] }}</div></div>
     </div>
 
+    @include('documents.templates.pricing-summary')
+
     <p>
         The customer should retain this document as a formal record that the work initialization
         stage has been generated for the allocation listed above.

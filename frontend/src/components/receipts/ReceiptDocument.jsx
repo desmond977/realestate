@@ -30,6 +30,11 @@ function buildReceiptHtml(receiptDocument) {
   const realtor = receiptDocument?.realtor || {}
   const property = receiptDocument?.property || {}
   const allocation = receiptDocument?.allocation || {}
+  const originalPrice = Number(allocation.original_price ?? property.original_price ?? property.price ?? allocation.total_amount ?? summary.total_amount ?? 0)
+  const discountAmount = Number(allocation.discount_amount ?? property.discount_amount ?? 0)
+  const discountType = allocation.discount_type ?? property.discount_type
+  const discountValue = Number(allocation.discount_value ?? property.discount_value ?? 0)
+  const finalPayable = Number(allocation.final_payable_amount ?? allocation.total_amount ?? property.final_payable_amount ?? summary.total_amount ?? originalPrice)
   const history = receiptDocument?.payment_history || []
   const notes = receiptDocument?.notes || []
   const balance = Number(summary.remaining_balance || 0)
@@ -151,6 +156,20 @@ function buildReceiptHtml(receiptDocument) {
           <div class="card">
             <p class="label">Payment duration</p>
             <p class="value">${escapeHtml(allocation.payment_duration_label || 'One-time Payment')}</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <p class="label">Original property price</p>
+            <p class="value">${escapeHtml(formatMoney(originalPrice))}</p>
+          </div>
+          <div class="card">
+            <p class="label">Promotional discount</p>
+            <p class="value">${escapeHtml(discountType === 'percentage' ? `${discountValue}% (${formatMoney(discountAmount)})` : discountType === 'fixed' ? formatMoney(discountAmount) : 'None')}</p>
+          </div>
+          <div class="card">
+            <p class="label">Final payable amount</p>
+            <p class="value">${escapeHtml(formatMoney(finalPayable))}</p>
           </div>
         </div>
         <table>

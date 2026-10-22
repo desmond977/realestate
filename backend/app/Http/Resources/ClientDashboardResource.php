@@ -42,7 +42,7 @@ class ClientDashboardResource extends JsonResource
             ),
             'primary_realtor' => $this->when(
                 $this->primaryRealtor(),
-                fn() => new RealtorResource($this->primaryRealtor())
+                fn () => new RealtorResource($this->primaryRealtor())
             ),
             'has_outstanding_balance' => $this->hasOutstandingBalance(),
         ];

@@ -63,26 +63,31 @@ class RealtorAnalyticsService
                 ];
             })->values(),
             'properties' => $allocations->map(fn ($allocation) => [
-                    'allocation_id' => $allocation->id,
-                    'property_id' => $allocation->property_id,
-                    'title' => $allocation->property?->title,
-                    'price' => (float) ($allocation->property?->price ?? $allocation->total_amount),
-                    'client' => $allocation->client?->full_name,
-                    'payment_progress' => $allocation->total_amount > 0
-                        ? min(100, (int) round(((float) $allocation->amount_paid / (float) $allocation->total_amount) * 100))
-                        : 0,
-                    'amount_paid' => (float) $allocation->amount_paid,
-                    'balance' => (float) $allocation->balance,
-                    'payment_duration' => $allocation->payment_duration,
-                    'custom_duration_value' => $allocation->custom_duration_value,
-                    'custom_duration_unit' => $allocation->custom_duration_unit,
-                    'payment_duration_label' => $allocation->paymentDurationLabel(),
-                    'payment_duration_interval' => $allocation->paymentDurationInterval(),
-                    'status' => $allocation->status?->value ?? $allocation->status,
-                    'latest_receipt' => $allocation->payments
-                        ->sortByDesc('paid_at')
-                        ->first(fn ($payment) => $payment->receipt)?->receipt?->only(['id', 'receipt_number']),
-                ])->values(),
+                'allocation_id' => $allocation->id,
+                'property_id' => $allocation->property_id,
+                'title' => $allocation->property?->title,
+                'price' => (float) ($allocation->original_price ?? $allocation->property?->price ?? $allocation->total_amount),
+                'original_price' => (float) ($allocation->original_price ?? $allocation->total_amount),
+                'discount_type' => $allocation->discount_type,
+                'discount_value' => (float) ($allocation->discount_value ?? 0),
+                'discount_amount' => (float) ($allocation->discount_amount ?? 0),
+                'final_payable_amount' => (float) $allocation->total_amount,
+                'client' => $allocation->client?->full_name,
+                'payment_progress' => $allocation->total_amount > 0
+                    ? min(100, (int) round(((float) $allocation->amount_paid / (float) $allocation->total_amount) * 100))
+                    : 0,
+                'amount_paid' => (float) $allocation->amount_paid,
+                'balance' => (float) $allocation->balance,
+                'payment_duration' => $allocation->payment_duration,
+                'custom_duration_value' => $allocation->custom_duration_value,
+                'custom_duration_unit' => $allocation->custom_duration_unit,
+                'payment_duration_label' => $allocation->paymentDurationLabel(),
+                'payment_duration_interval' => $allocation->paymentDurationInterval(),
+                'status' => $allocation->status?->value ?? $allocation->status,
+                'latest_receipt' => $allocation->payments
+                    ->sortByDesc('paid_at')
+                    ->first(fn ($payment) => $payment->receipt)?->receipt?->only(['id', 'receipt_number']),
+            ])->values(),
         ];
     }
 }

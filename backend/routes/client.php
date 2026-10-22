@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Client\BalanceController;
 use App\Http\Controllers\Api\V1\Client\DashboardController;
 use App\Http\Controllers\Api\V1\Client\DocumentController;
 use App\Http\Controllers\Api\V1\Client\PaymentController;
+use App\Http\Controllers\Api\V1\Client\PaymentProofSubmissionController;
 use App\Http\Controllers\Api\V1\Client\ProfileController;
 use App\Http\Controllers\Api\V1\Client\PropertyController;
 use App\Http\Controllers\Api\V1\Client\ReceiptController;
@@ -54,6 +55,14 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
         Route::get('/overdue/list', [PaymentController::class, 'overdue']);
         Route::get('/{paymentId}', [PaymentController::class, 'show']);
     });
+
+    // Rental and service-charge payment proof submissions
+    Route::get('/payment-proof-submissions/options', [PaymentProofSubmissionController::class, 'options']);
+    Route::get('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'index']);
+    Route::post('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::get('/payment-proof-submissions/{submissionId}/proof', [PaymentProofSubmissionController::class, 'proof'])
+        ->name('client.payment-proof-submissions.proof');
 
     // Receipts
     Route::prefix('receipts')->group(function () {

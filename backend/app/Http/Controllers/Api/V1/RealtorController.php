@@ -15,9 +15,7 @@ use Illuminate\Validation\Rule;
 
 class RealtorController extends Controller
 {
-    public function __construct(private readonly RealtorAnalyticsService $analyticsService)
-    {
-    }
+    public function __construct(private readonly RealtorAnalyticsService $analyticsService) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {

@@ -13,9 +13,7 @@ use Carbon\Carbon;
 
 class MonthlyReminderService
 {
-    public function __construct(private readonly EmailNotificationService $emailNotificationService)
-    {
-    }
+    public function __construct(private readonly EmailNotificationService $emailNotificationService) {}
 
     public function sendMonthlyClientReminders(): void
     {

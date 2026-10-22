@@ -8,9 +8,7 @@ use Illuminate\Support\Collection;
 
 class ClientDashboardService
 {
-    public function __construct(private readonly Client $client)
-    {
-    }
+    public function __construct(private readonly Client $client) {}
 
     public function getAllocations(): Collection
     {
@@ -121,7 +119,12 @@ class ClientDashboardService
                     'title' => $allocation->property?->title,
                     'location' => $allocation->property?->location,
                 ],
+                'original_price' => (float) ($allocation->original_price ?? $allocation->total_amount),
+                'discount_type' => $allocation->discount_type,
+                'discount_value' => (float) ($allocation->discount_value ?? 0),
+                'discount_amount' => (float) ($allocation->discount_amount ?? 0),
                 'total_amount' => (float) $allocation->total_amount,
+                'final_payable_amount' => (float) $allocation->total_amount,
                 'paid_amount' => $allocation->paidAmount(),
                 'outstanding_amount' => $allocation->outstandingAmount(),
                 'payment_progress' => $allocation->paymentProgress(),

@@ -15,9 +15,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ClientController extends Controller
 {
-    public function __construct(private readonly ClientActivityService $clientActivityService)
-    {
-    }
+    public function __construct(private readonly ClientActivityService $clientActivityService) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -103,5 +101,4 @@ class ClientController extends Controller
             'message' => 'Client deleted successfully.',
         ]);
     }
-
 }

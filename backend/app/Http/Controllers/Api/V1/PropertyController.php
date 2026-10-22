@@ -12,8 +12,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\ValidationException;
 
 class PropertyController extends Controller
 {
@@ -115,7 +115,7 @@ class PropertyController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function normalizeInventoryCounts(array $data, ?Property $property = null): array

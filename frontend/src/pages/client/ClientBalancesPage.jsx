@@ -71,7 +71,11 @@ export function ClientBalancesPage() {
               <div className="h-full bg-brand" style={{ width: `${Math.min(balance.payment_progress || 0, 100)}%` }} />
             </div>
             <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-              <p><span className="text-muted">Total:</span> {money(balance.total_amount)}</p>
+              <p><span className="text-muted">Original price:</span> {money(balance.original_price ?? balance.total_amount)}</p>
+              <p><span className="text-muted">Discount:</span> {Number(balance.discount_amount || 0) > 0
+                ? `${balance.discount_type === 'percentage' ? `${balance.discount_value}% · ` : ''}${money(balance.discount_amount)}`
+                : 'None'}</p>
+              <p><span className="text-muted">Final payable:</span> {money(balance.total_amount)}</p>
               <p><span className="text-muted">Paid:</span> {money(balance.paid_amount)}</p>
               <p><span className="text-muted">Status:</span> <span className="capitalize">{balance.status}</span></p>
             </div>

@@ -39,7 +39,7 @@ class PropertyResource extends JsonResource
         $baseUrl = config('app.url');
         $baseUrl = rtrim($baseUrl, '/');
 
-        return $baseUrl . '/assets/property-placeholder.svg';
+        return $baseUrl.'/assets/property-placeholder.svg';
     }
 
     private function resolvePublicImageUrl(string $path): string
@@ -54,6 +54,6 @@ class PropertyResource extends JsonResource
             return $storageUrl;
         }
 
-        return rtrim(config('app.url'), '/') . '/' . ltrim($storageUrl, '/');
+        return rtrim(config('app.url'), '/').'/'.ltrim($storageUrl, '/');
     }
 }

@@ -186,7 +186,9 @@ function ActivityModal({ client, activity, loading, error, onClose, onViewReceip
                             {property.status}
                           </span>
                         </div>
-                        <p className="mt-3 text-sm font-semibold text-ink">{formatMoney(property.price)}</p>
+                        <p className="mt-3 text-sm text-muted">Original {formatMoney(property.original_price ?? property.price)}</p>
+                        {Number(property.discount_amount || 0) > 0 ? <p className="mt-1 text-sm text-muted">Discount {property.discount_type === 'percentage' ? `${property.discount_value}% · ` : ''}{formatMoney(property.discount_amount)}</p> : null}
+                        <p className="mt-1 text-sm font-semibold text-brand">Final payable {formatMoney(property.final_payable_amount ?? property.price)}</p>
                       </div>
                     ))}
                     {!activity.properties?.length ? (
@@ -199,7 +201,7 @@ function ActivityModal({ client, activity, loading, error, onClose, onViewReceip
                         <tr className="border-b border-line">
                           <th className="py-2 pr-3">Property</th>
                           <th className="py-2 pr-3">Location</th>
-                          <th className="py-2 pr-3">Price</th>
+                          <th className="py-2 pr-3">Original price / final</th>
                           <th className="py-2">Status</th>
                         </tr>
                       </thead>
@@ -208,7 +210,11 @@ function ActivityModal({ client, activity, loading, error, onClose, onViewReceip
                           <tr key={property.id} className="border-b border-line last:border-0">
                             <td className="py-3 pr-3 font-medium text-ink">{property.title}</td>
                             <td className="py-3 pr-3 text-muted">{property.location}</td>
-                            <td className="py-3 pr-3 font-semibold text-ink">{formatMoney(property.price)}</td>
+                            <td className="py-3 pr-3">
+                              <p className="text-xs text-muted">Original {formatMoney(property.original_price ?? property.price)}</p>
+                              {Number(property.discount_amount || 0) > 0 ? <p className="text-xs text-muted">Discount {formatMoney(property.discount_amount)}</p> : null}
+                              <p className="font-semibold text-brand">{formatMoney(property.final_payable_amount ?? property.price)}</p>
+                            </td>
                             <td className="py-3 capitalize text-muted">{property.status}</td>
                           </tr>
                         ))}

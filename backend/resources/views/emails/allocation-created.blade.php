@@ -29,7 +29,11 @@
 
 <p style="margin: 0 0 8px; font-weight: bold;">Important Summary:</p>
 <ul style="margin: 0 0 20px 20px; padding: 0;">
-    <li>Property Price: &#8358;{{ number_format($allocation->total_amount, 2) }}</li>
+    <li>Original Property Price: &#8358;{{ number_format($allocation->original_price ?? $allocation->total_amount, 2) }}</li>
+    @if((float) ($allocation->discount_amount ?? 0) > 0)
+        <li>Promotional Discount: &#8358;{{ number_format($allocation->discount_amount, 2) }}{{ $allocation->discount_type === 'percentage' ? ' (' . number_format((float) $allocation->discount_value, 2) . '%)' : '' }}</li>
+    @endif
+    <li>Final Payable Amount: &#8358;{{ number_format($allocation->total_amount, 2) }}</li>
     <li>Amount Paid: &#8358;{{ number_format($allocation->amount_paid, 2) }}</li>
     <li>Outstanding Balance: &#8358;{{ number_format($allocation->balance, 2) }}</li>
 </ul>

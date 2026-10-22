@@ -15,9 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DocumentController extends Controller
 {
-    public function __construct(private readonly DocumentManagementService $documents)
-    {
-    }
+    public function __construct(private readonly DocumentManagementService $documents) {}
 
     public function index(Request $request): JsonResponse
     {

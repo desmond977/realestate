@@ -115,7 +115,7 @@ class PropertyApiTest extends TestCase
             ->assertJsonValidationErrors(['property_count']);
     }
 
-public function test_authenticated_user_can_upload_property_image(): void
+    public function test_authenticated_user_can_upload_property_image(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
         Storage::fake('public');

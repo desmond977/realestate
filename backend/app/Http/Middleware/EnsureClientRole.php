@@ -16,17 +16,17 @@ class EnsureClientRole
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user()) {
+        if (! $request->user()) {
             return response()->json([
                 'message' => 'Unauthenticated.',
-                'redirect' => '/login'
+                'redirect' => '/login',
             ], 401);
         }
 
-        if (!$request->user() instanceof Client) {
+        if (! $request->user() instanceof Client) {
             return response()->json([
                 'message' => 'Access forbidden. Client portal access required.',
-                'redirect' => '/login'
+                'redirect' => '/login',
             ], 403);
         }
 

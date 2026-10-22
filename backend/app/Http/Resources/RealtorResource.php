@@ -40,6 +40,10 @@ class RealtorResource extends JsonResource
                 array_key_exists('confirmed_revenue', $this->resource->getAttributes()),
                 (float) ($this->confirmed_revenue ?? 0)
             ),
+            'monthly_confirmed_revenue' => $this->when(
+                array_key_exists('monthly_confirmed_revenue', $this->resource->getAttributes()),
+                (float) ($this->monthly_confirmed_revenue ?? 0)
+            ),
             'outstanding_balances' => $this->when(
                 array_key_exists('outstanding_balances', $this->resource->getAttributes()),
                 (float) ($this->outstanding_balances ?? 0)
@@ -47,6 +51,10 @@ class RealtorResource extends JsonResource
             'installment_totals' => $this->when(
                 array_key_exists('installment_totals', $this->resource->getAttributes()),
                 (float) ($this->installment_totals ?? 0)
+            ),
+            'monthly_installment_totals' => $this->when(
+                array_key_exists('monthly_installment_totals', $this->resource->getAttributes()),
+                (float) ($this->monthly_installment_totals ?? 0)
             ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

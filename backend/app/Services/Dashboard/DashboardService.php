@@ -10,11 +10,13 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Realtor;
+use App\Models\RealtorLeaderboardSnapshot;
 use App\Services\CompanySettings;
 use App\Services\TenantManager;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardService
 {
@@ -23,43 +25,54 @@ class DashboardService
      */
     public function summary(): array
     {
-        $key = 'dashboard_summary:' . (app(TenantManager::class)->currentId() ?? 'default');
+        $now = Carbon::now();
+        $this->archiveCompletedMonthLeaderboard($now->copy()->subMonthNoOverflow());
 
-        return Cache::remember($key, now()->addSeconds(60), function () {
+        $key = 'dashboard_summary:'.(app(TenantManager::class)->currentId() ?? 'default').':'.$now->format('Y-m');
+
+        return Cache::remember($key, now()->addSeconds(60), function () use ($now) {
             $company = app(CompanySettings::class)->get();
             $monthlyTarget = (float) ($company['target_amount'] ?? 5000000.0);
             $revenue = (float) Payment::query()
                 ->where('status', PaymentStatus::Confirmed)
                 ->sum('amount');
+            $leaderboardMonth = $now->copy()->startOfMonth();
 
             return [
-            'stats' => [
-                'total_properties' => Property::query()->count(),
-                'available_properties' => Property::query()->where('status', PropertyStatus::Available)->count(),
-                'reserved_properties' => Property::query()->where('status', PropertyStatus::Reserved)->count(),
-                'sold_properties' => Property::query()->where('status', PropertyStatus::Sold)->count(),
-                'total_plots' => (int) Property::query()->sum('property_count'),
-                'available_plots' => (int) Property::query()->sum('available_count'),
-                'reserved_plots' => (int) Property::query()->sum('reserved_count'),
-                'sold_plots' => (int) Property::query()->sum('sold_count'),
-                'total_clients' => Client::query()->count(),
-                'total_realtors' => Realtor::query()->count(),
-                'revenue' => $revenue,
-                'outstanding_balances' => (float) Allocation::query()
-                    ->whereIn('status', [AllocationStatus::Reserved, AllocationStatus::Active])
-                    ->sum('balance'),
-                'active_allocations' => Allocation::query()->where('status', AllocationStatus::Active)->count(),
-                'completed_allocations' => Allocation::query()->where('status', AllocationStatus::Completed)->count(),
-            ],
-            'monthly_target' => $monthlyTarget,
-            'monthly_target_progress' => $this->targetProgress($revenue, $monthlyTarget),
-            'property_status_breakdown' => $this->propertyStatusBreakdown(),
-            'property_inventory_breakdown' => $this->propertyInventoryBreakdown(),
-            'allocation_status_breakdown' => $this->allocationStatusBreakdown(),
-            'recent_payments' => $this->recentPayments(),
-            'recent_allocations' => $this->recentAllocations(),
-            'top_realtors' => $this->topRealtors(),
-        ];
+                'stats' => [
+                    'total_properties' => Property::query()->count(),
+                    'available_properties' => Property::query()->where('status', PropertyStatus::Available)->count(),
+                    'reserved_properties' => Property::query()->where('status', PropertyStatus::Reserved)->count(),
+                    'sold_properties' => Property::query()->where('status', PropertyStatus::Sold)->count(),
+                    'total_plots' => (int) Property::query()->sum('property_count'),
+                    'available_plots' => (int) Property::query()->sum('available_count'),
+                    'reserved_plots' => (int) Property::query()->sum('reserved_count'),
+                    'sold_plots' => (int) Property::query()->sum('sold_count'),
+                    'total_clients' => Client::query()->count(),
+                    'total_realtors' => Realtor::query()->count(),
+                    'revenue' => $revenue,
+                    'outstanding_balances' => (float) Allocation::query()
+                        ->whereIn('status', [AllocationStatus::Reserved, AllocationStatus::Active])
+                        ->sum('balance'),
+                    'active_allocations' => Allocation::query()->where('status', AllocationStatus::Active)->count(),
+                    'completed_allocations' => Allocation::query()->where('status', AllocationStatus::Completed)->count(),
+                ],
+                'monthly_target' => $monthlyTarget,
+                'monthly_target_progress' => $this->targetProgress($revenue, $monthlyTarget),
+                'property_status_breakdown' => $this->propertyStatusBreakdown(),
+                'property_inventory_breakdown' => $this->propertyInventoryBreakdown(),
+                'allocation_status_breakdown' => $this->allocationStatusBreakdown(),
+                'recent_payments' => $this->recentPayments(),
+                'recent_allocations' => $this->recentAllocations(),
+                'top_realtors' => $this->topRealtors($leaderboardMonth, $now->copy()->endOfMonth()),
+                'realtor_leaderboard_period' => [
+                    'key' => $leaderboardMonth->format('Y-m'),
+                    'label' => $leaderboardMonth->format('F Y'),
+                    'starts_at' => $leaderboardMonth->toDateString(),
+                    'ends_at' => $leaderboardMonth->copy()->endOfMonth()->toDateString(),
+                ],
+                'previous_realtor_leaderboard_snapshot' => $this->previousLeaderboardSnapshot($leaderboardMonth),
+            ];
         });
     }
 
@@ -109,25 +122,45 @@ class DashboardService
             ->get();
     }
 
-    private function topRealtors(): Collection
+    private function topRealtors(Carbon $startOfMonth, Carbon $endOfMonth): Collection
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth = Carbon::now()->endOfMonth();
+        return $this->realtorLeaderboardForPeriod($startOfMonth, $endOfMonth, 5, true);
+    }
 
-        return Realtor::query()
+    private function realtorLeaderboardForPeriod(
+        Carbon $startOfMonth,
+        Carbon $endOfMonth,
+        ?int $limit = 5,
+        bool $onlyWithActivity = false
+    ): Collection {
+        $realtors = Realtor::query()
             ->withSum(['payments as confirmed_revenue' => function ($query) {
                 $query->where('status', PaymentStatus::Confirmed);
+            }], 'amount')
+            ->withSum(['payments as monthly_confirmed_revenue' => function ($query) use ($startOfMonth, $endOfMonth) {
+                $query
+                    ->where('status', PaymentStatus::Confirmed)
+                    ->whereBetween('paid_at', [$startOfMonth, $endOfMonth]);
             }], 'amount')
             ->withSum(['payments as installment_totals' => function ($query) {
                 $query
                     ->where('status', PaymentStatus::Confirmed)
                     ->where('payment_type', 'installment');
             }], 'amount')
+            ->withSum(['payments as monthly_installment_totals' => function ($query) use ($startOfMonth, $endOfMonth) {
+                $query
+                    ->where('status', PaymentStatus::Confirmed)
+                    ->where('payment_type', 'installment')
+                    ->whereBetween('paid_at', [$startOfMonth, $endOfMonth]);
+            }], 'amount')
             ->withSum(['allocations as outstanding_balances' => function ($query) {
                 $query->whereIn('status', [AllocationStatus::Reserved, AllocationStatus::Active]);
             }], 'balance')
             ->withCount([
                 'clients',
+                'clients as monthly_clients_count' => function ($query) use ($startOfMonth, $endOfMonth) {
+                    $query->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+                },
                 'allocations',
                 'allocations as properties_sold_count' => function ($query) {
                     $query->where('status', AllocationStatus::Completed);
@@ -138,10 +171,80 @@ class DashboardService
                         ->whereBetween('updated_at', [$startOfMonth, $endOfMonth]);
                 },
             ])
-            ->orderByDesc('properties_sold_count')
-            ->orderByDesc('confirmed_revenue')
-            ->limit(5)
+            ->orderByDesc('monthly_properties_sold_count')
+            ->orderByDesc('monthly_confirmed_revenue')
+            ->orderByDesc('monthly_clients_count')
+            ->orderBy('full_name')
             ->get();
+
+        if ($onlyWithActivity) {
+            $realtors = $realtors->filter(fn (Realtor $realtor) => (
+                (int) ($realtor->monthly_properties_sold_count ?? 0) > 0
+                || (float) ($realtor->monthly_confirmed_revenue ?? 0) > 0
+            ));
+        }
+
+        return $limit === null
+            ? $realtors->values()
+            : $realtors->take($limit)->values();
+    }
+
+    private function archiveCompletedMonthLeaderboard(Carbon $month): void
+    {
+        $tenantId = app(TenantManager::class)->currentId() ?? 1;
+        $startOfMonth = $month->copy()->startOfMonth();
+        $endOfMonth = $month->copy()->endOfMonth();
+
+        if (RealtorLeaderboardSnapshot::query()
+            ->where('tenant_id', $tenantId)
+            ->whereDate('leaderboard_month', $startOfMonth->toDateString())
+            ->exists()) {
+            return;
+        }
+
+        $leaderboard = $this->realtorLeaderboardForPeriod($startOfMonth, $endOfMonth, null, true)
+            ->map(fn (Realtor $realtor, int $index) => [
+                'rank' => $index + 1,
+                'realtor_id' => $realtor->id,
+                'full_name' => $realtor->full_name,
+                'company_name' => $realtor->company_name,
+                'monthly_properties_sold_count' => (int) ($realtor->monthly_properties_sold_count ?? 0),
+                'monthly_confirmed_revenue' => (float) ($realtor->monthly_confirmed_revenue ?? 0),
+                'monthly_installment_totals' => (float) ($realtor->monthly_installment_totals ?? 0),
+                'monthly_clients_count' => (int) ($realtor->monthly_clients_count ?? 0),
+                'outstanding_balances' => (float) ($realtor->outstanding_balances ?? 0),
+            ]);
+
+        RealtorLeaderboardSnapshot::query()->updateOrCreate(
+            [
+                'tenant_id' => $tenantId,
+                'leaderboard_month' => $startOfMonth->toDateString(),
+            ],
+            [
+                'leaderboard' => $leaderboard->values()->all(),
+                'entries_count' => $leaderboard->count(),
+                'archived_at' => now(),
+            ],
+        );
+    }
+
+    private function previousLeaderboardSnapshot(Carbon $currentMonth): ?array
+    {
+        $snapshot = RealtorLeaderboardSnapshot::query()
+            ->whereDate('leaderboard_month', $currentMonth->copy()->subMonthNoOverflow()->toDateString())
+            ->first();
+
+        if (! $snapshot) {
+            return null;
+        }
+
+        return [
+            'leaderboard_month' => $snapshot->leaderboard_month?->format('Y-m'),
+            'label' => $snapshot->leaderboard_month?->format('F Y'),
+            'leaderboard' => $snapshot->leaderboard,
+            'entries_count' => $snapshot->entries_count,
+            'archived_at' => $snapshot->archived_at?->toISOString(),
+        ];
     }
 
     /**

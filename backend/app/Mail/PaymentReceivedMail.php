@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
-use App\Models\Payment;
 use App\Models\CompanySetting;
+use App\Models\Payment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -18,13 +18,12 @@ class PaymentReceivedMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly Payment $payment,
         public readonly string $recipientType, // 'client' or 'admin'
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
         $subject = $this->recipientType === 'admin'
-            ? 'Payment Received - ' . ($this->payment->client->full_name ?? 'Client')
+            ? 'Payment Received - '.($this->payment->client->full_name ?? 'Client')
             : 'Payment Confirmation - Receipt Generated';
 
         return new Envelope(

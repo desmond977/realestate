@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
-use App\Models\Payment;
 use App\Models\CompanySetting;
+use App\Models\Payment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -19,13 +19,12 @@ class PaymentUpdatedMail extends Mailable implements ShouldQueue
         public readonly Payment $payment,
         public readonly float $oldAmount,
         public readonly string $recipientType,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
         $subject = $this->recipientType === 'admin'
-            ? 'Payment Updated - ' . ($this->payment->client->full_name ?? 'Client')
+            ? 'Payment Updated - '.($this->payment->client->full_name ?? 'Client')
             : 'Payment Update Confirmation';
 
         return new Envelope(subject: $subject);

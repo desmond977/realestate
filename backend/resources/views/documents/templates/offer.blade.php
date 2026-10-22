@@ -24,6 +24,8 @@
         <div class="meta-row"><div class="meta-label">Payment Duration</div><div class="meta-value">{{ $data['payment_duration'] }}</div></div>
     </div>
 
+    @include('documents.templates.pricing-summary')
+
     <p>
         Kindly review this offer and keep a copy for your records. The offer remains subject to the
         payment and allocation terms maintained by {{ $data['company_name'] }}.

@@ -20,13 +20,12 @@ class AllocationUpdatedMail extends Mailable implements ShouldQueue
         public readonly string $previousStatus,
         public readonly float $previousAmountPaid,
         public readonly string $recipientType,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
         $subject = $this->recipientType === 'admin'
-            ? 'Allocation Updated - ' . ($this->allocation->client->full_name ?? 'Client')
+            ? 'Allocation Updated - '.($this->allocation->client->full_name ?? 'Client')
             : 'Allocation Update Notification';
 
         return new Envelope(subject: $subject);

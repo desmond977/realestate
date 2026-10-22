@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Allocation;
 
 use App\Models\Allocation;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +11,8 @@ class UpdateAllocationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return ! $this->hasDiscountInput()
+            || ($this->user() instanceof User && $this->user()->role?->value === 'admin');
     }
 
     /**
@@ -32,6 +34,8 @@ class UpdateAllocationRequest extends FormRequest
                 Rule::in(Allocation::CUSTOM_DURATION_UNITS),
             ],
             'payment_status' => ['sometimes', Rule::in(['paid', 'unpaid', 'part_payment'])],
+            'discount_type' => ['sometimes', 'nullable', Rule::in(['fixed', 'percentage'])],
+            'discount_value' => ['sometimes', 'nullable', 'numeric', 'min:0', 'decimal:0,2', 'required_with:discount_type'],
             'initial_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
             'amount' => ['nullable', 'numeric', 'min:0.01'],
             'payment_method' => ['nullable', 'string', 'max:100'],
@@ -50,5 +54,10 @@ class UpdateAllocationRequest extends FormRequest
     private function isRecordingPayment(): bool
     {
         return (float) $this->input('initial_payment_amount', $this->input('amount', 0)) > 0;
+    }
+
+    private function hasDiscountInput(): bool
+    {
+        return $this->exists('discount_type') || $this->exists('discount_value');
     }
 }

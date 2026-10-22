@@ -18,6 +18,8 @@
         <div class="meta-row"><div class="meta-label">Latest Payment</div><div class="meta-value">{{ $data['payment_amount'] }}</div></div>
     </div>
 
+    @include('documents.templates.pricing-summary')
+
     <p>
         Processing will continue in line with the customer's payment status, allocation details,
         and the internal approval procedure of {{ $data['company_name'] }}.

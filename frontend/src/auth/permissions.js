@@ -10,6 +10,26 @@ export function canManageAllocations(user) {
   return user?.role === 'admin'
 }
 
+export function canManageRentals(user) {
+  return user?.role === 'admin'
+}
+
+export function canRecordRentalPayments(user) {
+  return ['admin', 'accountant'].includes(user?.role)
+}
+
+export function canManageServiceCharges(user) {
+  return ['admin', 'staff'].includes(user?.role)
+}
+
+export function canRecordServiceChargePayments(user) {
+  return ['admin', 'accountant'].includes(user?.role)
+}
+
+export function canManageServiceChargeCategories(user) {
+  return user?.role === 'admin'
+}
+
 export function canManageRealtors(user) {
   return ['admin', 'staff'].includes(user?.role)
 }

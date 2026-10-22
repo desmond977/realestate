@@ -12,9 +12,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ReceiptController extends Controller
 {
-    public function __construct(private readonly ReceiptDocumentService $receiptDocumentService)
-    {
-    }
+    public function __construct(private readonly ReceiptDocumentService $receiptDocumentService) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {

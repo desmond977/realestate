@@ -16,9 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DocumentController extends Controller
 {
-    public function __construct(private readonly DocumentManagementService $documents)
-    {
-    }
+    public function __construct(private readonly DocumentManagementService $documents) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -39,6 +37,10 @@ class DocumentController extends Controller
                 'property_id',
                 'client_id',
                 'realtor_id',
+                'original_price',
+                'discount_type',
+                'discount_value',
+                'discount_amount',
                 'total_amount',
                 'amount_paid',
                 'balance',
@@ -87,10 +89,10 @@ class DocumentController extends Controller
 
                 $allocationQuery
                     ->orWhereHas('client', function ($clientQuery) use ($search): void {
-                    $clientQuery->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                })
+                        $clientQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('property', function ($propertyQuery) use ($search): void {
                         $propertyQuery->where('title', 'like', "%{$search}%")
                             ->orWhere('location', 'like', "%{$search}%");

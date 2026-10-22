@@ -111,6 +111,7 @@ class DocumentManagementService
         $client = $allocation->client;
         $property = $allocation->property;
         $latestPayment = $allocation->payments->sortByDesc('paid_at')->first();
+        $originalPrice = (float) ($allocation->original_price ?? $allocation->total_amount);
 
         return [
             'document_title' => $template->name,
@@ -123,6 +124,11 @@ class DocumentManagementService
             'estate' => $property?->location,
             'property_name' => $property?->title,
             'property_location' => $property?->location,
+            'original_price' => number_format($originalPrice, 2),
+            'discount_type' => $allocation->discount_type,
+            'discount_value' => number_format((float) ($allocation->discount_value ?? 0), 2),
+            'discount_amount' => number_format((float) ($allocation->discount_amount ?? 0), 2),
+            'final_payable_amount' => number_format((float) $allocation->total_amount, 2),
             'allocation_date' => $allocation->allocated_at?->format('M d, Y'),
             'payment_amount' => number_format((float) ($latestPayment?->amount ?? $allocation->amount_paid), 2),
             'amount_paid' => number_format((float) $allocation->amount_paid, 2),
