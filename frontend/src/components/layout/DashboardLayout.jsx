@@ -1,6 +1,7 @@
 import {
   Building2,
   ChartNoAxesCombined,
+  ChevronDown,
   ClipboardCheck,
   FileText,
   Gauge,
@@ -17,25 +18,28 @@ import {
   X,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { api, assetUrl } from '../../api/client'
 import { applyBranding, getPersistedBranding, getPersistedUserTheme, persistBranding } from '../../utils/theme.js'
 
 const navItems = [
   { label: 'Dashboard', to: '/dashboard', icon: Gauge, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Rental Dashboard', to: '/rental-dashboard', icon: ChartNoAxesCombined, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Properties', to: '/properties', icon: Building2, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Realtors', to: '/realtors', icon: UserPlus, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Clients', to: '/clients', icon: Users, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Allocations', to: '/allocations', icon: Home, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Rentals', to: '/rentals', icon: KeyRound, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Rental Payments', to: '/rental-payments', icon: ReceiptText, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Service Charges', to: '/service-charges', icon: ReceiptText, roles: ['admin', 'staff', 'accountant'] },
-  { label: 'Payment Approvals', to: '/payment-approvals', icon: ClipboardCheck, roles: ['admin'] },
   { label: 'Documents', to: '/documents', icon: FileText, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Receipts', to: '/receipts', icon: ReceiptText, roles: ['admin', 'staff', 'accountant'] },
   { label: 'Users', to: '/users', icon: ShieldCheck, roles: ['admin'] },
+]
+
+const rentalNavItems = [
+  { label: 'Rental Dashboard', to: '/rental-dashboard', icon: ChartNoAxesCombined, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Tenants & Allocations', to: '/rentals', icon: KeyRound, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Rent Payments', to: '/rental-payments', icon: ReceiptText, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Service Charges', to: '/service-charges', icon: ReceiptText, roles: ['admin', 'staff', 'accountant'] },
+  { label: 'Payment Approvals', to: '/payment-approvals', icon: ClipboardCheck, roles: ['admin'] },
 ]
 
 const utilityNavItems = [
@@ -45,8 +49,12 @@ const utilityNavItems = [
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [rentalMenuOpen, setRentalMenuOpen] = useState(false)
   const { logout, user } = useAuth()
+  const location = useLocation()
   const [branding, setBranding] = useState(() => getPersistedBranding())
+  const [rentalManagementEnabled, setRentalManagementEnabled] = useState(null)
+  const [rentalSettingsLoaded, setRentalSettingsLoaded] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -57,6 +65,8 @@ export function DashboardLayout() {
 
         if (active) {
           setBranding(response.data.data.settings)
+          setRentalManagementEnabled(Boolean(response.data.data.settings.rental_management_enabled))
+          setRentalSettingsLoaded(true)
           persistBranding(response.data.data.settings)
           applyBranding({ ...getPersistedUserTheme(), brand_color: response.data.data.settings.brand_color })
         }
@@ -64,6 +74,8 @@ export function DashboardLayout() {
         if (active) {
           const persisted = getPersistedBranding()
           setBranding(persisted)
+          setRentalManagementEnabled(false)
+          setRentalSettingsLoaded(true)
           applyBranding({ ...getPersistedUserTheme(), ...persisted })
         }
       }
@@ -81,7 +93,16 @@ export function DashboardLayout() {
     }
   }, [])
 
+  useEffect(() => {
+    if (location.pathname.startsWith('/rental-') || location.pathname.startsWith('/rentals') || location.pathname.startsWith('/service-charges') || location.pathname === '/payment-approvals') {
+      setRentalMenuOpen(true)
+    }
+  }, [location.pathname])
+
   const visibleNavItems = navItems.filter((item) => item.roles.includes(user?.role))
+  const visibleRentalNavItems = rentalManagementEnabled
+    ? rentalNavItems.filter((item) => item.roles.includes(user?.role))
+    : []
   const visibleUtilityItems = utilityNavItems.filter((item) => item.roles.includes(user?.role))
 
   return (
@@ -94,9 +115,9 @@ export function DashboardLayout() {
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <div className="flex items-center">
             {branding?.company_logo ? (
-              <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-24 w-24 rounded-sm object-contain" />
+              <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-12 w-12 rounded-sm object-contain" />
             ) : (
-              <div className="grid h-24 w-24 place-items-center rounded-lg bg-brand text-white">
+              <div className="grid h-12 w-12 place-items-center rounded-lg bg-brand text-white">
                 <svg viewBox="0 0 24 24" fill="none" width="32" height="32" xmlns="http://www.w3.org/2000/svg"><path d="M3 21V9a2 2 0 0 1 2-2h3v10H3zM14 7h5a2 2 0 0 1 2 2v12H14V7zM8 3h8v4H8V3z" fill="currentColor"/></svg>
               </div>
             )}
@@ -129,6 +150,38 @@ export function DashboardLayout() {
               {item.label}
             </NavLink>
           ))}
+          {visibleRentalNavItems.length > 0 ? (
+            <div>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted transition hover:bg-canvas hover:text-ink"
+                aria-expanded={rentalMenuOpen}
+                onClick={() => setRentalMenuOpen((open) => !open)}
+              >
+                <span className="flex items-center gap-3"><KeyRound size={18} />Rental Management</span>
+                <ChevronDown size={16} className={rentalMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              {rentalMenuOpen ? (
+                <div className="ml-4 mt-1 space-y-1 border-l border-line pl-3">
+                  {visibleRentalNavItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                          isActive ? 'bg-brand text-white' : 'text-muted hover:bg-canvas hover:text-ink'
+                        }`
+                      }
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon size={17} />
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
 
         <div className="shrink-0 border-t border-line bg-panel px-3 py-4">
@@ -182,13 +235,13 @@ export function DashboardLayout() {
             </button>
             <div>
               <p className="text-sm text-muted">Signed in as</p>
-              <h1 className="text-base font-semibold text-ink">{user?.name}</h1>
+              <h1 className="max-w-[38vw] truncate text-base font-semibold text-ink sm:max-w-none">{user?.name}</h1>
             </div>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
+            className="inline-flex shrink-0 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
           >
             <LogOut size={16} />
             Logout
@@ -196,7 +249,7 @@ export function DashboardLayout() {
         </header>
 
         <main className="px-4 py-6 md:px-6 lg:px-8">
-          <Outlet />
+          <Outlet context={{ rentalManagementEnabled, rentalSettingsLoaded }} />
           <footer className="mt-10 rounded-3xl border border-line bg-panel/90 p-5 text-sm text-muted shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p>

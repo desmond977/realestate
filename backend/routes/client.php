@@ -9,6 +9,9 @@ use App\Http\Controllers\Api\V1\Client\PaymentProofSubmissionController;
 use App\Http\Controllers\Api\V1\Client\ProfileController;
 use App\Http\Controllers\Api\V1\Client\PropertyController;
 use App\Http\Controllers\Api\V1\Client\ReceiptController;
+use App\Http\Controllers\Api\V1\Client\RentalPaymentController;
+use App\Http\Controllers\Api\V1\Client\ServiceChargeController;
+use App\Http\Middleware\EnsureRentalManagementEnabled;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -56,13 +59,17 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
         Route::get('/{paymentId}', [PaymentController::class, 'show']);
     });
 
-    // Rental and service-charge payment proof submissions
-    Route::get('/payment-proof-submissions/options', [PaymentProofSubmissionController::class, 'options']);
-    Route::get('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'index']);
-    Route::post('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'store'])
-        ->middleware('throttle:10,1');
-    Route::get('/payment-proof-submissions/{submissionId}/proof', [PaymentProofSubmissionController::class, 'proof'])
-        ->name('client.payment-proof-submissions.proof');
+    Route::middleware(EnsureRentalManagementEnabled::class)->group(function () {
+        Route::get('/service-charges', [ServiceChargeController::class, 'index']);
+        Route::get('/rent-payments', [RentalPaymentController::class, 'index']);
+
+        Route::get('/payment-proof-submissions/options', [PaymentProofSubmissionController::class, 'options']);
+        Route::get('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'index']);
+        Route::post('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'store'])
+            ->middleware('throttle:10,1');
+        Route::get('/payment-proof-submissions/{submissionId}/proof', [PaymentProofSubmissionController::class, 'proof'])
+            ->name('client.payment-proof-submissions.proof');
+    });
 
     // Receipts
     Route::prefix('receipts')->group(function () {

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Camera as FaCamera, LockKeyhole as FaLock, Mail as FaEnvelope, Phone as FaPhone, Save as FaSave, User as FaUser } from 'lucide-react';
+import { Camera as FaCamera, LockKeyhole as FaLock, Mail as FaEnvelope, Moon, Phone as FaPhone, Save as FaSave, Sun, User as FaUser } from 'lucide-react';
 import { assetUrl } from '../../api/client';
 import { profileApi } from '../../services/clientApi';
 import { useClient } from '../../context/ClientContext';
+import { applyBranding, getPersistedBranding, getPersistedClientTheme, persistClientTheme } from '../../utils/theme';
 import './ClientProfilePage.css';
 
 const PROFILE_IMAGE_PLACEHOLDER = '/favicon.svg';
@@ -23,6 +24,14 @@ const ClientProfilePage = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [profileImage, setProfileImage] = useState(null);
   const [previewImage, setPreviewImage] = useState('');
+  const [themeMode, setThemeMode] = useState(() => getPersistedClientTheme().theme_mode);
+
+  const handleThemeChange = (mode) => {
+    const nextTheme = { theme_mode: mode };
+    setThemeMode(mode);
+    persistClientTheme(nextTheme);
+    applyBranding({ ...getPersistedBranding(), ...nextTheme });
+  };
 
   useEffect(() => {
     let active = true;
@@ -245,6 +254,31 @@ const ClientProfilePage = () => {
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </form>
+        </div>
+
+        <div className="profile-section">
+          <h2>
+            {themeMode === 'dark' ? <Moon /> : <Sun />} Appearance
+          </h2>
+          <div className="theme-setting">
+            <div>
+              <p className="theme-setting-title">Dark mode</p>
+              <p className="theme-setting-description">Use a darker appearance across your client portal.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={themeMode === 'dark'}
+              aria-label="Enable dark mode"
+              onClick={() => handleThemeChange(themeMode === 'dark' ? 'light' : 'dark')}
+              className={`theme-switch ${themeMode === 'dark' ? 'is-on' : ''}`}
+            >
+              <span className="theme-switch-thumb" />
+            </button>
+          </div>
+          <p className="theme-setting-status" role="status">
+            Dark mode is {themeMode === 'dark' ? 'on' : 'off'}.
+          </p>
         </div>
 
         {/* Change Password */}

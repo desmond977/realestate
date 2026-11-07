@@ -42,6 +42,7 @@ class CompanySettingController extends Controller
             'target_amount' => 250000,
             'theme_mode' => 'system',
             'brand_color' => '#166534',
+            'rental_management_enabled' => true,
         ]);
     }
 }

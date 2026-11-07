@@ -80,7 +80,7 @@ function RecordPaymentForm({ period, onSubmit, submitting, error }) {
         <span className="text-sm font-medium text-ink">Notes (optional)</span>
         <textarea value={form.notes} onChange={(event) => update('notes', event.target.value)} className="mt-1 min-h-20 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" />
       </label>
-      <button disabled={submitting} type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+      <button disabled={submitting} type="submit" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto">
         {submitting ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
         Record payment
       </button>
@@ -151,7 +151,7 @@ export function RentalPaymentDetailsPage() {
           <div>
             <p className="text-sm font-medium text-brand">Rental payment period #{period.id}</p>
             <h2 className="mt-1 text-2xl font-semibold text-ink">{agreement?.rental_property?.name || 'Rental property'}</h2>
-            <p className="mt-1 flex items-center gap-2 text-sm text-muted"><UserRound size={15} />{agreement?.client?.full_name || 'Tenant'} · {agreement?.rental_frequency}</p>
+            <p className="mt-1 flex items-center gap-2 text-sm text-muted"><UserRound size={15} />{agreement?.client?.full_name || 'Tenant'} · {agreement?.rental_frequency === 'annually' ? 'Yearly' : agreement?.rental_frequency}</p>
           </div>
           <PaymentStatus status={period.status} />
         </div>
@@ -196,7 +196,8 @@ export function RentalPaymentDetailsPage() {
       {receipt ? (
         <section className="rounded-lg border border-line bg-panel p-5 shadow-sm print:border-0 print:shadow-none">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Rental receipt</p>
-          <h3 className="mt-1 text-xl font-semibold text-ink">{receipt.snapshot?.company?.name || 'Company'}</h3>
+          <h3 className="mt-1 text-xl font-semibold text-ink">{receipt.snapshot?.company?.name || 'TerraOps'}</h3>
+          {receipt.snapshot?.company?.address ? <p className="mt-1 text-sm text-muted">{receipt.snapshot.company.address}</p> : null}
           <p className="mt-2 text-sm text-muted">{receipt.receipt_number} · {formatDate(receipt.issued_at)}</p>
           <p className="mt-4 text-sm text-ink">Received {formatMoney(receipt.snapshot?.payment?.amount)} from {receipt.snapshot?.client?.full_name} for {receipt.snapshot?.rental?.property_name}.</p>
         </section>

@@ -3,10 +3,10 @@
 namespace App\Services\RealEstate;
 
 use App\Enums\ServiceChargePaymentStatus;
+use App\Models\PaymentProofSubmission;
 use App\Models\ServiceCharge;
 use App\Models\ServiceChargePayment;
 use App\Models\ServiceChargeReceipt;
-use App\Models\PaymentProofSubmission;
 use App\Models\User;
 use App\Services\CompanySettings;
 use Illuminate\Support\Facades\DB;
@@ -49,8 +49,10 @@ class ServiceChargePaymentService
 
             $payment = $charge->payments()->create([
                 'recorded_by' => $recorder?->id,
+                'approved_by' => $proofSubmission ? $recorder?->id : null,
+                'approved_at' => $proofSubmission ? now() : null,
                 'amount' => number_format($amountCents / 100, 2, '.', ''),
-                'paid_at' => $payload['paid_at'],
+                'paid_at' => now(),
                 'payment_method' => $payload['payment_method'],
                 'transaction_reference' => $payload['transaction_reference'] ?? null,
                 'status' => ServiceChargePaymentStatus::Confirmed,
@@ -61,7 +63,7 @@ class ServiceChargePaymentService
 
             $this->createReceipt($payment, $recorder);
 
-            return $payment->load(['recorder', 'receipt']);
+            return $payment->load(['recorder', 'approver', 'receipt']);
         });
     }
 
@@ -106,6 +108,7 @@ class ServiceChargePaymentService
                     'id' => $charge->id,
                     'category' => $charge->category->name,
                     'description' => $charge->description,
+                    'billing_month' => $charge->billing_month ?: $charge->billing_period_start->format('Y-m'),
                     'billing_period_start' => $charge->billing_period_start->toDateString(),
                     'billing_period_end' => $charge->billing_period_end->toDateString(),
                     'amount_due' => (float) $charge->amount_due,
@@ -118,6 +121,9 @@ class ServiceChargePaymentService
                     'method' => $payment->payment_method,
                     'reference' => $payment->transaction_reference,
                     'paid_at' => $payment->paid_at->toISOString(),
+                    'paid_date' => $payment->paid_at->timezone(config('app.timezone'))->format('Y-m-d'),
+                    'paid_time' => $payment->paid_at->timezone(config('app.timezone'))->format('H:i:s'),
+                    'paid_weekday' => $payment->paid_at->timezone(config('app.timezone'))->format('l'),
                     'status' => $payment->status->value,
                 ],
             ],

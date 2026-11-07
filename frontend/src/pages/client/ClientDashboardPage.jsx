@@ -129,7 +129,7 @@ export function ClientDashboardPage() {
             </div>
           </div>
 
-          <aside className="border-t border-line bg-[#f8faf7] p-5 sm:p-6 lg:border-l lg:border-t-0">
+          <aside className="border-t border-line bg-canvas p-5 sm:p-6 lg:border-l lg:border-t-0">
             <p className="text-xs font-semibold uppercase text-muted">Account contact</p>
             <div className="mt-4 rounded-lg border border-line bg-white p-4">
               <p className="font-semibold text-ink">{supportName}</p>
@@ -241,6 +241,7 @@ export function ClientDashboardPage() {
           <ArrowRight size={17} className="text-brand" />
         </Link>
       </section>
+
     </div>
   )
 }

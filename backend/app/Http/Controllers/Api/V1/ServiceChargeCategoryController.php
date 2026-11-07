@@ -14,13 +14,11 @@ class ServiceChargeCategoryController extends Controller
 {
     public function index(): JsonResponse
     {
-        ServiceChargeCategory::ensureDefaults();
-
         return response()->json([
             'data' => [
                 'categories' => ServiceChargeCategory::query()
                     ->orderBy('name')
-                    ->get(['id', 'name', 'description', 'is_system']),
+                    ->get(['id', 'name', 'description', 'is_system', 'monthly_amount', 'is_active']),
             ],
         ]);
     }
@@ -30,12 +28,19 @@ class ServiceChargeCategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:255'],
+            'monthly_amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
+        if (ServiceChargeCategory::query()->exists()) {
+            throw ValidationException::withMessages([
+                'category' => ['Only one service charge category is allowed. Configure or delete the existing category first.'],
+            ]);
+        }
         $existing = ServiceChargeCategory::withTrashed()->where('name', $data['name'])->first();
 
         if ($existing?->trashed()) {
             $existing->restore();
-            $existing->update($data);
+            $existing->update([...$data, 'is_system' => false]);
 
             return response()->json([
                 'message' => 'Service charge category restored successfully.',
@@ -58,6 +63,8 @@ class ServiceChargeCategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:255'],
+            'monthly_amount' => ['sometimes', 'numeric', 'gt:0', 'max:9999999999999.99'],
+            'is_active' => ['required', 'boolean'],
         ]);
         $this->validateUniqueName($data['name'], $category);
         $category->update($data);
@@ -70,18 +77,6 @@ class ServiceChargeCategoryController extends Controller
 
     public function destroy(ServiceChargeCategory $category): JsonResponse
     {
-        if ($category->is_system) {
-            throw ValidationException::withMessages([
-                'category' => ['Default service charge categories cannot be deleted.'],
-            ]);
-        }
-
-        if ($category->charges()->withTrashed()->exists()) {
-            throw ValidationException::withMessages([
-                'category' => ['Categories already used by charges cannot be deleted.'],
-            ]);
-        }
-
         $category->delete();
 
         return response()->json(['message' => 'Service charge category deleted successfully.']);

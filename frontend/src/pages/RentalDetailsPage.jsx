@@ -64,10 +64,10 @@ export function RentalDetailsPage() {
     <section className="mx-auto max-w-5xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link to="/rentals" className="inline-flex items-center gap-2 text-sm font-medium text-brand"><ArrowLeft size={16} />Back to rentals</Link>
-        <div className="flex gap-2">
-          <Link to={`/rental-payments?rental_id=${rental.id}`} className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"><CreditCard size={16} />Payment history</Link>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <Link to={`/rental-payments?rental_id=${rental.id}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas sm:flex-none"><CreditCard size={16} />Payment history</Link>
           {canManageRentals(user) ? (
-          <button type="button" onClick={() => navigate(`/rentals?edit=${rental.id}`)} className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas"><Edit3 size={16} />Edit rental</button>
+          <button type="button" onClick={() => navigate(`/rentals?edit=${rental.id}`)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas sm:flex-none"><Edit3 size={16} />Edit rental</button>
           ) : null}
         </div>
       </div>
@@ -107,8 +107,8 @@ export function RentalDetailsPage() {
       <section className="rounded-lg border border-line bg-panel p-5 shadow-sm">
         <h3 className="mb-4 flex items-center gap-2 font-semibold text-ink"><CalendarDays size={18} className="text-brand" />Lease terms</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Detail label="Rental amount" value={`${formatMoney(rental.rental_amount)} / ${rental.rental_frequency}`} />
-          <Detail label="Frequency" value={rental.rental_frequency} />
+          <Detail label="Rental amount" value={`${formatMoney(rental.rental_amount)} / ${rental.rental_frequency === 'annually' ? 'Yearly' : rental.rental_frequency}`} />
+          <Detail label="Frequency" value={rental.rental_frequency === 'annually' ? 'Yearly' : rental.rental_frequency} />
           <Detail label="Lease start" value={formatDate(rental.lease_start_date)} />
           <Detail label="Lease end" value={formatDate(rental.lease_end_date)} />
         </div>

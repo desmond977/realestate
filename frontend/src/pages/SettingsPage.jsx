@@ -13,6 +13,7 @@ const defaultConfig = {
   company_address: '',
   company_logo: null,
   brand_color: '#166534',
+  rental_management_enabled: true,
 }
 
 export function SettingsPage() {
@@ -110,7 +111,7 @@ export function SettingsPage() {
             <p className="text-sm font-medium text-brand">Settings</p>
             <h1 className="mt-2 text-2xl font-semibold text-ink">Admin & dashboard setup</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted">
-              Update administrator contact details and set the active sales target for the dashboard.
+              Update administrator contact details, ON/ OFF rental module settings, and set the active sales target for the dashboard.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas px-4 py-2 text-sm text-ink">
@@ -231,6 +232,23 @@ export function SettingsPage() {
                 <span className="text-sm font-medium text-ink">{config.brand_color}</span>
               </div>
             </div>
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-line bg-canvas p-5">
+            <p className="text-sm font-semibold text-ink">Modules Management</p>
+            <label className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-line bg-white p-4">
+              <span>
+                <span className="block text-sm font-medium text-ink">Rental Management</span>
+                <span className="mt-1 block text-sm text-muted">Enable rental pages, navigation, and operations.</span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={Boolean(config.rental_management_enabled)}
+                onChange={(event) => updateField('rental_management_enabled', event.target.checked)}
+                className="h-5 w-5 shrink-0 accent-brand"
+              />
+            </label>
           </div>
 
           <div className="mt-6 rounded-3xl border border-line bg-canvas p-5">

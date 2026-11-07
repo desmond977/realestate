@@ -20,15 +20,27 @@ function receiptDate(receipt) {
 }
 
 function receiptProperty(receipt) {
-  return receipt.snapshot?.property?.title || receipt.payment?.property?.title || receipt.payment?.allocation?.property?.title || 'Property'
+  const snapshotProperty = receipt.snapshot?.property || receipt.snapshot?.allocation?.property || {}
+  const paymentProperty = receipt.payment?.property || receipt.payment?.allocation?.property || {}
+
+  return (
+    snapshotProperty.title
+    || snapshotProperty.name
+    || paymentProperty.title
+    || paymentProperty.name
+    || receipt.snapshot?.property?.name
+    || receipt.payment?.property?.name
+    || receipt.payment?.allocation?.property?.name
+    || 'Property'
+  )
 }
 
 function receiptAmount(receipt) {
-  return receipt.snapshot?.payment?.amount ?? receipt.payment?.amount
+  return receipt.snapshot?.payment?.amount ?? receipt.payment?.amount ?? receipt.snapshot?.amount ?? 0
 }
 
 function receiptDuration(receipt) {
-  return formatPaymentDuration(receipt.snapshot?.allocation || receipt.payment?.allocation)
+  return formatPaymentDuration(receipt.snapshot?.allocation || receipt.payment?.allocation || receipt.snapshot || receipt.payment)
 }
 
 export function ClientReceiptsPage() {
@@ -105,7 +117,7 @@ export function ClientReceiptsPage() {
 
         <div className="divide-y divide-line md:hidden">
           {receipts.map((receipt) => (
-            <article key={receipt.id} className="bg-white p-3">
+            <article key={receipt.id} className="bg-white p-3 odd:bg-white even:bg-canvas">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-ink">{receipt.receipt_number}</p>
@@ -171,7 +183,7 @@ export function ClientReceiptsPage() {
             </thead>
             <tbody>
               {receipts.map((receipt) => (
-                <tr key={receipt.id} className="border-b border-line/80 transition hover:bg-brand/5">
+                <tr key={receipt.id} className="border-b border-line/80 bg-white transition hover:bg-brand/5 odd:bg-white even:bg-canvas">
                   <td className="px-4 py-3">
                     <p className="font-semibold text-ink">{receipt.receipt_number}</p>
                     <p className="mt-1 inline-flex rounded-md bg-canvas px-2 py-1 text-xs font-medium text-muted">
@@ -239,7 +251,7 @@ export function ClientReceiptsPage() {
 
       {receiptDocument || documentLoading || documentError ? (
         <ReceiptDocumentModal
-          document={receiptDocument}
+          receiptDocument={receiptDocument}
           loading={documentLoading}
           error={documentError}
           onClose={() => {

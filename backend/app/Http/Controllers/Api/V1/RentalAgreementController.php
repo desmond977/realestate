@@ -28,7 +28,7 @@ class RentalAgreementController extends Controller
         $validated = $request->validate([
             'search' => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(RentalStatus::values())],
-            'rental_frequency' => ['sometimes', Rule::in(RentalFrequency::values())],
+            'rental_frequency' => ['sometimes', Rule::in(RentalFrequency::availableValues())],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -85,8 +85,15 @@ class RentalAgreementController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $this->validatedData($request);
-
         $agreement = DB::transaction(function () use ($data): RentalAgreement {
+            Client::query()->whereKey($data['client_id'])->lockForUpdate()->firstOrFail();
+
+            if ($data['status'] === RentalStatus::Active->value && $this->hasActiveDuplicate($data)) {
+                throw ValidationException::withMessages([
+                    'property_id' => ['An active rental already exists for this client and property.'],
+                ]);
+            }
+
             $rentalProperty = RentalProperty::query()->create([
                 'property_id' => $data['property_id'] ?? null,
                 'name' => $data['property_name'] ?? null,
@@ -121,7 +128,7 @@ class RentalAgreementController extends Controller
 
     public function update(Request $request, RentalAgreement $rental): JsonResponse
     {
-        $data = $this->validatedData($request);
+        $data = $this->validatedData($request, $rental);
 
         $termsChanged = (float) $rental->rental_amount !== (float) $data['rental_amount']
             || $rental->rental_frequency->value !== $data['rental_frequency']
@@ -135,6 +142,14 @@ class RentalAgreementController extends Controller
         }
 
         DB::transaction(function () use ($data, $rental, $termsChanged): void {
+            Client::query()->whereKey($data['client_id'])->lockForUpdate()->firstOrFail();
+
+            if ($data['status'] === RentalStatus::Active->value && $this->hasActiveDuplicate($data, $rental->id)) {
+                throw ValidationException::withMessages([
+                    'property_id' => ['An active rental already exists for this client and property.'],
+                ]);
+            }
+
             if ($termsChanged) {
                 $rental->paymentPeriods()->delete();
             }
@@ -178,7 +193,7 @@ class RentalAgreementController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validatedData(Request $request): array
+    private function validatedData(Request $request, ?RentalAgreement $rental = null): array
     {
         $tenantId = app(TenantManager::class)->currentId();
         $tenantConstraint = static fn ($query) => $tenantId === null
@@ -200,7 +215,13 @@ class RentalAgreementController extends Controller
                 Rule::exists('clients', 'id')->where($tenantConstraint)->whereNull('deleted_at'),
             ],
             'rental_amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
-            'rental_frequency' => ['required', Rule::in(RentalFrequency::values())],
+            'rental_frequency' => [
+                'required',
+                Rule::in(array_values(array_unique([
+                    ...RentalFrequency::availableValues(),
+                    ...($rental ? [$rental->rental_frequency->value] : []),
+                ]))),
+            ],
             'lease_start_date' => ['required', 'date'],
             'lease_end_date' => ['required', 'date', 'after_or_equal:lease_start_date'],
             'status' => ['required', Rule::in(RentalStatus::values())],
@@ -231,5 +252,28 @@ class RentalAgreementController extends Controller
             'status' => $data['status'],
             'notes' => $data['notes'] ?? null,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function hasActiveDuplicate(array $data, ?int $exceptId = null): bool
+    {
+        return RentalAgreement::query()
+            ->where('client_id', $data['client_id'])
+            ->where('status', RentalStatus::Active->value)
+            ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))
+            ->whereHas('rentalProperty', function ($query) use ($data): void {
+                if (! empty($data['property_id'])) {
+                    $query->where('property_id', $data['property_id']);
+
+                    return;
+                }
+
+                $query->whereNull('property_id')
+                    ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($data['property_name']))])
+                    ->whereRaw('LOWER(TRIM(location)) = ?', [mb_strtolower(trim($data['property_location']))]);
+            })
+            ->exists();
     }
 }

@@ -22,9 +22,9 @@ export function useClientBranding() {
         }
       })
       .catch(() => {
-        cachedBranding = {}
+        cachedBranding = { rental_management_enabled: false }
         if (active) {
-          setBranding({})
+          setBranding(cachedBranding)
         }
       })
 

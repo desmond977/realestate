@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\ServiceChargePaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ServiceChargePaymentResource;
 use App\Http\Resources\ServiceChargeResource;
@@ -27,7 +26,7 @@ class ServiceChargePaymentController extends Controller
 
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
-            'paid_at' => ['required', 'date', 'before_or_equal:today'],
+            // The recorded server timestamp is authoritative; clients cannot backdate it.
             'payment_method' => ['required', 'string', 'max:100'],
             'transaction_reference' => ['nullable', 'string', 'max:255', $referenceRule],
             'notes' => ['nullable', 'string'],

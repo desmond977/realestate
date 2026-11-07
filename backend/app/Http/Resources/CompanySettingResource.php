@@ -23,6 +23,7 @@ class CompanySettingResource extends JsonResource
             'target_amount' => (float) $this->target_amount,
             'theme_mode' => $this->theme_mode,
             'brand_color' => $this->brand_color,
+            'rental_management_enabled' => (bool) $this->rental_management_enabled,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

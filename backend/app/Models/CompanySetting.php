@@ -20,9 +20,11 @@ class CompanySetting extends Model
         'target_amount',
         'theme_mode',
         'brand_color',
+        'rental_management_enabled',
     ];
 
     protected $casts = [
         'target_amount' => 'decimal:2',
+        'rental_management_enabled' => 'boolean',
     ];
 }

@@ -17,4 +17,12 @@ enum RentalFrequency: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function availableValues(): array
+    {
+        return [self::Annually->value];
+    }
 }

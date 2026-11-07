@@ -61,14 +61,14 @@ function StatusBadge({ status }) {
   )
 }
 
-function PropertyImage({ property, className = 'h-14 w-20 rounded-md' }) {
+function PropertyImage({ property, className = 'h-20 w-20 rounded-md' }) {
    const imageUrl = propertyImageUrl(property)
 
    return (
      <img
        src={imageUrl}
-       alt={property.title}
-       className={`${className} shrink-0 object-cover`}
+       alt={property.title || 'Property image'}
+       className={`${className} shrink-0 bg-canvas object-cover object-center`}
        onError={(e) => { e.target.src = '/assets/property-placeholder.svg' }}
      />
    )
@@ -447,11 +447,7 @@ export function PropertiesPage() {
       })
 
       Object.entries(payload).forEach(([key, value]) => {
-        if (scalarFields.includes(key) || key === 'image_file' || key === 'image_url') {
-          return
-        }
-
-        if (key === 'image' && hasImageFile) {
+        if (scalarFields.includes(key) || key === 'image_file' || key === 'image_url' || key === 'image') {
           return
         }
 

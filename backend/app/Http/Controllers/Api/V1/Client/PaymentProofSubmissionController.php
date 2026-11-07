@@ -67,6 +67,8 @@ class PaymentProofSubmissionController extends Controller
             ->orderByDesc('due_date')
             ->limit(200)
             ->get()
+            ->unique(fn (RentalPaymentPeriod $period) => sprintf('%s|%s|%s|%s', $period->rental_agreement_id, $period->rentalAgreement?->rental_property_id ?? 'none', $period->period_start?->toDateString() ?? '', $period->period_end?->toDateString() ?? ''))
+            ->values()
             ->map(function (RentalPaymentPeriod $period) {
                 $rentalProperty = $period->rentalAgreement?->rentalProperty;
 
@@ -99,7 +101,6 @@ class PaymentProofSubmissionController extends Controller
             ], 'amount')
             ->with(['category', 'rentalProperty.property'])
             ->orderByDesc('due_date')
-            ->limit(200)
             ->get()
             ->map(function (ServiceCharge $charge) {
                 $rentalProperty = $charge->rentalProperty;
@@ -108,6 +109,7 @@ class PaymentProofSubmissionController extends Controller
                     'id' => $charge->id,
                     'description' => $charge->description,
                     'category' => $charge->category?->name,
+                    'billing_month' => $charge->billing_month ?: $charge->billing_period_start?->format('Y-m'),
                     'due_date' => $charge->due_date->toDateString(),
                     'amount_due' => (float) $charge->amount_due,
                     'available_amount' => $this->availableAmount(

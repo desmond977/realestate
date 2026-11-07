@@ -16,26 +16,15 @@ class ServiceChargeCategory extends Model
         'name',
         'description',
         'is_system',
+        'monthly_amount',
+        'is_active',
     ];
 
     protected $casts = [
         'is_system' => 'boolean',
+        'is_active' => 'boolean',
+        'monthly_amount' => 'decimal:2',
     ];
-
-    public static function ensureDefaults(): void
-    {
-        foreach ([
-            ['name' => 'Security', 'description' => 'Security and access control services.'],
-            ['name' => 'Waste Management', 'description' => 'Waste collection and disposal services.'],
-            ['name' => 'Maintenance', 'description' => 'Shared property maintenance services.'],
-            ['name' => 'Other', 'description' => 'Other approved service charges.'],
-        ] as $category) {
-            static::query()->firstOrCreate(
-                ['name' => $category['name'], 'is_system' => true],
-                ['description' => $category['description']]
-            );
-        }
-    }
 
     public function charges(): HasMany
     {

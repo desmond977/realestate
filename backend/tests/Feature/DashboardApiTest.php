@@ -8,6 +8,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\PropertyStatus;
 use App\Models\Allocation;
 use App\Models\Client;
+use App\Models\CompanySetting;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Realtor;
@@ -23,6 +24,78 @@ use Tests\TestCase;
 class DashboardApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_monthly_target_progress_uses_only_revenue_from_the_current_month(): void
+    {
+        Cache::flush();
+        Carbon::setTestNow(Carbon::parse('2026-10-15 12:00:00'));
+        Sanctum::actingAs(User::factory()->create());
+
+        CompanySetting::query()->create([
+            'target_type' => 'monthly',
+            'target_amount' => 1000000,
+        ]);
+        app(\App\Services\CompanySettings::class)->forget();
+
+        $previousMonthPayment = Payment::factory()->create([
+            'amount' => 900000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-09-30 23:59:59'),
+        ]);
+        $currentMonthPayment = Payment::factory()->create([
+            'amount' => 250000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-10-01 00:00:00'),
+        ]);
+
+        $this->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.stats.revenue', 1150000)
+            ->assertJsonPath('data.stats.monthly_revenue', 250000)
+            ->assertJsonPath('data.monthly_target', 1000000)
+            ->assertJsonPath('data.target_revenue', 250000)
+            ->assertJsonPath('data.monthly_target_progress', 25);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_weekly_target_progress_uses_only_revenue_from_monday_through_sunday(): void
+    {
+        Cache::flush();
+        Carbon::setTestNow(Carbon::parse('2026-10-15 12:00:00'));
+        Sanctum::actingAs(User::factory()->create());
+
+        CompanySetting::query()->create([
+            'target_type' => 'weekly',
+            'target_amount' => 500000,
+        ]);
+        app(\App\Services\CompanySettings::class)->forget();
+
+        Payment::factory()->create([
+            'amount' => 900000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-10-11 23:59:59'),
+        ]);
+        Payment::factory()->create([
+            'amount' => 250000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-10-12 00:00:00'),
+        ]);
+        Payment::factory()->create([
+            'amount' => 350000,
+            'status' => PaymentStatus::Confirmed,
+            'paid_at' => Carbon::parse('2026-10-19 00:00:00'),
+        ]);
+
+        $this->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.target_type', 'weekly')
+            ->assertJsonPath('data.target_amount', 500000)
+            ->assertJsonPath('data.target_revenue', 250000)
+            ->assertJsonPath('data.target_progress', 50);
+
+        Carbon::setTestNow();
+    }
 
     public function test_guest_cannot_access_dashboard(): void
     {

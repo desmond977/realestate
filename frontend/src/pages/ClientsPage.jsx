@@ -929,11 +929,11 @@ export function ClientsPage() {
                 </div>
               </div>
 
-              <div className={`mt-3 grid gap-2 border-t border-line pt-3 ${canDelete ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
                 <button
                   type="button"
                   onClick={() => viewClientActivity(client)}
-                  className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10"
+                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10"
                   aria-label={`View ${client.full_name}`}
                 >
                   <Eye size={14} />
@@ -943,7 +943,7 @@ export function ClientsPage() {
                   <button
                     type="button"
                     onClick={() => { setModalError(''); setModal({ mode: 'edit', client }) }}
-                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
+                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
                     aria-label={`Edit ${client.full_name}`}
                   >
                     <Edit3 size={14} />
@@ -954,7 +954,7 @@ export function ClientsPage() {
                   <button
                     type="button"
                     onClick={() => deleteClient(client)}
-                    className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50"
+                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50"
                     aria-label={`Delete ${client.full_name}`}
                   >
                     <Trash2 size={14} />

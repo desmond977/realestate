@@ -16,6 +16,9 @@ class ServiceChargePaymentResource extends JsonResource
             'id' => $this->id,
             'amount' => (float) $this->amount,
             'paid_at' => $this->paid_at?->toISOString(),
+            'paid_date' => $this->paid_at?->timezone(config('app.timezone'))->format('Y-m-d'),
+            'paid_time' => $this->paid_at?->timezone(config('app.timezone'))->format('H:i:s'),
+            'paid_weekday' => $this->paid_at?->timezone(config('app.timezone'))->format('l'),
             'payment_method' => $this->payment_method,
             'transaction_reference' => $this->transaction_reference,
             'status' => $this->status?->value ?? $this->status,
@@ -29,11 +32,17 @@ class ServiceChargePaymentResource extends JsonResource
                 'id' => $this->recorder?->id,
                 'name' => $this->recorder?->name,
             ]),
+            'approver' => $this->whenLoaded('approver', fn () => [
+                'id' => $this->approver?->id,
+                'name' => $this->approver?->name,
+            ]),
             'receipt' => $this->whenLoaded('receipt', fn () => $this->receipt ? [
                 'id' => $this->receipt->id,
                 'receipt_number' => $this->receipt->receipt_number,
                 'issued_at' => $this->receipt->issued_at?->toISOString(),
-                'snapshot' => $this->receipt->snapshot,
+                'snapshot' => array_merge($this->receipt->snapshot ?? [], [
+                    'company' => app(\App\Services\CompanySettings::class)->get(),
+                ]),
             ] : null),
             'created_at' => $this->created_at?->toISOString(),
         ];

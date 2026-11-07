@@ -18,7 +18,7 @@ class CompanySettings
             $settings = CompanySetting::query()->first();
 
             return [
-                'name' => $settings?->company_name ?: 'Company',
+                'name' => $settings?->company_name ?: 'TerraOps',
                 'tagline' => 'Intelligent Real Estate Operations',
                 'email' => $settings?->company_email,
                 'phone' => $settings?->company_phone,
@@ -26,6 +26,7 @@ class CompanySettings
                 'logo' => $settings?->company_logo,
                 'target_type' => $settings?->target_type,
                 'target_amount' => (float) ($settings?->target_amount ?? 0),
+                'rental_management_enabled' => (bool) ($settings?->rental_management_enabled ?? true),
             ];
         });
     }

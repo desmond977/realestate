@@ -663,16 +663,16 @@ export function RealtorsPage() {
                       {realtor.clients_count ?? 0} clients
                     </span>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => viewRealtor(realtor)} className="rounded-md border border-brand/20 bg-brand/5 p-2 text-brand">
+                      <button type="button" aria-label={`View ${realtor.full_name}`} onClick={() => viewRealtor(realtor)} className="grid h-11 w-11 place-items-center rounded-md border border-brand/20 bg-brand/5 text-brand">
                         <Eye size={15} />
                       </button>
                       {canManage ? (
-                        <button type="button" onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="rounded-md border border-line bg-white p-2 text-muted">
+                        <button type="button" aria-label={`Edit ${realtor.full_name}`} onClick={() => { setModalError(''); setModal({ mode: 'edit', realtor }) }} className="grid h-11 w-11 place-items-center rounded-md border border-line bg-white text-muted">
                           <Edit3 size={15} />
                         </button>
                       ) : null}
                       {canDelete ? (
-                        <button type="button" onClick={() => deleteRealtor(realtor)} className="rounded-md border border-red-100 bg-white p-2 text-red-600">
+                        <button type="button" aria-label={`Delete ${realtor.full_name}`} onClick={() => deleteRealtor(realtor)} className="grid h-11 w-11 place-items-center rounded-md border border-red-100 bg-white text-red-600">
                           <Trash2 size={15} />
                         </button>
                       ) : null}

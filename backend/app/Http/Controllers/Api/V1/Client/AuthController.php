@@ -137,6 +137,7 @@ class AuthController extends Controller
             'company_logo' => $settings?->company_logo,
             'company_email' => $settings?->company_email,
             'company_phone' => $settings?->company_phone,
+            'rental_management_enabled' => (bool) ($settings?->rental_management_enabled ?? true),
         ]);
     }
 }

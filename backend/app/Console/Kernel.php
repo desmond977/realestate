@@ -21,6 +21,11 @@ class Kernel extends ConsoleKernel
             ->dailyAt('08:00')
             ->emailOutputOnFailure(config('mail.from.address'))
             ->withoutOverlapping();
+
+        $schedule->command('service-charges:generate-monthly')
+            ->dailyAt('00:10')
+            ->timezone(config('app.timezone'))
+            ->withoutOverlapping();
     }
 
     /**

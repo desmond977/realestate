@@ -2,6 +2,7 @@ import { Download, Edit3, Eye, FileText, Loader2, Printer, RefreshCw, Search, Tr
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { api } from '../api/client'
+import { DocumentPreviewModal } from '../components/documents/DocumentPreviewModal'
 
 const DOCUMENTS_PER_PAGE = 15
 
@@ -79,59 +80,6 @@ function printHtml(html) {
   printDocument.close()
 
   window.setTimeout(runPrint, 500)
-}
-
-function DocumentPreviewModal({ html, title, loading, error, onClose, onPrint }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-ink/40 px-0 py-0 sm:items-center sm:px-4 sm:py-6">
-      <section className="flex max-h-screen w-full max-w-5xl flex-col overflow-hidden border border-line bg-panel shadow-xl sm:max-h-[92vh] sm:rounded-lg">
-        <header className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase text-muted">Document Preview</p>
-            <h2 className="truncate text-base font-semibold text-ink">{title}</h2>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {html ? (
-              <button
-                type="button"
-                onClick={onPrint}
-                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-muted hover:bg-canvas hover:text-ink sm:flex-none"
-              >
-                <Printer size={16} />
-                Print
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-10 flex-1 rounded-md border border-line px-3 text-sm font-medium text-muted hover:bg-canvas hover:text-ink sm:flex-none"
-            >
-              Close
-            </button>
-          </div>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto bg-canvas p-3 sm:p-4">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted">
-              <Loader2 size={16} className="animate-spin" />
-              Loading document
-            </div>
-          ) : null}
-          {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-          {html ? (
-            <div
-              className="document-preview-content mx-auto w-full max-w-[850px] overflow-x-auto rounded-md border border-line bg-white shadow-sm"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          ) : null}
-        </div>
-      </section>
-    </div>
-  )
 }
 
 function TemplateEditModal({

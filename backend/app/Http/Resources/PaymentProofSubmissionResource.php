@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\User;
 
 class PaymentProofSubmissionResource extends JsonResource
 {
@@ -46,6 +46,8 @@ class PaymentProofSubmissionResource extends JsonResource
                 'id' => $this->serviceCharge->id,
                 'description' => $this->serviceCharge->description,
                 'category' => $this->serviceCharge->category?->name,
+                'billing_month' => $this->serviceCharge->billing_month ?: $this->serviceCharge->billing_period_start?->format('Y-m'),
+                'amount_due' => (float) $this->serviceCharge->amount_due,
                 'rental_agreement_id' => $this->serviceCharge->rentalAgreement?->id,
                 'lease_start_date' => $this->serviceCharge->rentalAgreement?->lease_start_date?->toDateString(),
                 'lease_end_date' => $this->serviceCharge->rentalAgreement?->lease_end_date?->toDateString(),

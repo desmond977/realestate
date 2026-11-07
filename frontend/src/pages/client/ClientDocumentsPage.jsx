@@ -1,6 +1,7 @@
 import { Eye, FileText, Loader2, Printer } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { documentsApi } from '../../services/clientApi'
+import { DocumentPreviewModal } from '../../components/documents/DocumentPreviewModal'
 
 function getApiError(error, fallback) {
   const errors = error.response?.data?.errors
@@ -24,59 +25,6 @@ function printHtml(html) {
   printWindow.document.close()
   printWindow.focus()
   printWindow.print()
-}
-
-function PreviewModal({ html, title, loading, error, onClose, onPrint }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 py-6">
-      <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-white shadow-xl">
-        <header className="flex items-center justify-between border-b border-line px-4 py-3">
-          <div>
-            <p className="text-xs font-medium uppercase text-muted">Document Preview</p>
-            <h2 className="text-base font-semibold text-ink">{title}</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {html ? (
-              <button
-                type="button"
-                onClick={onPrint}
-                className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
-              >
-                <Printer size={16} />
-                Print
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
-            >
-              Close
-            </button>
-          </div>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto bg-canvas p-4">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted">
-              <Loader2 size={16} className="animate-spin" />
-              Loading document
-            </div>
-          ) : null}
-          {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-          {html ? (
-            <div
-              className="mx-auto max-w-[850px] overflow-hidden rounded-md border border-line bg-white shadow-sm"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          ) : null}
-        </div>
-      </section>
-    </div>
-  )
 }
 
 export function ClientDocumentsPage() {
@@ -216,7 +164,7 @@ export function ClientDocumentsPage() {
       </section>
 
       {preview.open ? (
-        <PreviewModal
+        <DocumentPreviewModal
           title={preview.title}
           html={preview.html}
           loading={preview.loading}

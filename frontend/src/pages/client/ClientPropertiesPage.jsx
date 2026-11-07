@@ -47,8 +47,10 @@ export function ClientPropertiesPage() {
           const imageUrl = propertyImageUrl(property)
 
           return (
-<article key={item.allocation_id} className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
-              <img src={imageUrl} alt={property.title || 'Property'} className="h-44 w-full object-cover" onError={(e) => { e.target.src = DEFAULT_PROPERTY_IMAGE }} />
+            <article key={item.allocation_id} className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
+              <div className="h-44 w-full overflow-hidden bg-canvas">
+                <img src={imageUrl} alt={property.title || 'Property'} className="h-full w-full object-cover object-center" onError={(e) => { e.target.src = DEFAULT_PROPERTY_IMAGE }} />
+              </div>
               <div className="space-y-4 p-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">

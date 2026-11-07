@@ -27,7 +27,8 @@ class CompanySettingApiTest extends TestCase
             ->assertJsonPath('data.settings.company_name', 'Prime Estates')
             ->assertJsonPath('data.settings.target_amount', 5000000)
             ->assertJsonPath('data.settings.theme_mode', 'system')
-            ->assertJsonPath('data.settings.brand_color', '#166534');
+            ->assertJsonPath('data.settings.brand_color', '#166534')
+            ->assertJsonPath('data.settings.rental_management_enabled', true);
     }
 
     public function test_only_admin_can_update_company_settings(): void
@@ -52,11 +53,13 @@ class CompanySettingApiTest extends TestCase
             'target_amount' => 750000,
             'theme_mode' => 'dark',
             'brand_color' => '#0d6efd',
+            'rental_management_enabled' => false,
         ])->assertOk()
             ->assertJsonPath('message', 'Company settings updated successfully.')
             ->assertJsonPath('data.settings.company_name', 'Prime Estates')
             ->assertJsonPath('data.settings.target_type', 'weekly')
             ->assertJsonPath('data.settings.theme_mode', 'dark')
-            ->assertJsonPath('data.settings.brand_color', '#0d6efd');
+            ->assertJsonPath('data.settings.brand_color', '#0d6efd')
+            ->assertJsonPath('data.settings.rental_management_enabled', false);
     }
 }

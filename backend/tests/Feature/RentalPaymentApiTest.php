@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\RentalFrequency;
 use App\Models\Client;
 use App\Models\RentalAgreement;
-use App\Models\RentalPaymentPeriod;
 use App\Models\RentalProperty;
 use App\Models\User;
 use App\Services\RealEstate\RentalPaymentScheduleService;

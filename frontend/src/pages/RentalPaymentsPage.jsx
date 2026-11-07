@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, CreditCard, Loader2, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CreditCard, Loader2, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
@@ -118,24 +118,31 @@ export function RentalPaymentsPage() {
           <p className="mt-1 text-sm text-muted">{search || status ? 'Try changing the search or status filter.' : 'Rental payment periods are generated from each lease frequency.'}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="overflow-hidden rounded-lg border border-line bg-panel">
+          <div className="hidden items-center gap-4 border-b border-line bg-canvas px-4 py-3 text-xs font-semibold uppercase text-muted lg:flex">
+            <span className="min-w-0 flex-[1.4]">Property / tenant</span>
+            <span className="min-w-0 flex-[1.3]">Payment period</span>
+            <span className="min-w-0 flex-1">Due / paid / balance</span>
+            <span className="w-28">Status</span>
+          </div>
           {periods.map((period) => {
             const agreement = period.rental_agreement
             return (
-              <Link key={period.id} to={`/rental-payments/${period.id}`} className="block rounded-lg border border-line bg-panel p-4 shadow-sm transition hover:border-brand/40 hover:bg-brand/5 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-ink">{agreement?.rental_property?.name || 'Rental property'}</h3>
-                    <p className="mt-1 text-sm text-muted">{agreement?.client?.full_name || 'Tenant'} · {agreement?.rental_frequency}</p>
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-muted"><CalendarDays size={14} />{formatDate(period.period_start)} – {formatDate(period.period_end)} · Due {formatDate(period.due_date)}</p>
-                  </div>
-                  <PaymentStatus status={period.status} />
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3 text-sm">
-                  <div><p className="text-xs text-muted">Amount due</p><p className="mt-1 font-semibold text-ink">{formatMoney(period.amount_due)}</p></div>
-                  <div><p className="text-xs text-muted">Paid</p><p className="mt-1 font-semibold text-ink">{formatMoney(period.amount_paid)}</p></div>
-                  <div><p className="text-xs text-muted">Balance</p><p className="mt-1 font-semibold text-ink">{formatMoney(period.balance)}</p></div>
-                </div>
+              <Link key={period.id} to={`/rental-payments/${period.id}`} className="mb-2 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 transition hover:bg-brand/5 odd:bg-white even:bg-[#f8faf7] last:border-b-0 lg:mb-0 lg:flex-row lg:items-center lg:gap-4">
+                <span className="min-w-0 flex-[1.4]">
+                  <span className="block truncate text-sm font-semibold text-ink">{agreement?.rental_property?.name || 'Rental property'}</span>
+                  <span className="mt-0.5 block truncate text-sm text-muted">{agreement?.client?.full_name || 'Tenant'} · {agreement?.rental_frequency === 'annually' ? 'Yearly' : agreement?.rental_frequency}</span>
+                </span>
+                <span className="min-w-0 flex-[1.3] text-sm text-muted">
+                  <span className="lg:hidden">Period · </span>{formatDate(period.period_start)} – {formatDate(period.period_end)}
+                  <span className="block text-xs">Due {formatDate(period.due_date)}</span>
+                </span>
+                <span className="grid min-w-0 flex-1 grid-cols-3 gap-2 text-sm">
+                  <span><span className="block text-[11px] text-muted lg:hidden">Due</span><span className="font-semibold text-ink">{formatMoney(period.amount_due)}</span></span>
+                  <span><span className="block text-[11px] text-muted lg:hidden">Paid</span><span className="font-semibold text-ink">{formatMoney(period.amount_paid)}</span></span>
+                  <span><span className="block text-[11px] text-muted lg:hidden">Balance</span><span className="font-semibold text-ink">{formatMoney(period.balance)}</span></span>
+                </span>
+                <span className="lg:w-28"><PaymentStatus status={period.status} /></span>
               </Link>
             )
           })}
@@ -143,11 +150,11 @@ export function RentalPaymentsPage() {
       )}
 
       {!loading && meta?.last_page > 1 ? (
-        <div className="flex items-center justify-between rounded-lg border border-line bg-panel px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">Page {meta.current_page} of {meta.last_page} · {meta.total} periods</p>
-          <div className="flex gap-2">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="inline-flex items-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50"><ChevronLeft size={16} />Previous</button>
-            <button type="button" disabled={page >= meta.last_page} onClick={() => setPage((current) => current + 1)} className="inline-flex items-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50">Next<ChevronRight size={16} /></button>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50"><ChevronLeft size={16} />Previous</button>
+            <button type="button" disabled={page >= meta.last_page} onClick={() => setPage((current) => current + 1)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50">Next<ChevronRight size={16} /></button>
           </div>
         </div>
       ) : null}

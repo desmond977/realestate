@@ -88,6 +88,27 @@ class RentalAgreementApiTest extends TestCase
         ]);
     }
 
+    public function test_admin_cannot_create_duplicate_active_rental_for_same_client_and_property(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        $client = Client::factory()->create();
+        $property = Property::factory()->create();
+
+        $payload = $this->payload($client, [
+            'property_id' => $property->id,
+            'status' => 'active',
+            'lease_start_date' => '2026-10-01',
+            'lease_end_date' => '2027-09-30',
+            'rental_amount' => 1500,
+        ]);
+
+        $this->postJson('/api/v1/rentals', $payload)->assertCreated();
+
+        $this->postJson('/api/v1/rentals', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('errors.property_id.0', 'An active rental already exists for this client and property.');
+    }
+
     public function test_admin_can_create_and_update_a_standalone_rental_property(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => 'admin']));

@@ -21,6 +21,7 @@ class ServiceCharge extends Model
         'description',
         'billing_period_start',
         'billing_period_end',
+        'billing_month',
         'billing_date',
         'due_date',
         'amount_due',
@@ -37,7 +38,7 @@ class ServiceCharge extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(ServiceChargeCategory::class, 'category_id');
+        return $this->belongsTo(ServiceChargeCategory::class, 'category_id')->withTrashed();
     }
 
     public function rentalAgreement(): BelongsTo
@@ -85,14 +86,10 @@ class ServiceCharge extends Model
             return 'paid';
         }
 
-        if ($this->due_date->isPast() && ! $this->due_date->isToday()) {
-            return 'overdue';
-        }
-
         if ($paid > 0) {
             return 'partial';
         }
 
-        return 'due';
+        return $this->due_date->isPast() && ! $this->due_date->isToday() ? 'non_payment' : 'unpaid_pending';
     }
 }

@@ -27,6 +27,7 @@ class UpdateCompanySettingRequest extends FormRequest
             'target_amount' => ['required', 'numeric', 'min:0'],
             'theme_mode' => ['nullable', Rule::in(['light', 'dark', 'system'])],
             'brand_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
+            'rental_management_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

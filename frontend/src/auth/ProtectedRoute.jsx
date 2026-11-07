@@ -1,8 +1,9 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
 export function ProtectedRoute({ roles = [] }) {
   const location = useLocation()
+  const outletContext = useOutletContext()
   const { isAuthenticated, loading, user } = useAuth()
 
   if (loading) {
@@ -21,5 +22,5 @@ export function ProtectedRoute({ roles = [] }) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return <Outlet />
+  return <Outlet context={outletContext} />
 }

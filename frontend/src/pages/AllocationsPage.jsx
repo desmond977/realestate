@@ -1564,12 +1564,12 @@ export function AllocationsPage() {
                   </div>
                 </div>
 
-                <div className={`mt-3 grid gap-2 border-t border-line pt-3 ${receiptAvailable ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                <div className={`mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 ${receiptAvailable ? 'sm:grid-cols-3' : ''}`}>
                   {receiptAvailable ? (
                     <button
                       type="button"
                       onClick={() => viewReceiptDocument(allocation)}
-                      className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10"
+                      className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10"
                       aria-label="View receipt"
                     >
                       <Eye size={14} />
@@ -1579,7 +1579,7 @@ export function AllocationsPage() {
                   {isAdmin ? (
                     <Link
                       to="/documents"
-                      className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
+                      className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas"
                       aria-label="Manage documents"
                     >
                       <FileText size={14} />
@@ -1590,7 +1590,7 @@ export function AllocationsPage() {
                     <button
                       type="button"
                       onClick={() => { setEditAllocationError(''); setEditAllocation(allocation) }}
-                      className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-semibold text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-40"
                       disabled={!canEdit}
                       aria-label="Edit allocation"
                     >
@@ -1603,7 +1603,7 @@ export function AllocationsPage() {
                       type="button"
                       onClick={() => cancelAllocation(allocation)}
                       disabled={!canCancel}
-                      className="inline-flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="Cancel allocation"
                     >
                       <Trash2 size={14} />

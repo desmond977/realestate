@@ -100,7 +100,7 @@ export function DashboardPage() {
       {
         label: 'Revenue',
         value: formatMoney(stats.revenue),
-        helper: 'Confirmed payments only',
+        helper: 'Confirmed sales, rent and service-charge payments',
         icon: Banknote,
         tone: 'brand',
       },
@@ -143,15 +143,18 @@ export function DashboardPage() {
     ...topRealtors.map((realtor) => realtor.monthly_properties_sold_count || 0),
     1,
   )
-  const activeTargetType = settings?.target_type || 'monthly'
+  const activeTargetType = summary?.target_type || settings?.target_type || 'monthly'
   const activeTargetLabel = activeTargetType === 'weekly' ? 'Weekly target' : 'Monthly target'
   const activeTargetAmount =
-    settings?.target_amount ?? (activeTargetType === 'monthly' ? summary?.monthly_target ?? 0 : 0)
+    summary?.target_amount ?? settings?.target_amount ?? summary?.monthly_target ?? 0
+  const targetRevenue =
+    summary?.target_revenue
+    ?? (activeTargetType === 'monthly' ? summary?.stats?.monthly_revenue ?? 0 : 0)
   const targetProgress = activeTargetAmount > 0
     ? Math.min(
         100,
         Math.round(
-          (stats.revenue / activeTargetAmount) * 100,
+          summary?.target_progress ?? ((targetRevenue / activeTargetAmount) * 100),
         ),
       )
     : 0

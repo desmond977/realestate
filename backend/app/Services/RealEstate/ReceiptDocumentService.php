@@ -16,6 +16,7 @@ class ReceiptDocumentService
         if ($receipt->snapshot) {
             $snapshot = $receipt->snapshot;
             $snapshot['receipt']['id'] = $receipt->id;
+            $snapshot['company'] = $this->company();
 
             return $snapshot;
         }

@@ -1,4 +1,5 @@
-import { Download, Loader2, Printer, ReceiptText, X } from 'lucide-react'
+import { Download, Loader2, Minus, Plus, ReceiptText, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { assetUrl } from '../../api/client'
 import { formatMoney } from '../../utils/formatters'
 
@@ -50,8 +51,8 @@ function buildReceiptHtml(receiptDocument) {
   `).join('')
 
   const logo = company.logo
-    ? `<img src="${escapeHtml(assetUrl(company.logo))}" alt="${escapeHtml(company.name || 'Logo')}" style="height:54px;width:54px;object-fit:contain;border-radius:8px;margin-bottom:12px;" />`
-    : `<div style="display:inline-block;height:48px;width:48px;border-radius:8px;background:#234832;color:#ffffff;font-size:20px;font-weight:700;line-height:48px;text-align:center;margin-bottom:12px;">${escapeHtml((company.name || 'T').charAt(0).toUpperCase())}</div>`
+    ? `<img src="${escapeHtml(assetUrl(company.logo))}" alt="${escapeHtml(company.name || 'TerraOps')}" style="height:54px;width:54px;object-fit:contain;border-radius:8px;margin-bottom:12px;" />`
+    : `<div style="display:inline-block;height:48px;width:48px;border-radius:8px;background:#234832;color:#ffffff;font-size:20px;font-weight:700;line-height:48px;text-align:center;margin-bottom:12px;">${escapeHtml((company.name || 'TerraOps').charAt(0).toUpperCase())}</div>`
 
   return `<!doctype html>
 <html lang="en">
@@ -59,7 +60,7 @@ function buildReceiptHtml(receiptDocument) {
     <meta charset="utf-8" />
     <title>${escapeHtml(receiptDocument?.receipt?.number || 'Receipt')}</title>
     <style>
-      @page { size: A4; margin: 18mm; }
+      @page { size: A4 portrait; margin: 0; }
       * { box-sizing: border-box; }
       body { margin: 0; background: #f6f7f4; color: #1f2a24; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.65; }
       .document-page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #ffffff; padding: 22mm 20mm; }
@@ -82,7 +83,7 @@ function buildReceiptHtml(receiptDocument) {
       .pill { display: inline-block; padding: 6px 12px; border-radius: 999px; background: #eaf3ed; color: #234832; font-size: 12px; font-weight: 700; }
       .amount { font-size: 26px; font-weight: 700; color: #234832; }
       .footer-note { margin-top: 32px; padding-top: 12px; border-top: 1px solid #d9dfd8; color: #667267; font-size: 12px; }
-      @media print { body { background: #ffffff; } .document-page { width: auto; min-height: auto; margin: 0; padding: 0; } }
+      @media print { body { background: #ffffff; } .document-page { width: 210mm; min-height: 297mm; margin: 0; padding: 22mm 20mm; } }
     </style>
   </head>
   <body>
@@ -90,9 +91,8 @@ function buildReceiptHtml(receiptDocument) {
       <header class="letterhead">
         <div>
           ${logo}
-          <h1 class="company-name">${escapeHtml(company.name || 'Company')}</h1>
-          <p class="muted">${escapeHtml(company.tagline || 'Intelligent Real Estate Operations')}</p>
-          <p class="address">${escapeHtml(company.address || 'Company address not configured')}</p>
+          <h1 class="company-name">${escapeHtml(company.name || 'TerraOps')}</h1>
+          ${company.address ? `<p class="address">${escapeHtml(company.address)}</p>` : ''}
         </div>
         <div class="meta-right">
           <span class="label">${escapeHtml(receiptDocument?.document_type || 'Receipt')}</span>
@@ -199,24 +199,29 @@ function buildReceiptHtml(receiptDocument) {
 
 export function ReceiptDocumentModal({ receiptDocument, loading, error, onClose, receiptHistory = [], activeReceiptIndex = 0, onNavigateReceipt }) {
   const receiptHtml = receiptDocument ? buildReceiptHtml(receiptDocument) : ''
+  const previewRef = useRef(null)
+  const pageRef = useRef(null)
+  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 })
+  const [zoom, setZoom] = useState(1)
+  const baseScale = previewSize.width ? Math.min(1, previewSize.width / previewSize.pageWidth) : 1
+  const scale = baseScale * zoom
 
-  function printDocument() {
-    if (!receiptHtml) {
-      return
-    }
+  useEffect(() => {
+    const preview = previewRef.current
+    const page = pageRef.current
+    if (!preview || !page) return undefined
 
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-
-    if (!printWindow) {
-      return
-    }
-
-    printWindow.document.open()
-    printWindow.document.write(receiptHtml)
-    printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
-  }
+    const updateSize = () => setPreviewSize({
+      width: preview.clientWidth - Number.parseFloat(getComputedStyle(preview).paddingLeft) - Number.parseFloat(getComputedStyle(preview).paddingRight),
+      pageWidth: page.offsetWidth,
+      height: page.offsetHeight,
+    })
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(preview)
+    observer.observe(page)
+    updateSize()
+    return () => observer.disconnect()
+  }, [receiptHtml, loading, error])
 
   function downloadDocument() {
     if (!receiptHtml) {
@@ -234,19 +239,19 @@ export function ReceiptDocumentModal({ receiptDocument, loading, error, onClose,
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
-      <div className="mx-auto min-h-screen w-full max-w-[900px] border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
+    <div className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto bg-ink/50 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-6">
+      <div className="mx-auto min-h-screen w-full max-w-[900px] overflow-x-hidden border border-line bg-canvas shadow-2xl sm:min-h-0 sm:rounded-lg">
         <div className="receipt-actions sticky top-0 z-10 flex flex-col gap-3 border-b border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-brand/10 text-brand">
               <ReceiptText size={19} />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-brand">Receipt document</p>
-              <h3 className="mt-1 text-lg font-semibold text-ink">{receiptDocument?.receipt?.number || 'Transaction document'}</h3>
+              <h3 className="mt-1 break-all text-lg font-semibold text-ink">{receiptDocument?.receipt?.number || 'Transaction document'}</h3>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {receiptHistory.length > 1 ? (
               <div className="flex items-center gap-2 rounded-md border border-line bg-white px-2 py-1.5">
                 <button type="button" onClick={() => onNavigateReceipt?.(-1)} disabled={activeReceiptIndex <= 0} className="rounded px-2 py-1 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">
@@ -258,10 +263,11 @@ export function ReceiptDocumentModal({ receiptDocument, loading, error, onClose,
                 </button>
               </div>
             ) : null}
-            <button type="button" onClick={printDocument} className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink hover:bg-canvas">
-              <Printer size={16} />
-              Print
-            </button>
+            <div className="flex items-center gap-1 rounded-md border border-line bg-white p-1" aria-label="Receipt zoom controls">
+              <button type="button" onClick={() => setZoom((value) => Math.max(1, value - 0.25))} disabled={zoom <= 1} className="rounded p-1.5 text-ink hover:bg-canvas disabled:opacity-40" aria-label="Zoom out"><Minus size={16} /></button>
+              <span className="min-w-12 text-center text-xs font-medium text-muted">{Math.round(scale * 100)}%</span>
+              <button type="button" onClick={() => setZoom((value) => Math.min(2, value + 0.25))} disabled={zoom >= 2} className="rounded p-1.5 text-ink hover:bg-canvas disabled:opacity-40" aria-label="Zoom in"><Plus size={16} /></button>
+            </div>
             <button type="button" onClick={downloadDocument} className="inline-flex items-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
               <Download size={16} />
               Download
@@ -280,11 +286,15 @@ export function ReceiptDocumentModal({ receiptDocument, loading, error, onClose,
         ) : error ? (
           <div className="m-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
         ) : receiptDocument ? (
-          <div className="p-4 sm:p-5">
-            <div
-              className="mx-auto max-w-[850px] overflow-hidden rounded-md border border-line bg-white shadow-sm"
-              dangerouslySetInnerHTML={{ __html: receiptHtml }}
-            />
+          <div ref={previewRef} className="overflow-auto p-2 sm:p-5">
+            <div className="mx-auto" style={{ width: previewSize.pageWidth ? `${previewSize.pageWidth * scale}px` : '210mm', height: `${previewSize.height * scale}px` }}>
+              <div
+                ref={pageRef}
+                className="origin-top-left rounded-md bg-white shadow-sm"
+                style={{ width: '210mm', transform: `scale(${scale})` }}
+                dangerouslySetInnerHTML={{ __html: receiptHtml }}
+              />
+            </div>
           </div>
         ) : null}
       </div>

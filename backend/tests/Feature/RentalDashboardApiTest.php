@@ -6,6 +6,7 @@ use App\Enums\RentalFrequency;
 use App\Enums\RentalPaymentStatus;
 use App\Enums\ServiceChargePaymentStatus;
 use App\Models\Client;
+use App\Models\CompanySetting;
 use App\Models\RentalAgreement;
 use App\Models\RentalPayment;
 use App\Models\RentalPaymentPeriod;
@@ -109,7 +110,7 @@ class RentalDashboardApiTest extends TestCase
         $upcomingPayment = $this->rentalPayment($upcomingPeriod, 200, '2026-10-11', RentalPaymentStatus::Confirmed);
         $this->rentalPayment($upcomingPeriod, 35, '2026-10-15', RentalPaymentStatus::Failed);
 
-        $category = ServiceChargeCategory::query()->where('name', 'Security')->firstOrFail();
+        $category = ServiceChargeCategory::query()->firstOrFail();
         $charge = ServiceCharge::query()->create([
             'category_id' => $category->id,
             'rental_agreement_id' => $agreement->id,
@@ -145,6 +146,29 @@ class RentalDashboardApiTest extends TestCase
             ->assertJsonPath('data.upcoming_rent_due.0.balance', 800)
             ->assertJsonPath('data.revenue_trend.17.amount', 100)
             ->assertJsonPath('data.revenue_trend.18.amount', 200);
+
+        CompanySetting::query()->create([
+            'target_type' => 'monthly',
+            'target_amount' => 400,
+            'rental_management_enabled' => true,
+        ]);
+
+        $this->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.stats.revenue', 415)
+            ->assertJsonPath('data.stats.monthly_revenue', 340)
+            ->assertJsonPath('data.target_revenue', 340)
+            ->assertJsonPath('data.monthly_target_progress', 85);
+
+        CompanySetting::query()->firstOrFail()->update(['rental_management_enabled' => false]);
+
+        $this->getJson('/api/v1/rental-dashboard')->assertForbidden();
+        $this->getJson('/api/v1/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.stats.revenue', 415)
+            ->assertJsonPath('data.stats.monthly_revenue', 340);
+        $this->assertDatabaseCount('rental_payments', 5);
+        $this->assertDatabaseCount('service_charge_payments', 3);
     }
 
     private function rentalPayment(

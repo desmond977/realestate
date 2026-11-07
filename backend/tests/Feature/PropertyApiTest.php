@@ -136,14 +136,40 @@ class PropertyApiTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $this->assertNotNull($response->json('data.property.image'));
+        $imagePath = $response->json('data.property.image');
+        $this->assertNotNull($imagePath);
         $this->assertNotNull($response->json('data.property.image_url'));
-        Storage::disk('public')->assertExists($response->json('data.property.image'));
+        Storage::disk('public')->assertExists($imagePath);
+
+        $this->get("/storage/{$imagePath}")->assertOk();
 
         $this->getJson('/api/v1/properties')
             ->assertOk()
-            ->assertJsonPath('data.0.image', $response->json('data.property.image'))
-            ->assertJsonPath('data.0.image_url', rtrim(config('app.url'), '/').Storage::disk('public')->url($response->json('data.property.image')));
+            ->assertJsonPath('data.0.image', $imagePath)
+            ->assertJsonPath('data.0.image_url', rtrim(config('app.url'), '/').Storage::disk('public')->url($imagePath));
+    }
+
+    public function test_authenticated_user_can_replace_property_image_with_method_spoofing(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+        Storage::fake('public');
+
+        $previousImage = UploadedFile::fake()->create('old-property.jpg', 100, 'image/jpeg');
+        $previousImagePath = $previousImage->store('properties', 'public');
+        $property = Property::factory()->create(['image' => $previousImagePath]);
+        $replacementImage = UploadedFile::fake()->create('new-property.jpg', 100, 'image/jpeg');
+
+        $response = $this->post("/api/v1/properties/{$property->id}", [
+            '_method' => 'PATCH',
+            'image' => $replacementImage,
+        ]);
+
+        $response->assertOk();
+        $replacementImagePath = $response->json('data.property.image');
+        $this->assertNotSame($previousImagePath, $replacementImagePath);
+        Storage::disk('public')->assertExists($replacementImagePath);
+        Storage::disk('public')->assertMissing($previousImagePath);
+        $this->assertSame($replacementImagePath, $property->fresh()->image);
     }
 
     public function test_property_without_image_returns_fallback_image_url(): void

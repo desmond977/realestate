@@ -5,6 +5,7 @@
   RewriteCond %{HTTP:Authorization} .
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+  RewriteRule ^storage(?:/.*)?$ api/index.php [L]
   RewriteRule ^api(?:/.*)?$ api/index.php [L]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]

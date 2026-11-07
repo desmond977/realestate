@@ -174,11 +174,11 @@ button {
 }
 
 .document-preview-content .document-page {
-  width: 100%;
-  max-width: 210mm;
-  min-height: auto;
-  margin: 0 auto;
-  padding: clamp(20px, 5vw, 52px);
+  width: 210mm;
+  max-width: none;
+  min-height: 297mm;
+  margin: 0;
+  padding: 22mm 20mm;
   overflow-wrap: anywhere;
 }
 
@@ -186,47 +186,4 @@ button {
 .document-preview-content .meta-grid,
 .document-preview-content .signature-grid {
   max-width: 100%;
-}
-
-.document-preview-content table {
-  width: 100%;
-  max-width: 100%;
-}
-
-@media (max-width: 640px) {
-  .document-preview-content .document-page {
-    padding: 18px;
-  }
-
-  .document-preview-content .letterhead,
-  .document-preview-content .company-mark,
-  .document-preview-content .company-info,
-  .document-preview-content .meta-grid,
-  .document-preview-content .meta-row,
-  .document-preview-content .meta-label,
-  .document-preview-content .meta-value,
-  .document-preview-content .signature-grid,
-  .document-preview-content .signature,
-  .document-preview-content .signature-spacer {
-    display: block;
-    width: 100%;
-  }
-
-  .document-preview-content .company-info {
-    margin-top: 14px;
-    text-align: left;
-  }
-
-  .document-preview-content .meta-label {
-    border-bottom: 0;
-    padding-bottom: 2px;
-  }
-
-  .document-preview-content .meta-value {
-    padding-top: 2px;
-  }
-
-  .document-preview-content .signature {
-    margin-top: 36px;
-  }
 }

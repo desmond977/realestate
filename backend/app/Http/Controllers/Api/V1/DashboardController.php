@@ -20,7 +20,11 @@ class DashboardController extends Controller
         return response()->json([
             'data' => [
                 'stats' => $summary['stats'],
+                'target_type' => $summary['target_type'],
+                'target_amount' => $summary['target_amount'],
                 'monthly_target' => $summary['monthly_target'],
+                'target_revenue' => $summary['target_revenue'],
+                'target_progress' => $summary['target_progress'],
                 'monthly_target_progress' => $summary['monthly_target_progress'],
                 'property_status_breakdown' => $summary['property_status_breakdown'],
                 'property_inventory_breakdown' => $summary['property_inventory_breakdown'],

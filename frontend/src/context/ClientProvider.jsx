@@ -17,6 +17,14 @@ function readStoredUser() {
   }
 }
 
+function resetServiceChargeNotice() {
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.startsWith('client_service_charge_notice_checked')) {
+      sessionStorage.removeItem(key)
+    }
+  }
+}
+
 export function ClientProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('client_auth_token'))
   const [user, setUser] = useState(readStoredUser)
@@ -26,6 +34,7 @@ export function ClientProvider({ children }) {
     function handleAuthCleared(event) {
       if (event.detail?.scope !== 'client') return
 
+      resetServiceChargeNotice()
       setToken(null)
       setUser(null)
       setLoading(false)
@@ -79,6 +88,7 @@ export function ClientProvider({ children }) {
       const nextToken = response.data.token
       const nextUser = response.data.user
 
+      resetServiceChargeNotice()
       localStorage.setItem('client_auth_token', nextToken)
       localStorage.setItem('client_auth_user', JSON.stringify(nextUser))
       setToken(nextToken)
@@ -102,6 +112,7 @@ export function ClientProvider({ children }) {
       const nextToken = response.data.token
       const nextUser = response.data.user
 
+      resetServiceChargeNotice()
       localStorage.setItem('client_auth_token', nextToken)
       localStorage.setItem('client_auth_user', JSON.stringify(nextUser))
       setToken(nextToken)
@@ -123,6 +134,7 @@ export function ClientProvider({ children }) {
     try {
       await clientAuthApi.logout()
     } finally {
+      resetServiceChargeNotice()
       localStorage.removeItem('client_auth_token')
       localStorage.removeItem('client_auth_user')
       setToken(null)

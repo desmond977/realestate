@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\ServiceChargeCategoryController;
 use App\Http\Controllers\Api\V1\ServiceChargeController;
 use App\Http\Controllers\Api\V1\ServiceChargePaymentController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Middleware\EnsureRentalManagementEnabled;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -49,16 +50,17 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('dashboard', DashboardController::class)->middleware('role:admin,staff,accountant');
-        Route::get('rental-dashboard', RentalDashboardController::class)->middleware('role:admin,staff,accountant');
+        Route::get('rental-dashboard', RentalDashboardController::class)
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::get('payment-approvals/{submission}/proof', [PaymentApprovalController::class, 'proof'])
-            ->middleware('role:admin')
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class])
             ->name('admin.payment-approvals.proof');
         Route::get('payment-approvals', [PaymentApprovalController::class, 'index'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::post('payment-approvals/{submission}/approve', [PaymentApprovalController::class, 'approve'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::post('payment-approvals/{submission}/reject', [PaymentApprovalController::class, 'reject'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::get('settings/company', [CompanySettingController::class, 'show'])->middleware('role:admin,staff,accountant');
         Route::put('settings/company', [CompanySettingController::class, 'update'])->middleware('role:admin');
 
@@ -110,40 +112,40 @@ Route::prefix('v1')->group(function () {
             ->only(['index', 'show'])
             ->middleware('role:admin,staff,accountant');
         Route::get('rentals/form-options', [RentalAgreementController::class, 'formOptions'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::apiResource('rentals', RentalAgreementController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::apiResource('rentals', RentalAgreementController::class)
             ->only(['store', 'update', 'destroy'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::get('rental-payment-periods', [RentalPaymentController::class, 'index'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::get('rental-payment-periods/{period}', [RentalPaymentController::class, 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::post('rental-payment-periods/{period}/payments', [RentalPaymentController::class, 'store'])
-            ->middleware('role:admin,accountant');
+            ->middleware(['role:admin,accountant', EnsureRentalManagementEnabled::class]);
         Route::get('service-charge-categories', [ServiceChargeCategoryController::class, 'index'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::post('service-charge-categories', [ServiceChargeCategoryController::class, 'store'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::put('service-charge-categories/{category}', [ServiceChargeCategoryController::class, 'update'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::delete('service-charge-categories/{category}', [ServiceChargeCategoryController::class, 'destroy'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::get('service-charges/form-options', [ServiceChargeController::class, 'formOptions'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::get('service-charges', [ServiceChargeController::class, 'index'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::post('service-charges', [ServiceChargeController::class, 'store'])
-            ->middleware('role:admin,staff');
+            ->middleware(['role:admin,staff', EnsureRentalManagementEnabled::class]);
         Route::get('service-charges/{serviceCharge}', [ServiceChargeController::class, 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::put('service-charges/{serviceCharge}', [ServiceChargeController::class, 'update'])
-            ->middleware('role:admin,staff');
+            ->middleware(['role:admin,staff', EnsureRentalManagementEnabled::class]);
         Route::delete('service-charges/{serviceCharge}', [ServiceChargeController::class, 'destroy'])
-            ->middleware('role:admin');
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
         Route::post('service-charges/{serviceCharge}/payments', [ServiceChargePaymentController::class, 'store'])
-            ->middleware('role:admin,accountant');
+            ->middleware(['role:admin,accountant', EnsureRentalManagementEnabled::class]);
     });
 });

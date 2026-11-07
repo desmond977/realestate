@@ -1,5 +1,6 @@
 export const SETTINGS_KEY = 'estateops_dashboard_settings'
 export const USER_THEME_KEY = 'estateops_user_theme_mode'
+export const CLIENT_THEME_KEY = 'estateops_client_theme_mode'
 
 export const DEFAULT_BRANDING = {
   brand_color: '#166534',
@@ -54,6 +55,30 @@ export function persistUserTheme(userTheme) {
   localStorage.setItem(USER_THEME_KEY, JSON.stringify({
     ...DEFAULT_USER_THEME,
     ...userTheme,
+  }))
+}
+
+export function getPersistedClientTheme() {
+  try {
+    const raw = localStorage.getItem(CLIENT_THEME_KEY)
+    if (!raw) {
+      return DEFAULT_USER_THEME
+    }
+
+    const parsed = JSON.parse(raw)
+    return {
+      ...DEFAULT_USER_THEME,
+      ...parsed,
+    }
+  } catch {
+    return DEFAULT_USER_THEME
+  }
+}
+
+export function persistClientTheme(clientTheme) {
+  localStorage.setItem(CLIENT_THEME_KEY, JSON.stringify({
+    ...DEFAULT_USER_THEME,
+    ...clientTheme,
   }))
 }
 

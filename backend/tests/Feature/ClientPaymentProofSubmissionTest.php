@@ -253,7 +253,7 @@ class ClientPaymentProofSubmissionTest extends TestCase
         ]);
 
         return ServiceCharge::query()->create([
-            'category_id' => ServiceChargeCategory::query()->where('name', 'Security')->value('id'),
+            'category_id' => ServiceChargeCategory::query()->value('id'),
             'rental_agreement_id' => $agreement->id,
             'rental_property_id' => $property->id,
             'client_id' => $client->id,

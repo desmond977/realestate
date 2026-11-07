@@ -5,12 +5,16 @@ namespace App\Services\Dashboard;
 use App\Enums\AllocationStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\PropertyStatus;
+use App\Enums\RentalPaymentStatus;
+use App\Enums\ServiceChargePaymentStatus;
 use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Realtor;
 use App\Models\RealtorLeaderboardSnapshot;
+use App\Models\RentalPayment;
+use App\Models\ServiceChargePayment;
 use App\Services\CompanySettings;
 use App\Services\TenantManager;
 use Carbon\Carbon;
@@ -27,15 +31,33 @@ class DashboardService
     {
         $now = Carbon::now();
         $this->archiveCompletedMonthLeaderboard($now->copy()->subMonthNoOverflow());
+        $company = app(CompanySettings::class)->get();
+        $targetType = $company['target_type'] ?? 'monthly';
+        $targetAmount = (float) ($company['target_amount'] ?? 5000000.0);
+        $targetWindow = $targetType === 'weekly'
+            ? $now->copy()->startOfWeek(Carbon::MONDAY)->format('Y-m-d')
+            : $now->format('Y-m');
 
-        $key = 'dashboard_summary:'.(app(TenantManager::class)->currentId() ?? 'default').':'.$now->format('Y-m');
+        $key = 'dashboard_summary:'.(app(TenantManager::class)->currentId() ?? 'default')
+            .':'.$now->format('Y-m')
+            .':'.$targetType
+            .':'.$targetAmount
+            .':'.$targetWindow;
 
-        return Cache::remember($key, now()->addSeconds(60), function () use ($now) {
-            $company = app(CompanySettings::class)->get();
-            $monthlyTarget = (float) ($company['target_amount'] ?? 5000000.0);
-            $revenue = (float) Payment::query()
-                ->where('status', PaymentStatus::Confirmed)
-                ->sum('amount');
+        return Cache::remember($key, now()->addSeconds(60), function () use ($now, $targetType, $targetAmount) {
+            $revenue = $this->revenueForPeriod();
+            $monthStart = $now->copy()->startOfMonth();
+            $monthEnd = $now->copy()->endOfMonth();
+            $monthlyRevenue = $this->revenueForPeriod($monthStart, $monthEnd);
+            $targetStart = $targetType === 'weekly'
+                ? $now->copy()->startOfWeek(Carbon::MONDAY)
+                : $monthStart;
+            $targetEnd = $targetType === 'weekly'
+                ? $now->copy()->endOfWeek(Carbon::SUNDAY)
+                : $monthEnd;
+            $targetRevenue = $targetType === 'monthly'
+                ? $monthlyRevenue
+                : $this->revenueForPeriod($targetStart, $targetEnd);
             $leaderboardMonth = $now->copy()->startOfMonth();
 
             return [
@@ -51,14 +73,19 @@ class DashboardService
                     'total_clients' => Client::query()->count(),
                     'total_realtors' => Realtor::query()->count(),
                     'revenue' => $revenue,
+                    'monthly_revenue' => $monthlyRevenue,
                     'outstanding_balances' => (float) Allocation::query()
                         ->whereIn('status', [AllocationStatus::Reserved, AllocationStatus::Active])
                         ->sum('balance'),
                     'active_allocations' => Allocation::query()->where('status', AllocationStatus::Active)->count(),
                     'completed_allocations' => Allocation::query()->where('status', AllocationStatus::Completed)->count(),
                 ],
-                'monthly_target' => $monthlyTarget,
-                'monthly_target_progress' => $this->targetProgress($revenue, $monthlyTarget),
+                'target_type' => $targetType,
+                'target_amount' => $targetAmount,
+                'monthly_target' => $targetAmount,
+                'target_revenue' => $targetRevenue,
+                'target_progress' => $this->targetProgress($targetRevenue, $targetAmount),
+                'monthly_target_progress' => $this->targetProgress($targetRevenue, $targetAmount),
                 'property_status_breakdown' => $this->propertyStatusBreakdown(),
                 'property_inventory_breakdown' => $this->propertyInventoryBreakdown(),
                 'allocation_status_breakdown' => $this->allocationStatusBreakdown(),
@@ -74,6 +101,24 @@ class DashboardService
                 'previous_realtor_leaderboard_snapshot' => $this->previousLeaderboardSnapshot($leaderboardMonth),
             ];
         });
+    }
+
+    private function revenueForPeriod(?Carbon $start = null, ?Carbon $end = null): float
+    {
+        return $this->confirmedPaymentSum(Payment::class, PaymentStatus::Confirmed, $start, $end)
+            + $this->confirmedPaymentSum(RentalPayment::class, RentalPaymentStatus::Confirmed, $start, $end)
+            + $this->confirmedPaymentSum(ServiceChargePayment::class, ServiceChargePaymentStatus::Confirmed, $start, $end);
+    }
+
+    private function confirmedPaymentSum(string $modelClass, mixed $status, ?Carbon $start, ?Carbon $end): float
+    {
+        $query = $modelClass::query()->where('status', $status);
+
+        if ($start && $end) {
+            $query->whereBetween('paid_at', [$start, $end]);
+        }
+
+        return (float) $query->sum('amount');
     }
 
     /**

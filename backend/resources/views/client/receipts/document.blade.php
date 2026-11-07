@@ -22,7 +22,10 @@
         <div class="header">
             <div>
                 <h1>Payment Receipt</h1>
-                <p class="muted">{{ $documentData['company']['name'] ?? $company?->company_name ?? 'Company' }} Client Portal</p>
+                <p class="muted">{{ $documentData['company']['name'] ?? $company?->company_name ?? 'TerraOps' }}</p>
+                @if (! empty($documentData['company']['address'] ?? $company?->company_address))
+                    <p class="muted">{{ $documentData['company']['address'] ?? $company?->company_address }}</p>
+                @endif
             </div>
             <div>
                 <strong>{{ $documentData['receipt']['number'] ?? $receipt->receipt_number }}</strong><br>

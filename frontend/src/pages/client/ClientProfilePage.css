@@ -22,13 +22,13 @@
 .header-content h1 {
   font-size: 28px;
   font-weight: 700;
-  color: #333;
+  color: var(--color-ink);
   margin: 0 0 4px 0;
 }
 
 .header-content p {
   font-size: 14px;
-  color: #666;
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -61,7 +61,8 @@
 
 /* Profile Section */
 .profile-section {
-  background: white;
+  background: var(--color-panel);
+  color: var(--color-ink);
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -74,7 +75,7 @@
 .profile-section h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: var(--color-ink);
   margin: 0 0 20px 0;
   display: flex;
   align-items: center;
@@ -82,7 +83,7 @@
 }
 
 .profile-section h2 svg {
-  color: #0D8ABC;
+  color: var(--color-brand);
 }
 
 /* Avatar Section */
@@ -92,7 +93,7 @@
   gap: 24px;
   margin-bottom: 24px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-line);
 }
 
 .avatar-preview {
@@ -101,7 +102,7 @@
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  border: 3px solid #0D8ABC;
+  border: 3px solid var(--color-brand);
 }
 
 .avatar-preview img {
@@ -158,7 +159,7 @@
 
 .hint {
   font-size: 12px;
-  color: #999;
+  color: var(--color-muted);
   margin: 0;
 }
 
@@ -178,33 +179,35 @@
 .form-group label {
   font-size: 13px;
   font-weight: 500;
-  color: #555;
+  color: var(--color-ink);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .form-group label svg {
-  color: #0D8ABC;
+  color: var(--color-brand);
   font-size: 12px;
 }
 
 .form-group input {
   padding: 12px 16px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-line);
   border-radius: 8px;
+  background: var(--color-panel);
+  color: var(--color-ink);
   font-size: 14px;
   transition: border-color 0.2s ease;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #0D8ABC;
+  border-color: var(--color-brand);
 }
 
 .submit-btn {
   padding: 12px 24px;
-  background: #0D8ABC;
+  background: var(--color-brand);
   color: white;
   border: none;
   border-radius: 8px;
@@ -216,7 +219,7 @@
 }
 
 .submit-btn:hover {
-  background: #0a6e94;
+  background: var(--color-brand-dark);
 }
 
 .submit-btn:disabled {
@@ -239,7 +242,7 @@
 
 .info-label {
   font-size: 11px;
-  color: #999;
+  color: var(--color-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -247,7 +250,7 @@
 .info-value {
   font-size: 15px;
   font-weight: 500;
-  color: #333;
+  color: var(--color-ink);
 }
 
 .info-value.capitalize {
@@ -260,6 +263,71 @@
 
 .info-value.unverified {
   color: #dc3545;
+}
+
+.theme-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: var(--color-canvas);
+}
+
+.theme-setting-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-setting-description,
+.theme-setting-status {
+  margin: 5px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.theme-switch {
+  display: flex;
+  width: 48px;
+  height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: #89938b;
+  transition: background 0.2s ease;
+}
+
+.theme-switch.is-on {
+  background: var(--color-brand);
+}
+
+.theme-switch:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-brand) 35%, transparent);
+  outline-offset: 3px;
+}
+
+.theme-switch-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  transition: transform 0.2s ease;
+}
+
+.theme-switch.is-on .theme-switch-thumb {
+  transform: translateX(20px);
+}
+
+:root[data-theme='dark'] .avatar-preview {
+  border-color: var(--color-brand);
 }
 
 /* Responsive Styles */

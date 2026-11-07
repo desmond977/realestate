@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\ServiceChargePaymentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,15 +17,16 @@ class ServiceChargeResource extends JsonResource
         $balance = max(0, round($amountDue - $amountPaid, 2));
         $status = $balance <= 0
             ? 'paid'
-            : ($this->due_date->isPast() && ! $this->due_date->isToday()
-                ? 'overdue'
-                : ($amountPaid > 0 ? 'partial' : 'due'));
+            : ($amountPaid > 0
+                ? 'partial'
+                : ($this->due_date->isPast() && ! $this->due_date->isToday() ? 'non_payment' : 'unpaid_pending'));
 
         return [
             'id' => $this->id,
             'description' => $this->description,
             'billing_period_start' => $this->billing_period_start?->toDateString(),
             'billing_period_end' => $this->billing_period_end?->toDateString(),
+            'billing_month' => $this->billing_month ?: $this->billing_period_start?->format('Y-m'),
             'billing_date' => $this->billing_date?->toDateString(),
             'due_date' => $this->due_date?->toDateString(),
             'amount_due' => $amountDue,

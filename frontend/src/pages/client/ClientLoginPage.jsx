@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useClient } from '../../context/ClientContext';
-import { LockKeyhole as FaLock, Mail as FaEnvelope } from 'lucide-react';
+import { ArrowRight, Check, LockKeyhole as FaLock, Mail as FaEnvelope } from 'lucide-react';
 import { ClientBrandLogo } from '../../components/client/ClientBrandLogo';
 import { useClientBranding } from '../../hooks/useClientBranding';
 import './ClientLoginPage.css';
@@ -41,85 +41,100 @@ const ClientLoginPage = () => {
 
   return (
     <div className="client-login-page">
-      <div className="login-container">
-        <div className="login-header">
-          <ClientBrandLogo className="brand" />
-          <h1>Client Portal</h1>
-          <p>Sign in to access your real estate portfolio</p>
-        </div>
+      <main className="login-main">
+        <div className="login-container">
+          <div className="login-header">
+            <ClientBrandLogo className="brand" imageClassName="client-login-logo" fallbackClassName="client-login-logo-fallback" />
+            <span className="login-eyebrow">CLIENT PORTAL</span>
+            <h1>Welcome back</h1>
+            <p>Sign in to manage your property journey.</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {error && (
-            <div className="error-message">
-              {error}
+          <form onSubmit={handleSubmit} className="login-form">
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
+
+            <div className="form-group">
+              <label htmlFor="client-email">
+                <FaEnvelope /> Email Address
+              </label>
+              <input
+                id="client-email"
+                type="email"
+                name="email"
+                autoComplete="username"
+                value={credentials.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                required
+              />
             </div>
-          )}
 
-          <div className="form-group">
-            <label>
-              <FaEnvelope /> Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={credentials.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              required
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="client-password">
+                <FaLock /> Password
+              </label>
+              <input
+                id="client-password"
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                value={credentials.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label>
-              <FaLock /> Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={credentials.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
+            <button
+              type="submit"
+              className="login-btn"
+              disabled={loading}
+            >
+              <span>{loading ? 'Signing in...' : 'Sign in to your account'}</span>
+              {!loading && <ArrowRight size={18} />}
+            </button>
+          </form>
 
-          <button 
-            type="submit" 
-            className="login-btn"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="login-footer">
-          <p>
-            Don't have an account?{' '}
-            <Link to="/client/register" className="register-link">
-              Register here
-            </Link>
-          </p>
-          {supportEmail && (
-            <p className="support-text">
-              Need help? Contact <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
+          <div className="login-footer">
+            <p>
+              Don't have an account?{' '}
+              <Link to="/client/register" className="register-link">
+                Register here
+              </Link>
             </p>
-          )}
+            {supportEmail && (
+              <p className="support-text">
+                Need help? Contact <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
 
-      <div className="login-side">
+      <aside className="login-side">
+        <div className="login-hero-image">
+          <img
+            src="/property-management-showcase.gif"
+            alt="Property manager presenting a modern home"
+          />
+        </div>
         <div className="side-content">
-          <h2>Welcome to Your Client Portal</h2>
-          <p>Access your property allocations, payment history, receipts, and more - all in one place.</p>
+          <span className="hero-kicker">YOUR PROPERTY, IN GOOD HANDS</span>
+          <h2>A clearer view of your property journey.</h2>
+          <p>Everything you need to stay on top of your property, payments, and documents — all in one place.</p>
           <ul className="features-list">
-            <li>View your allocated properties</li>
-            <li>Track payment progress</li>
-            <li>Download receipts</li>
-            <li>Monitor outstanding balances</li>
-            <li>Update your profile</li>
+            <li><Check size={16} /> View your properties and allocation</li>
+            <li><Check size={16} /> Track payments and download receipts</li>
+            <li><Check size={16} /> Keep important documents close</li>
           </ul>
         </div>
-      </div>
+        <span className="hero-decoration hero-decoration-one" />
+        <span className="hero-decoration hero-decoration-two" />
+      </aside>
     </div>
   );
 };

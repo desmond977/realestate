@@ -32,6 +32,14 @@ export const paymentsApi = {
   show: (paymentId) => api.get(clientPath(`/payments/${paymentId}`)),
 }
 
+export const serviceChargesApi = {
+  list: (month) => api.get(clientPath('/service-charges'), { params: { month } }),
+}
+
+export const rentalPaymentsApi = {
+  list: () => api.get(clientPath('/rent-payments')),
+}
+
 export const paymentProofSubmissionsApi = {
   options: () => api.get(clientPath('/payment-proof-submissions/options')),
   list: (page = 1) => api.get(clientPath('/payment-proof-submissions'), { params: { page } }),

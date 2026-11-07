@@ -29,7 +29,9 @@ class RentalPaymentResource extends JsonResource
                 'id' => $this->receipt->id,
                 'receipt_number' => $this->receipt->receipt_number,
                 'issued_at' => $this->receipt->issued_at?->toISOString(),
-                'snapshot' => $this->receipt->snapshot,
+                'snapshot' => array_merge($this->receipt->snapshot ?? [], [
+                    'company' => app(\App\Services\CompanySettings::class)->get(),
+                ]),
             ] : null),
             'created_at' => $this->created_at?->toISOString(),
         ];

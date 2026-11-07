@@ -82,18 +82,23 @@ class PropertyController extends Controller
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
         $data = $request->validated();
+        $previousImage = $property->image;
 
         if ($request->hasFile('image') && $request->file('image')->isValid()) {
-            if ($property->image && Storage::disk('public')->exists($property->image)) {
-                Storage::disk('public')->delete($property->image);
+            $storedImage = $request->file('image')->store('properties', 'public');
+            if ($storedImage === false) {
+                throw new \RuntimeException('The property image could not be stored.');
             }
-
-            $data['image'] = $request->file('image')->store('properties', 'public');
+            $data['image'] = $storedImage;
         }
 
         $data = $this->normalizeInventoryCounts($data, $property);
 
         $property->update($data);
+
+        if ($previousImage && $property->image !== $previousImage && Storage::disk('public')->exists($previousImage)) {
+            Storage::disk('public')->delete($previousImage);
+        }
 
         return response()->json([
             'message' => 'Property updated successfully.',

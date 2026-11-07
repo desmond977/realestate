@@ -58,8 +58,34 @@ export const DEFAULT_PROPERTY_IMAGE_URL = '/assets/property-placeholder.svg'
 
 export function propertyImageUrl(property) {
   if (!property) return DEFAULT_PROPERTY_IMAGE_URL;
-  const url = property.image || property.image_url;
-  return assetUrl(url) || DEFAULT_PROPERTY_IMAGE_URL;
+
+  const rawUrl = property.image || property.image_url || property.cover_image || property.media?.[0]?.url || property.media?.[0]?.path;
+  if (!rawUrl) return DEFAULT_PROPERTY_IMAGE_URL;
+
+  const url = typeof rawUrl === 'string' ? rawUrl : rawUrl.url || rawUrl.path;
+  if (!url) return DEFAULT_PROPERTY_IMAGE_URL;
+
+  if (/^(blob:|data:)/i.test(url)) {
+    return url;
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    const parsedUrl = new URL(url);
+
+    if (parsedUrl.pathname.startsWith('/storage/')) {
+      return new URL(`${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`, window.location.origin).toString();
+    }
+
+    return url;
+  }
+
+  const normalized = url.replace(/^\/+/, '').replace(/^storage\//, '');
+
+  if (normalized.startsWith('uploads/') || normalized.startsWith('images/')) {
+    return new URL(`/${normalized}`, window.location.origin).toString();
+  }
+
+  return assetUrl(normalized) || DEFAULT_PROPERTY_IMAGE_URL;
 }
 
 export const api = axios.create({

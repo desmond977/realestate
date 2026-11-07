@@ -1,16 +1,13 @@
 import {
   Building2,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Edit3,
   Eye,
   Loader2,
-  MapPin,
   Plus,
   Search,
   Trash2,
-  UserRound,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -21,7 +18,7 @@ import { canManageRentals } from '../auth/permissions'
 import { formatMoney } from '../utils/formatters'
 
 const statuses = ['pending', 'active', 'expired', 'terminated']
-const frequencies = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually']
+const frequencies = ['annually']
 
 const emptyForm = {
   property_id: '',
@@ -30,7 +27,7 @@ const emptyForm = {
   property_description: '',
   client_id: '',
   rental_amount: '',
-  rental_frequency: 'monthly',
+  rental_frequency: 'annually',
   lease_start_date: '',
   lease_end_date: '',
   status: 'pending',
@@ -51,6 +48,10 @@ function formatDate(value) {
   if (!value) return '—'
 
   return new Date(`${value}T00:00:00`).toLocaleDateString()
+}
+
+function frequencyLabel(frequency) {
+  return frequency === 'annually' ? 'Yearly' : frequency
 }
 
 function StatusBadge({ status }) {
@@ -79,7 +80,7 @@ function RentalFormModal({ initialValues, mode, clients, properties, onClose, on
     event.preventDefault()
     onSubmit({
       ...form,
-      property_id: form.property_id || null,
+      property_id: Number(form.property_id),
       client_id: Number(form.client_id),
       rental_amount: Number(form.rental_amount),
     })
@@ -104,29 +105,15 @@ function RentalFormModal({ initialValues, mode, clients, properties, onClose, on
           <section className="space-y-4">
             <h4 className="text-sm font-semibold text-ink">Rental property</h4>
             <label className="block">
-              <span className="text-sm font-medium text-ink">Link an existing property (optional)</span>
-              <select className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" value={form.property_id} onChange={(event) => updateField('property_id', event.target.value)}>
-                <option value="">Enter rental property details below</option>
+              <span className="text-sm font-medium text-ink">Select an existing property</span>
+              <select required className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" value={form.property_id} onChange={(event) => updateField('property_id', event.target.value)}>
+                <option value="">Select a property</option>
                 {properties.map((property) => (
                   <option key={property.id} value={property.id}>
                     {property.title} — {property.location}
                   </option>
                 ))}
               </select>
-            </label>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Rental property / unit name</span>
-                <input className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" value={form.property_name} onChange={(event) => updateField('property_name', event.target.value)} placeholder="Required when no existing property is selected" />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-ink">Location</span>
-                <input className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" value={form.property_location} onChange={(event) => updateField('property_location', event.target.value)} placeholder="Required when no existing property is selected" />
-              </label>
-            </div>
-            <label className="block">
-              <span className="text-sm font-medium text-ink">Property notes</span>
-              <textarea className="mt-1 min-h-20 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" value={form.property_description} onChange={(event) => updateField('property_description', event.target.value)} />
             </label>
           </section>
 
@@ -151,7 +138,8 @@ function RentalFormModal({ initialValues, mode, clients, properties, onClose, on
               <label className="block">
                 <span className="text-sm font-medium text-ink">Rental frequency</span>
                 <select className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm capitalize" value={form.rental_frequency} onChange={(event) => updateField('rental_frequency', event.target.value)}>
-                  {frequencies.map((frequency) => <option key={frequency} value={frequency}>{frequency}</option>)}
+                  {frequencies.map((frequency) => <option key={frequency} value={frequency}>Yearly</option>)}
+                  {!frequencies.includes(form.rental_frequency) ? <option value={form.rental_frequency} disabled>{frequencyLabel(form.rental_frequency)} (existing)</option> : null}
                 </select>
               </label>
               <label className="block">
@@ -177,9 +165,9 @@ function RentalFormModal({ initialValues, mode, clients, properties, onClose, on
 
           <div className="flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end">
             <button type="button" className="rounded-md border border-line px-4 py-2 text-sm font-medium text-muted hover:bg-canvas" onClick={onClose}>Cancel</button>
-            <button disabled={submitting} type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+            <button disabled={submitting} type="submit" className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              {mode === 'create' ? 'Create rental' : 'Save changes'}
+              {submitting ? (mode === 'create' ? 'Creating...' : 'Saving...') : (mode === 'create' ? 'Create rental' : 'Save changes')}
             </button>
           </div>
         </form>
@@ -196,7 +184,7 @@ function rentalToForm(rental) {
     property_description: rental.rental_property?.description || '',
     client_id: rental.client?.id ? String(rental.client.id) : '',
     rental_amount: String(rental.rental_amount ?? ''),
-    rental_frequency: rental.rental_frequency || 'monthly',
+    rental_frequency: rental.rental_frequency || 'annually',
     lease_start_date: rental.lease_start_date || '',
     lease_end_date: rental.lease_end_date || '',
     status: rental.status || 'pending',
@@ -373,43 +361,39 @@ export function RentalsPage() {
           <p className="mt-1 text-sm text-muted">{search || status ? 'Try changing the search or status filter.' : 'Add a rental agreement to get started.'}</p>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="overflow-hidden rounded-lg border border-line bg-panel">
+          <div className="hidden items-center gap-4 border-b border-line bg-canvas px-4 py-3 text-xs font-semibold uppercase text-muted lg:flex">
+            <span className="min-w-0 flex-[2]">Property / tenant</span>
+            <span className="min-w-0 flex-[1.4]">Lease term</span>
+            <span className="min-w-0 flex-1">Rent</span>
+            <span className="w-24">Status</span>
+            <span className="w-52 text-right">Actions</span>
+          </div>
           {rentals.map((rental) => (
-            <article key={rental.id} className="rounded-lg border border-line bg-panel p-4 shadow-sm sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Building2 size={17} className="shrink-0 text-brand" />
-                    <h3 className="truncate font-semibold text-ink">{rental.rental_property?.name || rental.rental_property?.property?.title || 'Rental property'}</h3>
-                  </div>
-                  <p className="mt-1 flex items-center gap-1.5 text-sm text-muted"><MapPin size={14} />{rental.rental_property?.location || rental.rental_property?.property?.location || 'Location not specified'}</p>
-                </div>
-                <StatusBadge status={rental.status} />
+            <article key={rental.id} className="mb-2 flex flex-col gap-3 border-b border-line bg-white px-4 py-3 odd:bg-white even:bg-[#f8faf7] last:border-b-0 hover:bg-canvas/70 lg:mb-0 lg:flex-row lg:items-center lg:gap-4">
+              <Link to={`/rentals/${rental.id}`} className="flex min-w-0 flex-[2] items-start gap-2.5">
+                <Building2 size={17} className="mt-0.5 shrink-0 text-brand" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-ink">{rental.rental_property?.name || rental.rental_property?.property?.title || 'Rental property'}</span>
+                  <span className="mt-0.5 block truncate text-sm text-muted">{rental.client?.full_name || 'Unknown client'}</span>
+                </span>
+              </Link>
+              <div className="min-w-0 flex-[1.4] pl-[27px] text-sm text-muted sm:pl-0">
+                <span className="lg:hidden">Lease · </span>{formatDate(rental.lease_start_date)} – {formatDate(rental.lease_end_date)}
               </div>
-              <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
-                <div className="flex items-start gap-2.5">
-                  <UserRound size={16} className="mt-0.5 shrink-0 text-muted" />
-                  <div><p className="text-xs text-muted">Tenant</p><p className="text-sm font-medium text-ink">{rental.client?.full_name || 'Unknown client'}</p></div>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CalendarDays size={16} className="mt-0.5 shrink-0 text-muted" />
-                  <div><p className="text-xs text-muted">Lease dates</p><p className="text-sm font-medium text-ink">{formatDate(rental.lease_start_date)} – {formatDate(rental.lease_end_date)}</p></div>
-                </div>
+              <div className="min-w-0 flex-1 pl-[27px] text-sm font-semibold text-ink sm:pl-0">
+                <span>{formatMoney(rental.rental_amount)}</span>
+                <span className="ml-1 text-xs font-normal capitalize text-muted">/ {frequencyLabel(rental.rental_frequency)}</span>
               </div>
-              <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-line pt-4">
-                <div>
-                  <p className="text-xs text-muted">Rental amount</p>
-                  <p className="mt-0.5 font-semibold text-ink">{formatMoney(rental.rental_amount)} <span className="text-sm font-normal capitalize text-muted">/ {rental.rental_frequency}</span></p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link to={`/rentals/${rental.id}`} className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas"><Eye size={15} />Details</Link>
-                  {canManage ? (
-                    <>
-                      <button type="button" onClick={() => openEditForm(rental)} className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas"><Edit3 size={15} />Edit</button>
-                      <button type="button" onClick={() => deleteRental(rental)} className="inline-flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"><Trash2 size={15} />Delete</button>
-                    </>
-                  ) : null}
-                </div>
+              <div className="pl-[27px] sm:pl-0 lg:w-24"><StatusBadge status={rental.status} /></div>
+              <div className="flex flex-wrap gap-2 pl-[27px] sm:pl-0 lg:w-52 lg:justify-end">
+                <Link to={`/rentals/${rental.id}`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-canvas"><Eye size={14} />Details</Link>
+                {canManage ? (
+                  <>
+                    <button type="button" onClick={() => openEditForm(rental)} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-canvas"><Edit3 size={14} />Edit</button>
+                    <button type="button" onClick={() => deleteRental(rental)} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"><Trash2 size={14} />Delete</button>
+                  </>
+                ) : null}
               </div>
             </article>
           ))}
@@ -417,11 +401,11 @@ export function RentalsPage() {
       )}
 
       {!loading && meta.last_page > 1 ? (
-        <div className="flex items-center justify-between rounded-lg border border-line bg-panel px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">Page {meta.current_page} of {meta.last_page} · {meta.total} rentals</p>
-          <div className="flex gap-2">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="inline-flex items-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50"><ChevronLeft size={16} />Previous</button>
-            <button type="button" disabled={page >= meta.last_page} onClick={() => setPage((current) => current + 1)} className="inline-flex items-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50">Next<ChevronRight size={16} /></button>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50"><ChevronLeft size={16} />Previous</button>
+            <button type="button" disabled={page >= meta.last_page} onClick={() => setPage((current) => current + 1)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-line px-3 py-2 text-sm disabled:opacity-50">Next<ChevronRight size={16} /></button>
           </div>
         </div>
       ) : null}
