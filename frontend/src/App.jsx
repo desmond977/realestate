@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { Navigate, Outlet, Route, Routes, useOutletContext } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute.jsx'
 
@@ -39,8 +40,11 @@ const ClientRegisterPage = lazy(() => import('./pages/client/ClientRegisterPage.
 
 function RouteFallback() {
   return (
-    <div className="grid min-h-screen place-items-center bg-canvas px-4 text-sm font-medium text-muted">
-      Loading...
+    <div role="status" aria-live="polite" className="grid min-h-screen place-items-center bg-canvas px-4 text-sm font-medium text-muted">
+      <span className="inline-flex items-center gap-3 rounded-lg border border-line bg-white px-5 py-4 shadow-sm">
+        <LoaderCircle size={20} className="animate-spin text-brand" aria-hidden="true" />
+        <span>Loading your workspace</span>
+      </span>
     </div>
   )
 }

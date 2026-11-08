@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Property;
 use App\Models\Realtor;
 use App\Models\Receipt;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -198,6 +199,49 @@ class ClientApiTest extends TestCase
             'id' => $client->id,
             'deleted_at' => null,
         ]);
+    }
+
+    public function test_authenticated_users_cannot_select_another_tenant_with_a_header(): void
+    {
+        $tenantA = Tenant::query()->create([
+            'name' => 'Organization A',
+            'slug' => 'organization-a',
+            'is_active' => true,
+        ]);
+        $tenantB = Tenant::query()->create([
+            'name' => 'Organization B',
+            'slug' => 'organization-b',
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs(User::factory()->create([
+            'role' => 'admin',
+            'tenant_id' => $tenantA->id,
+        ]));
+
+        $this->withHeader('X-Tenant-ID', (string) $tenantB->id)
+            ->getJson('/api/v1/clients')
+            ->assertForbidden();
+    }
+
+    public function test_authenticated_users_cannot_read_another_tenants_client(): void
+    {
+        $tenantA = Tenant::query()->create([
+            'name' => 'Organization A',
+            'slug' => 'organization-a',
+            'is_active' => true,
+        ]);
+        $tenantB = Tenant::query()->create([
+            'name' => 'Organization B',
+            'slug' => 'organization-b',
+            'is_active' => true,
+        ]);
+        $client = Client::factory()->create(['tenant_id' => $tenantB->id]);
+        Sanctum::actingAs(User::factory()->create([
+            'role' => 'admin',
+            'tenant_id' => $tenantA->id,
+        ]));
+
+        $this->getJson('/api/v1/clients/'.$client->id)->assertNotFound();
     }
 
     public function test_authenticated_user_can_fetch_client_activity_overview(): void

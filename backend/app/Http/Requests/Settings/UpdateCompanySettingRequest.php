@@ -23,7 +23,7 @@ class UpdateCompanySettingRequest extends FormRequest
             'company_phone' => ['nullable', 'string', 'max:50'],
             'company_address' => ['nullable', 'string'],
             'company_logo' => ['nullable', 'string'],
-            'target_type' => ['required', Rule::in(['weekly', 'monthly'])],
+            'target_type' => ['required', Rule::in(['weekly', 'monthly', 'yearly'])],
             'target_amount' => ['required', 'numeric', 'min:0'],
             'theme_mode' => ['nullable', Rule::in(['light', 'dark', 'system'])],
             'brand_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],

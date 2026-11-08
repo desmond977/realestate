@@ -98,10 +98,8 @@ export function SettingsPage() {
     }
   }
 
-  const targetHint =
-    config.target_type === 'weekly'
-      ? 'Weekly target is used for dashboard comparisons.'
-      : 'Monthly target is shown in the dashboard analytics card.'
+  const targetLabels = { weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' }
+  const targetHint = `${targetLabels[config.target_type] || 'Monthly'} progress starts fresh with each new ${config.target_type === 'weekly' ? 'week' : config.target_type === 'yearly' ? 'year' : 'month'}.`
 
   return (
     <div className="space-y-6">
@@ -253,49 +251,55 @@ export function SettingsPage() {
 
           <div className="mt-6 rounded-3xl border border-line bg-canvas p-5">
             <p className="text-sm font-semibold text-ink">Dashboard target</p>
-            <p className="mt-2 text-sm text-muted">Choose the active target type for dashboard reporting.</p>
+            <p className="mt-2 text-sm text-muted">Choose the reporting cycle for your revenue goal.</p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="block rounded-2xl border border-line bg-white p-4">
-                <div className="flex items-center justify-between text-sm font-medium text-ink">
-                  <span>Monthly target</span>
-                  <input
-                    type="radio"
-                    name="targetType"
-                  checked={config.target_type === 'monthly'}
-                  onChange={() => updateField('target_type', 'monthly')}
-                  className="accent-brand"
-                />
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  value={config.target_amount}
-                  onChange={(event) => updateField('target_amount', Number(event.target.value))}
-                  className="mt-3 w-full rounded-xl border border-line bg-white px-3 py-3 text-sm outline-none focus:border-brand"
-                />
-              </label>
-
-              <label className="block rounded-2xl border border-line bg-white p-4">
-                <div className="flex items-center justify-between text-sm font-medium text-ink">
-                  <span>Weekly target</span>
-                  <input
-                    type="radio"
-                    name="targetType"
-                  checked={config.target_type === 'weekly'}
-                  onChange={() => updateField('target_type', 'weekly')}
-                  className="accent-brand"
-                />
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  value={config.target_amount}
-                  onChange={(event) => updateField('target_amount', Number(event.target.value))}
-                  className="mt-3 w-full rounded-xl border border-line bg-white px-3 py-3 text-sm outline-none focus:border-brand"
-                />
-              </label>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {[
+                { value: 'weekly', title: 'Weekly', detail: 'Resets every Monday' },
+                { value: 'monthly', title: 'Monthly', detail: 'Resets on the 1st' },
+                { value: 'yearly', title: 'Yearly', detail: 'Resets each January' },
+              ].map((option) => {
+                const selected = config.target_type === option.value
+                return (
+                  <label
+                    key={option.value}
+                    className={`cursor-pointer rounded-2xl border p-4 transition ${
+                      selected
+                        ? 'border-brand bg-brand/5 ring-2 ring-brand/10'
+                        : 'border-line bg-white hover:border-brand/40'
+                    }`}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="block text-sm font-semibold text-ink">{option.title}</span>
+                        <span className="mt-1 block text-xs text-muted">{option.detail}</span>
+                      </span>
+                      <input
+                        type="radio"
+                        name="targetType"
+                        value={option.value}
+                        checked={selected}
+                        onChange={() => updateField('target_type', option.value)}
+                        className="mt-0.5 h-4 w-4 accent-brand"
+                      />
+                    </span>
+                  </label>
+                )
+              })}
             </div>
+
+            <label className="mt-4 block rounded-2xl border border-line bg-white p-4">
+              <span className="text-sm font-semibold text-ink">{targetLabels[config.target_type] || 'Monthly'} revenue goal</span>
+              <span className="mt-1 block text-xs text-muted">Revenue progress starts over when this cycle renews.</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={config.target_amount}
+                onChange={(event) => updateField('target_amount', Number(event.target.value))}
+                className="mt-3 w-full rounded-xl border border-line bg-white px-3 py-3 text-sm outline-none focus:border-brand"
+              />
+            </label>
 
             <p className="mt-4 text-sm text-muted">{targetHint}</p>
           </div>
@@ -343,9 +347,7 @@ export function SettingsPage() {
           <div className="rounded-3xl bg-white p-4 text-sm text-ink shadow-sm">
             <p className="font-semibold">Active dashboard target</p>
             <p className="mt-1 text-muted">
-              {config.target_type === 'weekly'
-                ? `Weekly ${formatMoney(config.target_amount)}`
-                : `Monthly ${formatMoney(config.target_amount)}`}
+              {`${targetLabels[config.target_type] || 'Monthly'} ${formatMoney(config.target_amount)}`}
             </p>
           </div>
         </aside>

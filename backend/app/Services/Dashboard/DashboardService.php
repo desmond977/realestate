@@ -19,7 +19,6 @@ use App\Services\CompanySettings;
 use App\Services\TenantManager;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
 class DashboardService
@@ -34,33 +33,30 @@ class DashboardService
         $company = app(CompanySettings::class)->get();
         $targetType = $company['target_type'] ?? 'monthly';
         $targetAmount = (float) ($company['target_amount'] ?? 5000000.0);
-        $targetWindow = $targetType === 'weekly'
-            ? $now->copy()->startOfWeek(Carbon::MONDAY)->format('Y-m-d')
-            : $now->format('Y-m');
+        $targetPeriodStart = $targetType === 'weekly'
+            ? $now->copy()->startOfWeek(Carbon::MONDAY)
+            : ($targetType === 'yearly' ? $now->copy()->startOfYear() : $now->copy()->startOfMonth());
+        $targetPeriodReset = $targetType === 'weekly'
+            ? $targetPeriodStart->copy()->addWeek()
+            : ($targetType === 'yearly' ? $targetPeriodStart->copy()->addYear() : $targetPeriodStart->copy()->addMonth());
 
-        $key = 'dashboard_summary:'.(app(TenantManager::class)->currentId() ?? 'default')
-            .':'.$now->format('Y-m')
-            .':'.$targetType
-            .':'.$targetAmount
-            .':'.$targetWindow;
+        $revenue = $this->revenueForPeriod();
+        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->endOfMonth();
+        $monthlyRevenue = $this->revenueForPeriod($monthStart, $monthEnd);
+        $targetStart = $targetType === 'weekly'
+            ? $now->copy()->startOfWeek(Carbon::MONDAY)
+            : ($targetType === 'yearly' ? $now->copy()->startOfYear() : $monthStart);
+        $targetEnd = $targetType === 'weekly'
+            ? $now->copy()->endOfWeek(Carbon::SUNDAY)
+            : ($targetType === 'yearly' ? $now->copy()->endOfYear() : $monthEnd);
+        $targetRevenue = match ($targetType) {
+            'monthly' => $monthlyRevenue,
+            default => $this->revenueForPeriod($targetStart, $targetEnd),
+        };
+        $leaderboardMonth = $now->copy()->startOfMonth();
 
-        return Cache::remember($key, now()->addSeconds(60), function () use ($now, $targetType, $targetAmount) {
-            $revenue = $this->revenueForPeriod();
-            $monthStart = $now->copy()->startOfMonth();
-            $monthEnd = $now->copy()->endOfMonth();
-            $monthlyRevenue = $this->revenueForPeriod($monthStart, $monthEnd);
-            $targetStart = $targetType === 'weekly'
-                ? $now->copy()->startOfWeek(Carbon::MONDAY)
-                : $monthStart;
-            $targetEnd = $targetType === 'weekly'
-                ? $now->copy()->endOfWeek(Carbon::SUNDAY)
-                : $monthEnd;
-            $targetRevenue = $targetType === 'monthly'
-                ? $monthlyRevenue
-                : $this->revenueForPeriod($targetStart, $targetEnd);
-            $leaderboardMonth = $now->copy()->startOfMonth();
-
-            return [
+        return [
                 'stats' => [
                     'total_properties' => Property::query()->count(),
                     'available_properties' => Property::query()->where('status', PropertyStatus::Available)->count(),
@@ -82,6 +78,10 @@ class DashboardService
                 ],
                 'target_type' => $targetType,
                 'target_amount' => $targetAmount,
+                'target_period' => [
+                    'starts_at' => $targetPeriodStart->toIso8601String(),
+                    'resets_at' => $targetPeriodReset->toIso8601String(),
+                ],
                 'monthly_target' => $targetAmount,
                 'target_revenue' => $targetRevenue,
                 'target_progress' => $this->targetProgress($targetRevenue, $targetAmount),
@@ -99,8 +99,7 @@ class DashboardService
                     'ends_at' => $leaderboardMonth->copy()->endOfMonth()->toDateString(),
                 ],
                 'previous_realtor_leaderboard_snapshot' => $this->previousLeaderboardSnapshot($leaderboardMonth),
-            ];
-        });
+        ];
     }
 
     private function revenueForPeriod(?Carbon $start = null, ?Carbon $end = null): float

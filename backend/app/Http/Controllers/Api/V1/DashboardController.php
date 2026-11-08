@@ -22,6 +22,7 @@ class DashboardController extends Controller
                 'stats' => $summary['stats'],
                 'target_type' => $summary['target_type'],
                 'target_amount' => $summary['target_amount'],
+                'target_period' => $summary['target_period'],
                 'monthly_target' => $summary['monthly_target'],
                 'target_revenue' => $summary['target_revenue'],
                 'target_progress' => $summary['target_progress'],

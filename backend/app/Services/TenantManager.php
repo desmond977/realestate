@@ -8,10 +8,18 @@ use Illuminate\Http\Request;
 class TenantManager
 {
     private ?Tenant $tenant = null;
+    private ?int $tenantId = null;
 
     public function set(Tenant $tenant): void
     {
         $this->tenant = $tenant;
+        $this->tenantId = $tenant->id;
+    }
+
+    public function setId(?int $tenantId): void
+    {
+        $this->tenant = null;
+        $this->tenantId = $tenantId;
     }
 
     public function current(): ?Tenant
@@ -21,7 +29,7 @@ class TenantManager
 
     public function currentId(): ?int
     {
-        return $this->tenant?->id;
+        return $this->tenantId ?? $this->tenant?->id;
     }
 
     public function resolveFromRequest(Request $request): ?Tenant

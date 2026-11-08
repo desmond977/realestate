@@ -115,7 +115,7 @@ export function DashboardLayout() {
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <div className="flex items-center">
             {branding?.company_logo ? (
-              <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-12 w-12 rounded-sm object-contain" />
+              <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-12 w-[100px] rounded-sm object-contain" />
             ) : (
               <div className="grid h-12 w-12 place-items-center rounded-lg bg-brand text-white">
                 <svg viewBox="0 0 24 24" fill="none" width="32" height="32" xmlns="http://www.w3.org/2000/svg"><path d="M3 21V9a2 2 0 0 1 2-2h3v10H3zM14 7h5a2 2 0 0 1 2 2v12H14V7zM8 3h8v4H8V3z" fill="currentColor"/></svg>
@@ -234,25 +234,26 @@ export function DashboardLayout() {
               <Menu size={20} />
             </button>
             <div>
-              <p className="text-sm text-muted">Signed in as</p>
-              <h1 className="max-w-[38vw] truncate text-base font-semibold text-ink sm:max-w-none">{user?.name}</h1>
+              <p className="hidden text-sm text-muted sm:block">Signed in as</p>
+              <h1 className="max-w-[42vw] truncate text-sm font-semibold text-ink sm:max-w-none sm:text-base">{user?.name}</h1>
             </div>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="inline-flex shrink-0 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-medium text-muted hover:bg-canvas hover:text-ink"
+            aria-label="Logout"
+            className="inline-flex shrink-0 items-center gap-2 rounded-md border border-line p-2.5 text-sm font-medium text-muted hover:bg-canvas hover:text-ink sm:px-3 sm:py-2"
           >
             <LogOut size={16} />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </header>
 
-        <main className="px-4 py-6 md:px-6 lg:px-8">
+        <main className="px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
           <Outlet context={{ rentalManagementEnabled, rentalSettingsLoaded }} />
-          <footer className="mt-10 rounded-3xl border border-line bg-panel/90 p-5 text-sm text-muted shadow-sm">
+          <footer className="mt-6 rounded-2xl border border-line bg-panel/90 p-3 text-sm text-muted shadow-sm sm:mt-10 sm:rounded-3xl sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p>
+              <p className="hidden sm:block">
                 Quick access: manage admin settings or track realtor clients and referrals.
               </p>
               <div className="flex flex-wrap gap-2">

@@ -1086,8 +1086,8 @@ export function AllocationsPage() {
   const [properties, setProperties] = useState([])
   const [realtors, setRealtors] = useState([])
   const [meta, setMeta] = useState(null)
-  const [filters, setFilters] = useState({ status: '' })
-  const [query, setQuery] = useState({ status: '' })
+  const [filters, setFilters] = useState({ status: '', client_email: '' })
+  const [query, setQuery] = useState({ status: '', client_email: '' })
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -1123,6 +1123,7 @@ export function AllocationsPage() {
         params: {
           per_page: 20,
           status: params.status || undefined,
+          client_email: params.client_email.trim() || undefined,
         },
       })
 
@@ -1162,7 +1163,7 @@ export function AllocationsPage() {
   }
 
   function resetFilters() {
-    const nextFilters = { status: '' }
+    const nextFilters = { status: '', client_email: '' }
     setFilters(nextFilters)
     setQuery(nextFilters)
   }
@@ -1412,7 +1413,7 @@ export function AllocationsPage() {
       </div>
 
       <form
-        className="grid gap-3 rounded-lg border border-line bg-panel p-4 shadow-sm md:grid-cols-[220px_auto_auto]"
+        className="grid gap-3 rounded-lg border border-line bg-panel p-4 shadow-sm md:grid-cols-[220px_minmax(220px,1fr)_auto_auto]"
         onSubmit={applyFilters}
       >
         <select
@@ -1432,6 +1433,17 @@ export function AllocationsPage() {
             </option>
           ))}
         </select>
+
+        <input
+          type="email"
+          value={filters.client_email}
+          onChange={(event) =>
+            setFilters((current) => ({ ...current, client_email: event.target.value }))
+          }
+          placeholder="Search client email"
+          aria-label="Search allocations by client email"
+          className="min-w-0 rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none placeholder:text-muted focus:border-brand"
+        />
 
         <button
           type="submit"

@@ -14,9 +14,30 @@ class ClientDashboardService
     {
         return $this->client->allocations()
             ->with(['property', 'realtor'])
+            ->withSum([
+                'payments as dashboard_confirmed_paid' => fn ($query) => $query
+                    ->where('status', PaymentStatus::Confirmed->value),
+            ], 'amount')
             ->latest('allocated_at')
             ->get()
-            ->each(fn ($allocation) => $allocation->syncPaymentTotals());
+            ->each(function ($allocation): void {
+                $paid = (float) ($allocation->dashboard_confirmed_paid ?? 0);
+                $balance = max(0, (float) $allocation->total_amount - $paid);
+                $status = $allocation->status?->value ?? $allocation->status;
+
+                if ($balance <= 0) {
+                    $status = 'completed';
+                } elseif ($status === 'completed') {
+                    $status = 'active';
+                }
+
+                // Keep dashboard totals current without issuing a write for a read request.
+                $allocation->forceFill([
+                    'amount_paid' => $paid,
+                    'balance' => $balance,
+                    'status' => $status,
+                ]);
+            });
     }
 
     public function getDashboardSummary(): array

@@ -61,7 +61,7 @@ class RentalAgreementApiTest extends TestCase
             'property_location' => '',
             'client_id' => $client->id,
             'rental_amount' => 1500,
-            'rental_frequency' => 'monthly',
+            'rental_frequency' => 'annually',
             'lease_start_date' => '2026-10-01',
             'lease_end_date' => '2027-09-30',
             'status' => 'active',
@@ -106,7 +106,7 @@ class RentalAgreementApiTest extends TestCase
 
         $this->postJson('/api/v1/rentals', $payload)
             ->assertStatus(422)
-            ->assertJsonPath('errors.property_id.0', 'An active rental already exists for this client and property.');
+            ->assertJsonPath('errors.property_id.0', 'A rental agreement already exists for this client and property.');
     }
 
     public function test_admin_can_create_and_update_a_standalone_rental_property(): void
@@ -194,10 +194,10 @@ class RentalAgreementApiTest extends TestCase
             'property_location' => 'Lagos',
             'client_id' => $client->id,
             'rental_amount' => 1200,
-            'rental_frequency' => 'monthly',
+            'rental_frequency' => 'annually',
             'lease_start_date' => '2026-10-01',
             'lease_end_date' => '2027-09-30',
-            'status' => 'pending',
+            'status' => 'active',
         ], $overrides);
     }
 
@@ -217,7 +217,7 @@ class RentalAgreementApiTest extends TestCase
         return $property->agreements()->create([
             'client_id' => $client->id,
             'rental_amount' => 1200,
-            'rental_frequency' => 'monthly',
+            'rental_frequency' => 'annually',
             'lease_start_date' => '2026-10-01',
             'lease_end_date' => '2027-09-30',
             'status' => $status,

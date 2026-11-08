@@ -97,6 +97,76 @@ export const api = axios.create({
   },
 });
 
+const inFlightRequests = new Map();
+
+function isSensitivePayload(value) {
+  if (!value || typeof value !== 'object') return false;
+
+  return Object.entries(value).some(([key, item]) =>
+    /password|token|secret|proof|file|image/i.test(key)
+      || (item && typeof item === 'object' && isSensitivePayload(item))
+  );
+}
+
+function coalesceIdenticalRequests(method) {
+  const send = api[method].bind(api);
+
+  api[method] = (...args) => {
+    const [url, dataOrConfig, configOrUndefined] = args;
+    const config = method === 'delete' || method === 'get'
+      ? (dataOrConfig || {})
+      : (configOrUndefined || {});
+    const data = method === 'delete' || method === 'get'
+      ? config.data
+      : dataOrConfig;
+
+    if (
+      (typeof FormData !== 'undefined' && data instanceof FormData)
+      || config.signal
+      || config.cancelToken
+      || isSensitivePayload(data)
+    ) {
+      return send(...args);
+    }
+
+    let serializedData;
+    let serializedParams;
+
+    try {
+      serializedData = JSON.stringify(data ?? null);
+      serializedParams = JSON.stringify(config.params ?? null);
+    } catch {
+      return send(...args);
+    }
+
+    const requestKey = JSON.stringify([
+      method,
+      url,
+      serializedParams,
+      serializedData,
+      config.responseType || '',
+      getTokenForRequest(url) || '',
+      localStorage.getItem('tenant_id') || '',
+    ]);
+    const existingRequest = inFlightRequests.get(requestKey);
+
+    if (existingRequest) return existingRequest;
+
+    const request = send(...args);
+    inFlightRequests.set(requestKey, request);
+    const clearRequest = () => {
+      if (inFlightRequests.get(requestKey) === request) {
+        inFlightRequests.delete(requestKey);
+      }
+    };
+    request.then(clearRequest, clearRequest);
+
+    return request;
+  };
+}
+
+['get', 'post', 'put', 'patch', 'delete'].forEach(coalesceIdenticalRequests);
+
 api.interceptors.request.use((config) => {
   const token = getTokenForRequest(config.url);
 

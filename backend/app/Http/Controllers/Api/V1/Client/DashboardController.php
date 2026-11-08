@@ -24,6 +24,18 @@ class DashboardController extends Controller
         $recentReceipts = $service->getRecentReceipts();
         $realtors = $service->getRealtorRelationships();
 
+        $client->setAttribute('_dashboard_payload', [
+            'summary' => [
+                'total_properties' => $summary['total_properties'],
+                'total_paid' => $summary['total_paid'],
+                'outstanding_balance' => $summary['outstanding_balance'],
+                'payment_progress' => $summary['payment_progress'],
+                'active_allocations' => $summary['active_allocations'],
+            ],
+            'recent_payments' => $recentPayments,
+            'recent_receipts' => $recentReceipts,
+        ]);
+
         return response()->json([
             'user' => new ClientDashboardResource($client),
             'summary' => $summary,

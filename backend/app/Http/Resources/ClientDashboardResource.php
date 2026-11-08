@@ -14,6 +14,9 @@ class ClientDashboardResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $dashboard = $this->resource->getAttribute('_dashboard_payload');
+        $primaryRealtor = $this->primaryRealtor();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -21,7 +24,7 @@ class ClientDashboardResource extends JsonResource
             'phone' => $this->phone,
             'profile_image_url' => $this->profile_image_url,
             'role' => $this->role,
-            'summary' => [
+            'summary' => $dashboard['summary'] ?? [
                 'total_properties' => $this->allocations()->count(),
                 'total_paid' => $this->totalPaid(),
                 'outstanding_balance' => $this->outstandingBalance(),
@@ -29,22 +32,20 @@ class ClientDashboardResource extends JsonResource
                 'active_allocations' => $this->allocations()->where('status', 'active')->count(),
             ],
             'recent_payments' => PaymentResource::collection(
-                $this->payments()
-                    ->latest()
-                    ->take(5)
-                    ->get()
+                $dashboard['recent_payments'] ?? $this->payments()->latest()->take(5)->get()
             ),
             'recent_receipts' => ReceiptResource::collection(
-                $this->receipts()
-                    ->latest()
-                    ->take(5)
-                    ->get()
+                $dashboard['recent_receipts'] ?? $this->receipts()->latest()->take(5)->get()
             ),
-            'primary_realtor' => $this->when(
-                $this->primaryRealtor(),
-                fn () => new RealtorResource($this->primaryRealtor())
-            ),
-            'has_outstanding_balance' => $this->hasOutstandingBalance(),
+            'primary_realtor' => $this->when($primaryRealtor, fn () => new RealtorResource($primaryRealtor)),
+            'has_outstanding_balance' => isset($dashboard['summary'])
+                ? $dashboard['summary']['outstanding_balance'] > 0
+                : $this->hasOutstandingBalance(),
         ];
+    }
+
+    private function primaryRealtor(): ?\App\Models\Realtor
+    {
+        return $this->resource->primaryRealtor();
     }
 }

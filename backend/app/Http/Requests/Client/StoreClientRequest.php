@@ -24,6 +24,8 @@ class StoreClientRequest extends FormRequest
             'address' => ['nullable', 'string'],
             'occupation' => ['nullable', 'string', 'max:150'],
             'realtor_id' => ['nullable', 'integer', 'exists:realtors,id'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['sometimes', 'required_with:password', 'string', 'min:8'],
         ];
     }
 }

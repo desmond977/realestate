@@ -10,14 +10,14 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { canManageRentals } from '../auth/permissions'
 import { formatMoney } from '../utils/formatters'
 
-const statuses = ['pending', 'active', 'expired', 'terminated']
+const statuses = ['active', 'expired', 'terminated']
 const frequencies = ['annually']
 
 const emptyForm = {
@@ -30,7 +30,7 @@ const emptyForm = {
   rental_frequency: 'annually',
   lease_start_date: '',
   lease_end_date: '',
-  status: 'pending',
+  status: 'active',
   notes: '',
 }
 
@@ -56,14 +56,13 @@ function frequencyLabel(frequency) {
 
 function StatusBadge({ status }) {
   const styles = {
-    pending: 'border-amber-200 bg-amber-50 text-amber-700',
     active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     expired: 'border-slate-200 bg-slate-100 text-slate-700',
     terminated: 'border-red-200 bg-red-50 text-red-700',
   }
 
   return (
-    <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold capitalize ${styles[status] || styles.pending}`}>
+    <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold capitalize ${styles[status] || styles.active}`}>
       {status}
     </span>
   )
@@ -73,7 +72,17 @@ function RentalFormModal({ initialValues, mode, clients, properties, onClose, on
   const [form, setForm] = useState(initialValues)
 
   function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => {
+      if (field !== 'lease_start_date' || mode !== 'create' || !value) {
+        return { ...current, [field]: value }
+      }
+
+      const [year, month, day] = value.split('-').map(Number)
+      const endOfTargetMonth = new Date(Date.UTC(year + 1, month, 0)).getUTCDate()
+      const leaseEndDate = `${year + 1}-${String(month).padStart(2, '0')}-${String(Math.min(day, endOfTargetMonth)).padStart(2, '0')}`
+
+      return { ...current, lease_start_date: value, lease_end_date: leaseEndDate }
+    })
   }
 
   function handleSubmit(event) {
@@ -142,12 +151,12 @@ function RentalFormModal({ initialValues, mode, clients, properties, onClose, on
                   {!frequencies.includes(form.rental_frequency) ? <option value={form.rental_frequency} disabled>{frequencyLabel(form.rental_frequency)} (existing)</option> : null}
                 </select>
               </label>
-              <label className="block">
+              {mode === 'edit' ? <label className="block">
                 <span className="text-sm font-medium text-ink">Status</span>
                 <select className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm capitalize" value={form.status} onChange={(event) => updateField('status', event.target.value)}>
                   {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
                 </select>
-              </label>
+              </label> : null}
               <label className="block">
                 <span className="text-sm font-medium text-ink">Lease start date</span>
                 <input required type="date" className="mt-1 w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm" value={form.lease_start_date} onChange={(event) => updateField('lease_start_date', event.target.value)} />
@@ -187,7 +196,7 @@ function rentalToForm(rental) {
     rental_frequency: rental.rental_frequency || 'annually',
     lease_start_date: rental.lease_start_date || '',
     lease_end_date: rental.lease_end_date || '',
-    status: rental.status || 'pending',
+    status: statuses.includes(rental.status) ? rental.status : 'active',
     notes: rental.notes || '',
   }
 }
@@ -209,6 +218,7 @@ export function RentalsPage() {
   const [editingRental, setEditingRental] = useState(null)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const saveInProgress = useRef(false)
 
   const loadRentals = useCallback(async () => {
     setLoading(true)
@@ -282,6 +292,9 @@ export function RentalsPage() {
   }
 
   async function saveRental(data) {
+    if (saveInProgress.current) return
+
+    saveInProgress.current = true
     setSubmitting(true)
     setFormError('')
 
@@ -298,6 +311,7 @@ export function RentalsPage() {
     } catch (error) {
       setFormError(getApiError(error, 'Unable to save the rental.'))
     } finally {
+      saveInProgress.current = false
       setSubmitting(false)
     }
   }

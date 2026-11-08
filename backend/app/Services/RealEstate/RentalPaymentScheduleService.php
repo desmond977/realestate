@@ -21,10 +21,22 @@ class RentalPaymentScheduleService
             $leaseEnd = CarbonImmutable::parse($agreement->lease_end_date->toDateString());
             $frequency = $agreement->rental_frequency;
 
+            if ($frequency === RentalFrequency::Annually) {
+                $agreement->paymentPeriods()
+                    ->whereDate('period_start', $leaseEnd->toDateString())
+                    ->whereDate('period_start', '!=', $leaseStart->toDateString())
+                    ->whereDoesntHave('payments')
+                    ->whereDoesntHave('paymentProofSubmissions')
+                    ->delete();
+            }
+
             for ($index = 0; ; $index++) {
                 $periodStart = $this->periodStart($leaseStart, $frequency, $index);
 
-                if ($periodStart->greaterThan($leaseEnd)) {
+                // The lease end date is exclusive for cycle generation when it lands
+                // exactly on the next payment boundary; do not bill a second period.
+                if ($periodStart->greaterThan($leaseEnd)
+                    || ($frequency === RentalFrequency::Annually && $index > 0 && $periodStart->equalTo($leaseEnd))) {
                     break;
                 }
 

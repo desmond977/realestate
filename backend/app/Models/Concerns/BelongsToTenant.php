@@ -15,7 +15,7 @@ trait BelongsToTenant
             $tenantId = app(TenantManager::class)->currentId();
 
             if ($tenantId !== null) {
-                $query->where('tenant_id', $tenantId);
+                $query->where($query->getModel()->qualifyColumn('tenant_id'), $tenantId);
             }
         });
 

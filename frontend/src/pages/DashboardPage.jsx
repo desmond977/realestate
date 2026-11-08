@@ -1,14 +1,16 @@
 import {
   Banknote,
   Building2,
+  CalendarDays,
   ChevronRight,
   ClipboardList,
   Home,
   Loader2,
+  Target,
   Trophy,
   Users,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { StatCard } from '../components/ui/StatCard.jsx'
@@ -41,34 +43,30 @@ export function DashboardPage() {
   const [error, setError] = useState('')
   const [settings, setSettings] = useState(null)
 
-  useEffect(() => {
-    let active = true
-
-    async function loadDashboard() {
-      try {
-        const response = await api.get('/dashboard')
-
-        if (active) {
-          setSummary(response.data.data)
-          setError('')
-        }
-      } catch {
-        if (active) {
-          setError('Dashboard data could not be loaded.')
-        }
-      } finally {
-        if (active) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadDashboard()
-
-    return () => {
-      active = false
+  const loadDashboard = useCallback(async () => {
+    try {
+      const response = await api.get('/dashboard')
+      setSummary(response.data.data)
+      setError('')
+    } catch {
+      setError('Dashboard data could not be loaded.')
+    } finally {
+      setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
+
+  useEffect(() => {
+    const resetAt = summary?.target_period?.resets_at
+    if (!resetAt) return undefined
+
+    const delay = new Date(resetAt).getTime() - Date.now() + 1000
+    const timeout = window.setTimeout(loadDashboard, Math.max(delay, 0))
+    return () => window.clearTimeout(timeout)
+  }, [loadDashboard, summary?.target_period?.resets_at])
 
   useEffect(() => {
     let active = true
@@ -144,7 +142,11 @@ export function DashboardPage() {
     1,
   )
   const activeTargetType = summary?.target_type || settings?.target_type || 'monthly'
-  const activeTargetLabel = activeTargetType === 'weekly' ? 'Weekly target' : 'Monthly target'
+  const activeTargetLabel = activeTargetType === 'weekly'
+    ? 'Weekly'
+    : activeTargetType === 'yearly'
+      ? 'Yearly'
+      : 'Monthly'
   const activeTargetAmount =
     summary?.target_amount ?? settings?.target_amount ?? summary?.monthly_target ?? 0
   const targetRevenue =
@@ -158,66 +160,108 @@ export function DashboardPage() {
         ),
       )
     : 0
+  const targetResetDate = summary?.target_period?.resets_at
+    ? new Date(summary.target_period.resets_at)
+    : null
+  const targetResetLabel = targetResetDate && !Number.isNaN(targetResetDate.getTime())
+    ? new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(targetResetDate)
+    : null
+  const targetRemaining = Math.max(activeTargetAmount - (targetRevenue || 0), 0)
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm">
-        <div className="grid gap-5 p-4 md:grid-cols-[1fr_320px] md:p-6 xl:grid-cols-[1fr_420px]">
+      <div className="overflow-hidden rounded-xl border border-line bg-panel shadow-sm">
+        <div className="grid gap-3 p-3 sm:gap-5 sm:p-4 md:grid-cols-[1fr_320px] md:p-6 xl:grid-cols-[1fr_420px]">
           <div className="flex min-w-0 flex-col justify-center">
-            <p className="text-sm font-medium text-brand">{settings?.company_name || 'Company'}</p>
-            <h2 className="mt-2 text-2xl font-semibold text-ink md:text-3xl">
-              Intelligent Real Estate Operations
+            <p className="text-xs font-medium text-brand sm:text-sm">{settings?.company_name || 'Company'}</p>
+            <h2 className="mt-1.5 text-xl font-semibold text-ink sm:mt-2 sm:text-2xl md:text-3xl">
+              <span className="sm:hidden">Dashboard overview</span>
+              <span className="hidden sm:inline">Intelligent Real Estate Operations</span>
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted sm:block">
               A command view for revenue, inventory movement, allocations, and realtor performance.
             </p>
           </div>
 
-          <div className="rounded-lg border border-line bg-ink p-4 text-white monthly-target-card">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium uppercase text-white/60">{activeTargetLabel}</p>
-                <p className="mt-2 text-2xl font-semibold">{formatMoney(activeTargetAmount)}</p>
+          <div
+            className="relative overflow-hidden rounded-xl bg-brand p-4 text-white shadow-lg shadow-brand/15 sm:rounded-2xl sm:p-5 md:p-6"
+            style={{ backgroundImage: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-dark))' }}
+          >
+            <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full border border-white/[0.07]" />
+            <div className="pointer-events-none absolute -right-5 -top-9 h-32 w-32 rounded-full border border-white/[0.07]" />
+            <div className="relative">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-[#d4bb68] ring-1 ring-white/10">
+                    <Target size={20} />
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Revenue goal</p>
+                    <p className="mt-0.5 text-sm font-semibold">{activeTargetLabel} target</p>
+                  </div>
+                </div>
+                <span className="rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-xs font-semibold tabular-nums">
+                  {targetProgress}%
+                </span>
               </div>
-              <span className="rounded-md bg-white/10 px-3 py-1 text-xs font-semibold">
-                {targetProgress}% reached
-              </span>
-            </div>
-            <div className="mt-5 h-2 rounded-full bg-white/15">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-700"
-                style={{ width: `${targetProgress}%` }}
-              />
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-white/55">Outstanding</p>
-                <p className="mt-1 font-semibold">{formatMoney(stats.outstanding_balances)}</p>
+
+              <div className="mt-4 sm:mt-6">
+                <p className="hidden text-xs text-white/55 sm:block">Target amount</p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{formatMoney(activeTargetAmount)}</p>
               </div>
-              <div>
-                <p className="text-white/55">Completed</p>
-                <p className="mt-1 font-semibold">{stats.completed_allocations} allocations</p>
+
+              <div className="mt-4 sm:mt-5">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="text-white/65">{formatMoney(targetRevenue || 0)} earned</span>
+                  <span className="hidden text-white/45 sm:inline">{formatMoney(activeTargetAmount)} goal</span>
+                </div>
+                <div
+                  className="h-2.5 overflow-hidden rounded-full bg-white/15"
+                  role="progressbar"
+                  aria-label={`${activeTargetLabel} revenue target progress`}
+                  aria-valuenow={targetProgress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#c9b35f] to-[#f0d989] transition-all duration-700"
+                    style={{ width: `${targetProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/10 pt-3 sm:mt-5 sm:gap-4 sm:pt-4">
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-white/50 sm:text-[11px]">{targetRemaining > 0 ? 'Left to goal' : 'Goal reached'}</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums">{formatMoney(targetRemaining)}</p>
+                </div>
+                {targetResetLabel ? (
+                  <p className="inline-flex items-center gap-1 text-right text-[10px] text-white/55 sm:gap-1.5 sm:text-[11px]">
+                    <CalendarDays size={13} /> Renews {targetResetLabel}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col justify-between gap-2 md:gap-4 md:flex-row md:items-end">
+      <div className="flex flex-col justify-between gap-2 md:flex-row md:items-end md:gap-4">
         <div>
-          <p className="text-sm font-medium text-brand">Dashboard</p>
-          <h2 className="mt-1 text-xl md:text-2xl font-semibold text-ink">
-            Performance overview
+          <p className="hidden text-sm font-medium text-brand sm:block">Dashboard</p>
+          <h2 className="text-lg font-semibold text-ink sm:mt-1 sm:text-xl md:text-2xl">
+            <span className="sm:hidden">At a glance</span>
+            <span className="hidden sm:inline">Performance overview</span>
           </h2>
-          <p className="mt-1 md:mt-2 max-w-2xl text-xs md:text-sm text-muted">
+          <p className="mt-1 hidden max-w-2xl text-xs text-muted md:mt-2 md:block md:text-sm">
             A clean analytics view of revenue, growth, property movement,
             outstanding balances, and the latest payments.
           </p>
         </div>
         {loading ? (
-          <div className="inline-flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2 text-xs md:text-sm text-muted">
-            <Loader2 size={16} className="animate-spin" />
-            Loading dashboard
+          <div className="inline-flex items-center gap-2 self-start rounded-md border border-line bg-panel px-2.5 py-2 text-xs text-muted sm:px-3 md:text-sm">
+            <Loader2 size={15} className="animate-spin" />
+            <span className="hidden sm:inline">Loading dashboard</span>
           </div>
         ) : null}
       </div>
@@ -230,7 +274,7 @@ export function DashboardPage() {
 
       <section className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
         {cards.map((card) => (
-          <StatCard key={card.label} {...card} />
+          <StatCard key={card.label} {...card} compact />
         ))}
       </section>
 
@@ -240,7 +284,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Realtor leaderboard</p>
-                <p className="mt-1 text-xs md:text-sm text-muted">
+                <p className="mt-1 hidden text-xs text-muted md:block md:text-sm">
                   Ranked by completed sales for {leaderboardPeriod?.label || 'this month'}.
                 </p>
               </div>
@@ -251,7 +295,7 @@ export function DashboardPage() {
             </div>
 
             {previousLeaderboardSnapshot ? (
-              <p className="mt-3 text-xs text-muted">
+              <p className="mt-3 hidden text-xs text-muted sm:block">
                 Previous month saved: {previousLeaderboardSnapshot.label} ({previousLeaderboardSnapshot.entries_count} entries)
               </p>
             ) : null}
@@ -262,7 +306,7 @@ export function DashboardPage() {
                 const width = topPropertiesSold ? (propertiesSold / topPropertiesSold) * 100 : 0
 
                 return (
-                  <div key={realtor.id} className="rounded-xl border border-line bg-white p-3">
+                  <div key={realtor.id} className="rounded-lg border border-line bg-white p-2.5 sm:rounded-xl sm:p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md text-xs font-bold ${
@@ -272,27 +316,26 @@ export function DashboardPage() {
                         </span>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-ink">{realtor.full_name}</p>
-                          <p className="mt-1 text-xs text-muted">
+                          <p className="mt-1 hidden text-xs text-muted sm:block">
                             {realtor.company_name || 'Independent realtor'}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-ink">{propertiesSold}</p>
-                        <p className="text-xs text-muted">sold</p>
+                        <p className="text-xs font-semibold text-ink sm:text-sm">{propertiesSold} <span className="font-normal text-muted">sold</span></p>
                       </div>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-canvas">
+                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-canvas sm:mt-3 sm:h-2">
                       <div
                         className="h-full rounded-full bg-brand transition-all duration-500"
                         style={{ width: `${width}%` }}
                       />
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-xs text-muted">
-                      <span>{formatMoney(realtor.monthly_confirmed_revenue || 0)} this month</span>
-                      <span>{formatMoney(realtor.outstanding_balances || 0)} outstanding</span>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted sm:text-xs">
+                      <span className="truncate">{formatMoney(realtor.monthly_confirmed_revenue || 0)} revenue</span>
+                      <span className="truncate text-right">{formatMoney(realtor.outstanding_balances || 0)} due</span>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-xs text-muted">
+                    <div className="mt-1 hidden items-center justify-between text-xs text-muted sm:flex">
                       <span>{formatMoney(realtor.monthly_installment_totals || 0)} installments</span>
                       <span>{realtor.monthly_clients_count ?? 0} new clients</span>
                     </div>
@@ -301,8 +344,8 @@ export function DashboardPage() {
               })}
 
               {!loading && topRealtors.length === 0 ? (
-                <div className="rounded-xl bg-canvas p-4 text-sm text-muted">
-                  No realtor leaderboard activity for this month yet.
+                <div className="rounded-xl bg-canvas p-3 text-xs text-muted sm:p-4 sm:text-sm">
+                  No leaderboard activity yet.
                 </div>
               ) : null}
             </div>
@@ -314,7 +357,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Inventory snapshot</p>
-                <p className="mt-1 text-xs md:text-sm text-muted">
+                <p className="mt-1 hidden text-xs text-muted sm:block md:text-sm">
                   Current plot inventory and quick navigation.
                 </p>
               </div>
@@ -367,12 +410,12 @@ export function DashboardPage() {
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Recent payments</p>
-                <p className="mt-1 text-xs md:text-sm text-muted">
+                <p className="mt-1 hidden text-xs text-muted sm:block md:text-sm">
                   Latest confirmed transactions at a glance.
                 </p>
               </div>
               <span className="rounded-full bg-brand/10 px-2 py-1 md:px-3 md:py-1 text-xs font-semibold text-brand whitespace-nowrap">
-                {summary?.recent_payments?.length ?? 0} items
+                {summary?.recent_payments?.length ?? 0}<span className="hidden sm:inline"> items</span>
               </span>
             </div>
 

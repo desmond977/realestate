@@ -46,8 +46,7 @@ const ClientLoginPage = () => {
           <div className="login-header">
             <ClientBrandLogo className="brand" imageClassName="client-login-logo" fallbackClassName="client-login-logo-fallback" />
             <span className="login-eyebrow">CLIENT PORTAL</span>
-            <h1>Welcome back</h1>
-            <p>Sign in to manage your property journey.</p>
+            <h2>Welcome back</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form">
@@ -125,7 +124,7 @@ const ClientLoginPage = () => {
         <div className="side-content">
           <span className="hero-kicker">YOUR PROPERTY, IN GOOD HANDS</span>
           <h2>A clearer view of your property journey.</h2>
-          <p>Everything you need to stay on top of your property, payments, and documents — all in one place.</p>
+          <p>Everything you need to stay on top of your property.</p>
           <ul className="features-list">
             <li><Check size={16} /> View your properties and allocation</li>
             <li><Check size={16} /> Track payments and download receipts</li>

@@ -453,7 +453,14 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
 
   function handleSubmit(event) {
     event.preventDefault()
-    onSubmit(form)
+    const payload = { ...form }
+
+    if (!payload.password) {
+      delete payload.password
+      delete payload.password_confirmation
+    }
+
+    onSubmit(payload)
   }
 
   return (
@@ -574,6 +581,41 @@ function ClientModal({ mode, initialValues, realtors, onClose, onSubmit, submitt
             />
           </label>
 
+          <div className="rounded-lg border border-line bg-canvas p-4">
+            <p className="text-sm font-semibold text-ink">Client portal password</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              {mode === 'edit'
+                ? 'Set a password to give this client portal access. Leave both fields blank to keep the current password.'
+                : 'Optional. Set a password now to give this client access to the client portal.'}
+            </p>
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-ink">{mode === 'edit' ? 'New password' : 'Password'}</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={form.password || ''}
+                  onChange={(event) => updateField('password', event.target.value)}
+                  className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  placeholder="At least 8 characters"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-ink">Confirm password</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={form.password_confirmation || ''}
+                  onChange={(event) => updateField('password_confirmation', event.target.value)}
+                  className="mt-2 w-full rounded-md border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  placeholder="Enter it again"
+                />
+              </label>
+            </div>
+          </div>
+
           {error ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
@@ -639,6 +681,8 @@ export function ClientsPage() {
         address: modal.client.address || '',
         occupation: modal.client.occupation || '',
         realtor_id: modal.client.realtor_id || '',
+        password: '',
+        password_confirmation: '',
       }
     }
 

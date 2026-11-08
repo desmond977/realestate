@@ -51,7 +51,10 @@ class ClientController extends Controller
 
     public function store(StoreClientRequest $request): JsonResponse
     {
-        $client = Client::query()->create($request->validated());
+        $data = $request->validated();
+        unset($data['password_confirmation']);
+
+        $client = Client::query()->create($data);
 
         return response()->json([
             'message' => 'Client created successfully.',
@@ -79,7 +82,14 @@ class ClientController extends Controller
 
     public function update(UpdateClientRequest $request, Client $client): JsonResponse
     {
-        $client->update($request->validated());
+        $data = $request->validated();
+        unset($data['password_confirmation']);
+
+        if (empty($data['password'])) {
+            unset($data['password']);
+        }
+
+        $client->update($data);
 
         return response()->json([
             'message' => 'Client updated successfully.',

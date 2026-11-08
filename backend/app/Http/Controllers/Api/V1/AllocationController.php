@@ -30,6 +30,7 @@ class AllocationController extends Controller
     {
         $validated = $request->validate([
             'client_id' => ['sometimes', 'integer', 'exists:clients,id'],
+            'client_email' => ['sometimes', 'string', 'max:255'],
             'property_id' => ['sometimes', 'integer', 'exists:properties,id'],
             'realtor_id' => ['sometimes', 'integer', 'exists:realtors,id'],
             'status' => ['sometimes', new Enum(AllocationStatus::class)],
@@ -39,6 +40,10 @@ class AllocationController extends Controller
         $allocations = Allocation::query()
             ->with(['client.realtor', 'realtor', 'property', 'payments.receipt'])
             ->when($validated['client_id'] ?? null, fn ($query, int $clientId) => $query->where('client_id', $clientId))
+            ->when(trim($validated['client_email'] ?? ''), fn ($query, string $email) => $query->whereHas(
+                'client',
+                fn ($clientQuery) => $clientQuery->where('email', 'like', '%' . addcslashes(trim($email), '%_\\') . '%')
+            ))
             ->when($validated['property_id'] ?? null, fn ($query, int $propertyId) => $query->where('property_id', $propertyId))
             ->when($validated['realtor_id'] ?? null, fn ($query, int $realtorId) => $query->where('realtor_id', $realtorId))
             ->when($validated['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))

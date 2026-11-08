@@ -191,7 +191,7 @@ class ServiceChargeApiTest extends TestCase
 
         $this->postJson('/api/v1/service-charges', $payload)->assertCreated();
         $this->postJson('/api/v1/service-charges', $payload)->assertUnprocessable()
-            ->assertJsonValidationErrors(['billing_period_start']);
+            ->assertJsonValidationErrors(['billing_month']);
         $this->assertDatabaseCount('service_charges', 1);
     }
 
