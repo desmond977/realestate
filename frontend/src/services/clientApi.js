@@ -38,6 +38,13 @@ export const serviceChargesApi = {
 
 export const rentalPaymentsApi = {
   list: () => api.get(clientPath('/rent-payments')),
+  paystackAvailability: () => api.get(clientPath('/paystack/availability')),
+  startPaystackCheckout: (payload) => api.post(clientPath('/paystack/checkout'), payload),
+  paystackStatus: (reference) => api.get(clientPath(`/paystack/${encodeURIComponent(reference)}`)),
+}
+
+export const rentalPropertiesApi = {
+  list: () => api.get(clientPath('/rental-properties')),
 }
 
 export const paymentProofSubmissionsApi = {

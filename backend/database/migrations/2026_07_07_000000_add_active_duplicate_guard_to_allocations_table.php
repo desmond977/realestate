@@ -34,17 +34,42 @@ return new class extends Migration
         }
 
         if (! Schema::hasColumn('allocations', 'active_duplicate_key')) {
-            DB::statement("
-                ALTER TABLE allocations
-                ADD COLUMN active_duplicate_key VARCHAR(64)
-                GENERATED ALWAYS AS (
-                    CASE
-                        WHEN deleted_at IS NULL AND status IN ('reserved', 'active', 'completed')
-                        THEN CONCAT(client_id, ':', property_id)
+            if ($this->isMariaDb()) {
+                // MariaDB 10.5+ disallows foreign-key columns in generated expressions.
+                // Keep the same unique guard by maintaining a nullable key with triggers.
+                DB::statement('ALTER TABLE allocations ADD COLUMN active_duplicate_key VARCHAR(64) NULL');
+                DB::statement("CREATE TRIGGER allocations_active_duplicate_key_before_insert
+                    BEFORE INSERT ON allocations FOR EACH ROW
+                    SET NEW.active_duplicate_key = CASE
+                        WHEN NEW.deleted_at IS NULL AND NEW.status IN ('reserved', 'active', 'completed')
+                        THEN CONCAT(NEW.client_id, ':', NEW.property_id)
                         ELSE NULL
-                    END
-                ) STORED
-            ");
+                    END");
+                DB::statement("CREATE TRIGGER allocations_active_duplicate_key_before_update
+                    BEFORE UPDATE ON allocations FOR EACH ROW
+                    SET NEW.active_duplicate_key = CASE
+                        WHEN NEW.deleted_at IS NULL AND NEW.status IN ('reserved', 'active', 'completed')
+                        THEN CONCAT(NEW.client_id, ':', NEW.property_id)
+                        ELSE NULL
+                    END");
+                DB::statement("UPDATE allocations SET active_duplicate_key = CASE
+                    WHEN deleted_at IS NULL AND status IN ('reserved', 'active', 'completed')
+                    THEN CONCAT(client_id, ':', property_id)
+                    ELSE NULL
+                END");
+            } else {
+                DB::statement("
+                    ALTER TABLE allocations
+                    ADD COLUMN active_duplicate_key VARCHAR(64)
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN deleted_at IS NULL AND status IN ('reserved', 'active', 'completed')
+                            THEN CONCAT(client_id, ':', property_id)
+                            ELSE NULL
+                        END
+                    ) STORED
+                ");
+            }
         }
 
         if (! $this->indexExists('allocations', 'allocations_active_duplicate_key_unique')) {
@@ -62,6 +87,11 @@ return new class extends Migration
             DB::statement('DROP INDEX allocations_active_duplicate_key_unique ON allocations');
         }
 
+        if ($this->isMariaDb()) {
+            DB::unprepared('DROP TRIGGER IF EXISTS allocations_active_duplicate_key_before_insert');
+            DB::unprepared('DROP TRIGGER IF EXISTS allocations_active_duplicate_key_before_update');
+        }
+
         if (Schema::hasColumn('allocations', 'active_duplicate_key')) {
             DB::statement('ALTER TABLE allocations DROP COLUMN active_duplicate_key');
         }
@@ -70,5 +100,10 @@ return new class extends Migration
     private function indexExists(string $table, string $index): bool
     {
         return collect(DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$index]))->isNotEmpty();
+    }
+
+    private function isMariaDb(): bool
+    {
+        return str_contains(strtolower(DB::selectOne('SELECT VERSION() AS version')->version), 'mariadb');
     }
 };

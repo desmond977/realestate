@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\CompanySettingController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PaystackClientPaymentController;
 use App\Http\Controllers\Api\V1\PaymentApprovalController;
 use App\Http\Controllers\Api\V1\PropertyController;
 use App\Http\Controllers\Api\V1\RealtorController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\V1\ServiceChargeController;
 use App\Http\Controllers\Api\V1\ServiceChargePaymentController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Middleware\EnsureRentalManagementEnabled;
+use App\Http\Middleware\EnsureRealEstateManagementEnabled;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,6 +35,11 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+    // Paystack webhook has provider signature verification and no browser session.
+    Route::post('paystack/webhook', [PaystackClientPaymentController::class, 'webhook'])
+        ->middleware(EnsureRentalManagementEnabled::class)
+        ->name('paystack.webhook');
+
     // Client Portal Routes
     Route::prefix('client')->group(base_path('routes/client.php'));
 
@@ -49,7 +56,9 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('dashboard', DashboardController::class)->middleware('role:admin,staff,accountant');
+        Route::get('paystack/client-transactions', [PaystackClientPaymentController::class, 'adminIndex'])
+            ->middleware(['role:admin', EnsureRentalManagementEnabled::class]);
+        Route::get('dashboard', DashboardController::class)->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::get('rental-dashboard', RentalDashboardController::class)
             ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::get('payment-approvals/{submission}/proof', [PaymentApprovalController::class, 'proof'])
@@ -65,52 +74,52 @@ Route::prefix('v1')->group(function () {
         Route::put('settings/company', [CompanySettingController::class, 'update'])->middleware('role:admin');
 
         Route::get('allocations/form-options', [AllocationController::class, 'formOptions'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('allocations', AllocationController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('allocations', AllocationController::class)
             ->only(['store', 'update', 'destroy'])
-            ->middleware('role:admin');
-        Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin', EnsureRealEstateManagementEnabled::class]);
+        Route::get('clients/{client}/activity', [ClientController::class, 'activity'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('clients', ClientController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('clients', ClientController::class)
             ->only(['store', 'update', 'destroy'])
-            ->middleware('role:admin,staff');
-        Route::get('realtors/{realtor}/analytics', [RealtorController::class, 'analytics'])->middleware('role:admin,staff');
+            ->middleware(['role:admin,staff', EnsureRealEstateManagementEnabled::class]);
+        Route::get('realtors/{realtor}/analytics', [RealtorController::class, 'analytics'])->middleware(['role:admin,staff', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('realtors', RealtorController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('realtors', RealtorController::class)
             ->only(['store', 'update', 'destroy'])
-            ->middleware('role:admin,staff');
+            ->middleware(['role:admin,staff', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('users', UserController::class)->middleware('role:admin');
         Route::apiResource('payments', PaymentController::class)
             ->only(['index', 'store', 'show'])
-            ->middleware('role:admin,accountant');
+            ->middleware(['role:admin,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('properties', PropertyController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('properties', PropertyController::class)
             ->only(['store', 'update', 'destroy'])
-            ->middleware('role:admin');
-        Route::get('documents', [DocumentController::class, 'index'])->middleware('role:admin,staff,accountant');
-        Route::get('document-templates', [DocumentController::class, 'templatesIndex'])->middleware('role:admin');
-        Route::post('document-templates', [DocumentController::class, 'storeTemplate'])->middleware('role:admin');
-        Route::patch('document-templates/{template}', [DocumentController::class, 'updateTemplate'])->middleware('role:admin');
-        Route::delete('document-templates/{template}', [DocumentController::class, 'destroyTemplate'])->middleware('role:admin');
-        Route::get('allocations/{allocation}/documents', [DocumentController::class, 'show'])->middleware('role:admin,staff,accountant');
-        Route::patch('allocations/{allocation}/documents', [DocumentController::class, 'update'])->middleware('role:admin,staff,accountant');
-        Route::post('allocations/{allocation}/documents/{template}/generate', [DocumentController::class, 'generate'])->middleware('role:admin,staff,accountant');
-        Route::get('allocations/{allocation}/documents/{template}/view', [DocumentController::class, 'view'])->middleware('role:admin,staff,accountant');
-        Route::get('allocations/{allocation}/documents/{template}/download', [DocumentController::class, 'download'])->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin', EnsureRealEstateManagementEnabled::class]);
+        Route::get('documents', [DocumentController::class, 'index'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
+        Route::get('document-templates', [DocumentController::class, 'templatesIndex'])->middleware(['role:admin', EnsureRealEstateManagementEnabled::class]);
+        Route::post('document-templates', [DocumentController::class, 'storeTemplate'])->middleware(['role:admin', EnsureRealEstateManagementEnabled::class]);
+        Route::patch('document-templates/{template}', [DocumentController::class, 'updateTemplate'])->middleware(['role:admin', EnsureRealEstateManagementEnabled::class]);
+        Route::delete('document-templates/{template}', [DocumentController::class, 'destroyTemplate'])->middleware(['role:admin', EnsureRealEstateManagementEnabled::class]);
+        Route::get('allocations/{allocation}/documents', [DocumentController::class, 'show'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
+        Route::patch('allocations/{allocation}/documents', [DocumentController::class, 'update'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
+        Route::post('allocations/{allocation}/documents/{template}/generate', [DocumentController::class, 'generate'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
+        Route::get('allocations/{allocation}/documents/{template}/view', [DocumentController::class, 'view'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
+        Route::get('allocations/{allocation}/documents/{template}/download', [DocumentController::class, 'download'])->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::get('receipts/{receipt}/document', [ReceiptController::class, 'document'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::apiResource('receipts', ReceiptController::class)
             ->only(['index', 'show'])
-            ->middleware('role:admin,staff,accountant');
+            ->middleware(['role:admin,staff,accountant', EnsureRealEstateManagementEnabled::class]);
         Route::get('rentals/form-options', [RentalAgreementController::class, 'formOptions'])
             ->middleware(['role:admin,staff,accountant', EnsureRentalManagementEnabled::class]);
         Route::apiResource('rentals', RentalAgreementController::class)

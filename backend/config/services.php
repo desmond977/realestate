@@ -31,4 +31,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'paystack' => [
+        'mode' => env('PAYSTACK_MODE', 'test'),
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'webhook_secret' => env('PAYSTACK_WEBHOOK_SECRET'),
+        'frontend_url' => env('PAYSTACK_FRONTEND_URL', env('APP_URL')),
+        'checkout_expire_minutes' => (int) env('PAYSTACK_CHECKOUT_EXPIRE_MINUTES', 30),
+        'timeout' => (int) env('PAYSTACK_HTTP_TIMEOUT', 20),
+    ],
+
 ];

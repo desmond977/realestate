@@ -27,6 +27,7 @@ class CompanySettings
                 'target_type' => $settings?->target_type,
                 'target_amount' => (float) ($settings?->target_amount ?? 0),
                 'rental_management_enabled' => (bool) ($settings?->rental_management_enabled ?? true),
+                'real_estate_management_enabled' => (bool) ($settings?->real_estate_management_enabled ?? true),
             ];
         });
     }

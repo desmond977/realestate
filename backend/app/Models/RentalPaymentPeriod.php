@@ -37,6 +37,16 @@ class RentalPaymentPeriod extends Model
         return $this->hasMany(RentalPayment::class);
     }
 
+    public function opayTransactions(): HasMany
+    {
+        return $this->hasMany(OpayRentalTransaction::class, 'rental_payment_period_id');
+    }
+
+    public function paystackTransactions(): HasMany
+    {
+        return $this->hasMany(PaystackClientTransaction::class, 'rental_payment_period_id');
+    }
+
     public function paymentProofSubmissions(): HasMany
     {
         return $this->hasMany(PaymentProofSubmission::class);

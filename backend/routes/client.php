@@ -10,8 +10,11 @@ use App\Http\Controllers\Api\V1\Client\ProfileController;
 use App\Http\Controllers\Api\V1\Client\PropertyController;
 use App\Http\Controllers\Api\V1\Client\ReceiptController;
 use App\Http\Controllers\Api\V1\Client\RentalPaymentController;
+use App\Http\Controllers\Api\V1\Client\RentalPropertyController;
+use App\Http\Controllers\Api\V1\PaystackClientPaymentController;
 use App\Http\Controllers\Api\V1\Client\ServiceChargeController;
 use App\Http\Middleware\EnsureRentalManagementEnabled;
+use App\Http\Middleware\EnsureRealEstateManagementEnabled;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,19 +43,19 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
     Route::get('/auth/profile', [AuthController::class, 'profile']);
 
     // Dashboard
-    Route::prefix('dashboard')->group(function () {
+    Route::prefix('dashboard')->middleware(EnsureRealEstateManagementEnabled::class)->group(function () {
         Route::get('/', [DashboardController::class, 'index']);
         Route::get('/summary', [DashboardController::class, 'summary']);
     });
 
     // Properties
-    Route::prefix('properties')->group(function () {
+    Route::prefix('properties')->middleware(EnsureRealEstateManagementEnabled::class)->group(function () {
         Route::get('/', [PropertyController::class, 'index']);
         Route::get('/{allocationId}', [PropertyController::class, 'show']);
     });
 
     // Payments
-    Route::prefix('payments')->group(function () {
+    Route::prefix('payments')->middleware(EnsureRealEstateManagementEnabled::class)->group(function () {
         Route::get('/', [PaymentController::class, 'index']);
         Route::get('/upcoming/list', [PaymentController::class, 'upcoming']);
         Route::get('/overdue/list', [PaymentController::class, 'overdue']);
@@ -60,8 +63,12 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
     });
 
     Route::middleware(EnsureRentalManagementEnabled::class)->group(function () {
+        Route::get('/rental-properties', [RentalPropertyController::class, 'index']);
         Route::get('/service-charges', [ServiceChargeController::class, 'index']);
         Route::get('/rent-payments', [RentalPaymentController::class, 'index']);
+        Route::get('/paystack/availability', [PaystackClientPaymentController::class, 'availability']);
+        Route::post('/paystack/checkout', [PaystackClientPaymentController::class, 'checkout'])->middleware('throttle:8,1');
+        Route::get('/paystack/{reference}', [PaystackClientPaymentController::class, 'status'])->where('reference', 'TR-[A-Z0-9]+');
 
         Route::get('/payment-proof-submissions/options', [PaymentProofSubmissionController::class, 'options']);
         Route::get('/payment-proof-submissions', [PaymentProofSubmissionController::class, 'index']);
@@ -72,7 +79,7 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
     });
 
     // Receipts
-    Route::prefix('receipts')->group(function () {
+    Route::prefix('receipts')->middleware(EnsureRealEstateManagementEnabled::class)->group(function () {
         Route::get('/', [ReceiptController::class, 'index']);
         Route::get('/{receiptId}/download', [ReceiptController::class, 'downloadPdf']);
         Route::get('/{receiptId}/document', [ReceiptController::class, 'document']);
@@ -80,13 +87,13 @@ Route::middleware(['auth:sanctum', 'client'])->group(function () {
     });
 
     // Balances
-    Route::prefix('balances')->group(function () {
+    Route::prefix('balances')->middleware(EnsureRealEstateManagementEnabled::class)->group(function () {
         Route::get('/', [BalanceController::class, 'index']);
         Route::get('/summary', [BalanceController::class, 'summary']);
     });
 
     // Documents
-    Route::prefix('documents')->group(function () {
+    Route::prefix('documents')->middleware(EnsureRealEstateManagementEnabled::class)->group(function () {
         Route::get('/', [DocumentController::class, 'index']);
         Route::get('/allocations/{allocation}/templates/{template}/view', [DocumentController::class, 'view']);
     });

@@ -32,6 +32,7 @@ const ClientDashboardPage = lazyNamed(() => import('./pages/client/ClientDashboa
 const ClientDocumentsPage = lazyNamed(() => import('./pages/client/ClientDocumentsPage.jsx'), 'ClientDocumentsPage')
 const ClientLoginPage = lazy(() => import('./pages/client/ClientLoginPage.jsx'))
 const ClientRentPaymentsPage = lazyNamed(() => import('./pages/client/ClientRentPaymentsPage.jsx'), 'ClientRentPaymentsPage')
+const ClientRentalPropertiesPage = lazyNamed(() => import('./pages/client/ClientRentalPropertiesPage.jsx'), 'ClientRentalPropertiesPage')
 const ClientServiceChargesPage = lazyNamed(() => import('./pages/client/ClientServiceChargesPage.jsx'), 'ClientServiceChargesPage')
 const ClientProfilePage = lazy(() => import('./pages/client/ClientProfilePage.jsx'))
 const ClientPropertiesPage = lazyNamed(() => import('./pages/client/ClientPropertiesPage.jsx'), 'ClientPropertiesPage')
@@ -58,6 +59,15 @@ function RentalModuleRoute({ client = false }) {
     : <Navigate to={client ? '/client/dashboard' : '/dashboard'} replace />
 }
 
+function RealEstateModuleRoute({ client = false }) {
+  const { realEstateManagementEnabled, realEstateSettingsLoaded } = useOutletContext()
+
+  if (!realEstateSettingsLoaded) return <RouteFallback />
+  return realEstateManagementEnabled
+    ? <Outlet />
+    : <Navigate to={client ? '/client/profile' : '/profile'} replace />
+}
+
 function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -74,36 +84,28 @@ function App() {
           }
         >
           <Route index element={<Navigate to="/client/dashboard" replace />} />
+          <Route element={<RealEstateModuleRoute client />}>
           <Route path="dashboard" element={<ClientDashboardPage />} />
           <Route path="properties" element={<ClientPropertiesPage />} />
+          <Route path="documents" element={<ClientDocumentsPage />} />
+          <Route path="receipts" element={<ClientReceiptsPage />} />
+          </Route>
           <Route element={<RentalModuleRoute client />}>
+            <Route path="rental-properties" element={<ClientRentalPropertiesPage />} />
             <Route path="rent-payments" element={<ClientRentPaymentsPage />} />
             <Route path="service-charges" element={<ClientServiceChargesPage />} />
           </Route>
-          <Route path="documents" element={<ClientDocumentsPage />} />
-          <Route path="receipts" element={<ClientReceiptsPage />} />
           <Route path="profile" element={<ClientProfilePage />} />
           <Route path="*" element={<Navigate to="/client/dashboard" replace />} />
         </Route>
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
+            <Route element={<RealEstateModuleRoute />}>
             <Route index element={<DashboardPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/realtors" element={<RealtorsPage />} />
             <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/allocations" element={<AllocationsPage />} />
-            </Route>
-            <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
-              <Route element={<RentalModuleRoute />}>
-                <Route path="/rental-dashboard" element={<RentalDashboardPage />} />
-                <Route path="/rentals" element={<RentalsPage />} />
-                <Route path="/rentals/:rentalId" element={<RentalDetailsPage />} />
-                <Route path="/rental-payments" element={<RentalPaymentsPage />} />
-                <Route path="/rental-payments/:periodId" element={<RentalPaymentDetailsPage />} />
-                <Route path="/service-charges" element={<ServiceChargesPage />} />
-                <Route path="/service-charges/:serviceChargeId" element={<ServiceChargeDetailsPage />} />
-              </Route>
             </Route>
             <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/clients" element={<ClientsPage />} />
@@ -117,6 +119,19 @@ function App() {
             <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
               <Route path="/documents" element={<DocumentsPage />} />
             </Route>
+            </Route>
+            <Route element={<ProtectedRoute roles={['admin', 'staff', 'accountant']} />}>
+              <Route element={<RentalModuleRoute />}>
+                <Route path="/rental-dashboard" element={<RentalDashboardPage />} />
+                <Route path="/rentals" element={<RentalsPage />} />
+                <Route path="/rentals/:rentalId" element={<RentalDetailsPage />} />
+                <Route path="/rental-payments" element={<RentalPaymentsPage />} />
+                <Route path="/rental-payments/:periodId" element={<RentalPaymentDetailsPage />} />
+                <Route path="/service-charges" element={<ServiceChargesPage />} />
+                <Route path="/service-charges/:serviceChargeId" element={<ServiceChargeDetailsPage />} />
+              </Route>
+            </Route>
+            <Route path="/profile" element={<ProfilePage />} />
             <Route element={<ProtectedRoute roles={['admin']} />}>
               <Route element={<RentalModuleRoute />}>
                 <Route path="/payment-approvals" element={<PaymentApprovalsPage />} />

@@ -28,6 +28,7 @@ class UpdateCompanySettingRequest extends FormRequest
             'theme_mode' => ['nullable', Rule::in(['light', 'dark', 'system'])],
             'brand_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
             'rental_management_enabled' => ['sometimes', 'boolean'],
+            'real_estate_management_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }

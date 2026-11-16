@@ -28,6 +28,7 @@ const navItems = [
 ]
 
 const rentalNavItems = [
+  { label: 'Rented Properties', to: '/client/rental-properties', icon: Building2 },
   { label: 'Rent Payments', to: '/client/rent-payments', icon: WalletCards },
   { label: 'Service Charges', to: '/client/service-charges', icon: ReceiptText },
 ]
@@ -39,10 +40,12 @@ export function ClientLayout() {
   const { logout, user } = useClient()
   const branding = useClientBranding()
   const rentalManagementEnabled = branding?.rental_management_enabled === true
+  const realEstateManagementEnabled = branding?.real_estate_management_enabled !== false
   const [unpaidCharges, setUnpaidCharges] = useState(null)
   const navigate = useNavigate()
   const isRentalPath = location.pathname.startsWith('/client/rent-payments')
     || location.pathname.startsWith('/client/service-charges')
+    || location.pathname.startsWith('/client/rental-properties')
   const rentalMenuOpen = rentalMenuOverride?.path === location.pathname
     ? rentalMenuOverride.open
     : isRentalPath
@@ -117,7 +120,7 @@ export function ClientLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navItems.map((item) => (
+          {(realEstateManagementEnabled ? navItems : []).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -215,7 +218,12 @@ export function ClientLayout() {
         </header>
 
         <main className="px-4 py-6 md:px-6 lg:px-8">
-          <Outlet context={{ rentalManagementEnabled, rentalSettingsLoaded: typeof branding?.rental_management_enabled === 'boolean' }} />
+          <Outlet context={{
+            rentalManagementEnabled,
+            rentalSettingsLoaded: typeof branding?.rental_management_enabled === 'boolean',
+            realEstateManagementEnabled,
+            realEstateSettingsLoaded: typeof branding?.real_estate_management_enabled === 'boolean',
+          }} />
         </main>
       </div>
 

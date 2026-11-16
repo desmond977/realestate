@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Clock3, Loader2, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock3, Loader2, Upload, Wallet, XCircle } from 'lucide-react'
 import { formatMoney } from '../../utils/formatters'
-import { paymentProofSubmissionsApi, serviceChargesApi } from '../../services/clientApi'
+import { paymentProofSubmissionsApi, rentalPaymentsApi, serviceChargesApi } from '../../services/clientApi'
+import { useLocation } from 'react-router-dom'
 
 function Status({ value }) {
   const style = {
@@ -24,6 +25,7 @@ function formatBillingMonth(value) {
 }
 
 export function ClientServiceChargesPage() {
+  const location = useLocation()
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7))
   const [charges, setCharges] = useState([])
   const [options, setOptions] = useState([])
@@ -39,15 +41,20 @@ export function ClientServiceChargesPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [receipt, setReceipt] = useState(null)
+  const [paystackEnabled, setPaystackEnabled] = useState(false)
+  const [onlineChargeId, setOnlineChargeId] = useState('')
+  const [onlineAmount, setOnlineAmount] = useState('')
+  const [onlineSubmitting, setOnlineSubmitting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const [chargesResponse, optionsResponse, submissionsResponse] = await Promise.all([
+      const [chargesResponse, optionsResponse, submissionsResponse, paystackResponse] = await Promise.all([
         serviceChargesApi.list(month),
         paymentProofSubmissionsApi.options(),
         paymentProofSubmissionsApi.list(1),
+        rentalPaymentsApi.paystackAvailability(),
       ])
       setCharges(chargesResponse.data.data.charges || [])
       setSummary({
@@ -56,12 +63,31 @@ export function ClientServiceChargesPage() {
       })
       setOptions(optionsResponse.data.data.service_charges || [])
       setSubmissions((submissionsResponse.data.data || []).filter((submission) => submission.payment_category === 'service_charge'))
+      setPaystackEnabled(Boolean(paystackResponse.data.data?.enabled))
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to load your service charges.')
     } finally {
       setLoading(false)
     }
   }, [month])
+
+  useEffect(() => {
+    const reference = new URLSearchParams(location.search).get('paystack_reference')
+    if (!reference) return
+    let active = true
+    rentalPaymentsApi.paystackStatus(reference).then((response) => {
+      if (!active) return
+      const data = response.data.data
+      setSuccess(data.status === 'paid'
+        ? `Paystack payment confirmed. Receipt ${data.receipt?.receipt_number || 'issued'}.`
+        : data.status === 'failed' ? 'Paystack payment was not completed; your balance is unchanged.'
+          : data.status === 'review' ? 'Payment needs admin review before your balance changes.'
+            : 'Payment is processing. Your balance will update after confirmation.')
+      if (data.status === 'paid') load()
+    }).catch(() => active && setError('Unable to check the Paystack payment status.'))
+      .finally(() => active && window.history.replaceState({}, '', location.pathname))
+    return () => { active = false }
+  }, [location.pathname, location.search, load])
 
   useEffect(() => {
     const timer = window.setTimeout(() => load(), 0)
@@ -108,6 +134,25 @@ export function ClientServiceChargesPage() {
     }
   }
 
+  function chooseOnlineCharge(id) {
+    setOnlineChargeId(id)
+    setOnlineAmount(String(availableById.get(String(id)) || ''))
+  }
+
+  async function payWithPaystack(event) {
+    event.preventDefault()
+    setOnlineSubmitting(true)
+    setError('')
+    try {
+      const response = await rentalPaymentsApi.startPaystackCheckout({ category: 'service_charge', target_id: onlineChargeId, amount: onlineAmount })
+      window.location.assign(response.data.data.checkout_url)
+    } catch (requestError) {
+      const validationErrors = requestError.response?.data?.errors
+      setError(validationErrors ? Object.values(validationErrors).flat().join(' ') : requestError.response?.data?.message || 'Unable to start Paystack checkout.')
+      setOnlineSubmitting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -116,6 +161,7 @@ export function ClientServiceChargesPage() {
       </header>
       {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
       {success ? <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p> : null}
+      {paystackEnabled && eligible.length ? <section className="rounded-2xl border border-line bg-white p-4 shadow-sm sm:p-5"><p className="text-xs font-semibold uppercase tracking-wide text-brand">Secure online payment</p><h2 className="mt-1 font-semibold text-ink">Pay service charge with Paystack</h2><p className="mt-1 text-sm text-muted">Pay all or part of an outstanding service charge. It is recorded after Paystack confirms the payment.</p><form onSubmit={payWithPaystack} className="mt-4 grid gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end"><label className="grid gap-1.5 text-sm font-medium">Service charge<select required value={onlineChargeId} onChange={(event) => chooseOnlineCharge(event.target.value)} className="rounded-md border border-line px-3 py-2"><option value="">Select charge</option>{eligible.map((charge) => <option key={charge.id} value={charge.id}>{charge.category || 'Service charge'} · {charge.property_name || 'Property'} · {formatBillingMonth(charge.billing_month)} · {formatMoney(charge.available_amount)} due</option>)}</select></label><label className="grid gap-1.5 text-sm font-medium">Amount (NGN)<input required type="number" min="1" max={availableById.get(String(onlineChargeId)) || undefined} step="0.01" value={onlineAmount} onChange={(event) => setOnlineAmount(event.target.value)} className="rounded-md border border-line px-3 py-2" /></label><button disabled={onlineSubmitting || !onlineChargeId} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{onlineSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Wallet size={16} />}{onlineSubmitting ? 'Preparing…' : 'Pay with Paystack'}</button></form></section> : null}
       <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-line bg-white p-4"><p className="text-xs font-medium uppercase text-muted">Confirmed collections</p><p className="mt-2 text-2xl font-semibold">{formatMoney(summary.collections)}</p></div><div className="rounded-lg border border-line bg-white p-4"><p className="text-xs font-medium uppercase text-muted">Outstanding</p><p className="mt-2 text-2xl font-semibold">{formatMoney(summary.outstanding)}</p></div></div>
       <section className="overflow-hidden rounded-lg border border-line bg-white">
         <div className="border-b border-line px-4 py-3"><h2 className="font-semibold text-ink">Charges for {formatBillingMonth(month)}</h2></div>

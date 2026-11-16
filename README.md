@@ -92,3 +92,19 @@ npm audit
 - Keep migrations ordered so a fresh SQLite test database can run from zero.
 - Remove starter/demo assets and unused routes as soon as features are retired.
 - Run lint, build, backend tests, and dependency audits before release.
+# Paystack client payments
+
+Paystack hosted checkout is available for client portal rent and service charge payments. Configure credentials in `backend/.env` (never commit keys):
+
+```dotenv
+PAYSTACK_MODE=test
+PAYSTACK_SECRET_KEY=sk_test_your_secret_key
+PAYSTACK_WEBHOOK_SECRET=
+PAYSTACK_FRONTEND_URL=http://localhost:5173
+PAYSTACK_CHECKOUT_EXPIRE_MINUTES=30
+PAYSTACK_HTTP_TIMEOUT=20
+```
+
+Use a Paystack test secret key for local development; use `sk_live_…` only for a production deployment. Paystack uses the same API URL for both modes. Configure the Paystack dashboard webhook as `https://YOUR_BACKEND/api/v1/paystack/webhook`. The webhook signature is checked and the transaction is independently verified server-side before TerraOps posts a rental or service charge payment and generates its existing receipt. Manual proof of payment remains available.
+
+Run `php artisan migrate --force` after deployment. Existing OPay migration/table data is retained as legacy history; OPay checkout routes and credentials are no longer active.

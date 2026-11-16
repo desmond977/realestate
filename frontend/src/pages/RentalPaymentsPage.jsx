@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { formatMoney } from '../utils/formatters'
+import { PaystackClientTransactionsPanel } from '../components/rentals/PaystackClientTransactionsPanel.jsx'
 
 const statuses = ['due', 'partial', 'overdue', 'paid']
 
@@ -158,6 +159,7 @@ export function RentalPaymentsPage() {
           </div>
         </div>
       ) : null}
+      <PaystackClientTransactionsPanel />
     </section>
   )
 }

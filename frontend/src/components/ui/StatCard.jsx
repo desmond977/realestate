@@ -6,13 +6,13 @@ export function StatCard({ icon: Icon, label, value, helper, tone = 'brand', com
   }
 
   return (
-    <div className={`rounded-lg border border-line bg-panel shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${compact ? 'p-3 md:p-4' : 'p-4'}`}>
+    <div className={`group rounded-2xl border border-line/80 bg-panel shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-lg hover:shadow-ink/[0.04] ${compact ? 'p-3.5 md:p-5' : 'p-5'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className={`font-medium text-muted ${compact ? 'text-xs leading-tight sm:text-sm' : 'text-sm'}`}>{label}</p>
-          <p className={`font-semibold tracking-normal text-ink ${compact ? 'mt-1.5 text-xl sm:text-2xl md:mt-2' : 'mt-2 text-2xl'}`}>{value}</p>
+          <p className={`font-semibold tracking-tight text-ink tabular-nums ${compact ? 'mt-2 text-xl sm:text-2xl md:mt-3' : 'mt-2 text-2xl'}`}>{value}</p>
         </div>
-        <div className={`grid place-items-center rounded-md ${tones[tone] || tones.brand} flex-shrink-0 ${compact ? 'size-7 sm:size-8' : 'size-8'}`}>
+        <div className={`grid place-items-center rounded-xl ${tones[tone] || tones.brand} flex-shrink-0 transition-transform duration-200 group-hover:scale-105 ${compact ? 'size-9' : 'size-10'}`}>
           <Icon size={compact ? 16 : 18} strokeWidth={2} />
         </div>
       </div>

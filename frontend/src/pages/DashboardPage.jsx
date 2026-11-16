@@ -169,17 +169,17 @@ export function DashboardPage() {
   const targetRemaining = Math.max(activeTargetAmount - (targetRevenue || 0), 0)
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="overflow-hidden rounded-xl border border-line bg-panel shadow-sm">
+    <div className="space-y-5 md:space-y-7">
+      <div className="overflow-hidden rounded-3xl border border-line/80 bg-panel shadow-sm shadow-ink/[0.03]">
         <div className="grid gap-3 p-3 sm:gap-5 sm:p-4 md:grid-cols-[1fr_320px] md:p-6 xl:grid-cols-[1fr_420px]">
           <div className="flex min-w-0 flex-col justify-center">
-            <p className="text-xs font-medium text-brand sm:text-sm">{settings?.company_name || 'Company'}</p>
+            <p className="text-xs font-medium text-brand sm:text-sm">Portfolio overview</p>
             <h2 className="mt-1.5 text-xl font-semibold text-ink sm:mt-2 sm:text-2xl md:text-3xl">
-              <span className="sm:hidden">Dashboard overview</span>
-              <span className="hidden sm:inline">Intelligent Real Estate Operations</span>
+              <span className="sm:hidden">Your portfolio at a glance</span>
+              <span className="hidden sm:inline">Your Properties in clear view.</span>
             </h2>
             <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted sm:block">
-              A command view for revenue, inventory movement, allocations, and realtor performance.
+              Track revenue, property activity,client allocations, and team performance.
             </p>
           </div>
 
@@ -272,7 +272,7 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      <section className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 xl:grid-cols-5">
         {cards.map((card) => (
           <StatCard key={card.label} {...card} compact />
         ))}
@@ -280,7 +280,7 @@ export function DashboardPage() {
 
       <section className="grid gap-2 md:gap-4 xl:grid-cols-[1.25fr_0.95fr]">
         <div className="grid gap-2 md:gap-4">
-          <div className="rounded-lg md:rounded-[24px] border border-line bg-panel p-3 md:p-6 shadow-sm">
+          <div className="rounded-2xl md:rounded-[24px] border border-line/80 bg-panel p-4 md:p-6 shadow-sm shadow-ink/[0.03]">
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Realtor leaderboard</p>
@@ -353,7 +353,7 @@ export function DashboardPage() {
         </div>
 
         <div className="grid gap-2 md:gap-4">
-          <div className="rounded-lg md:rounded-[24px] border border-line bg-panel p-3 md:p-6 shadow-sm">
+          <div className="rounded-2xl md:rounded-[24px] border border-line/80 bg-panel p-4 md:p-6 shadow-sm shadow-ink/[0.03]">
             <div className="flex items-center justify-between gap-2 md:gap-4">
               <div>
                 <p className="text-xs md:text-sm font-medium text-ink">Inventory snapshot</p>

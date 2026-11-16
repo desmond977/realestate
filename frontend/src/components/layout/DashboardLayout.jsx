@@ -55,6 +55,7 @@ export function DashboardLayout() {
   const [branding, setBranding] = useState(() => getPersistedBranding())
   const [rentalManagementEnabled, setRentalManagementEnabled] = useState(null)
   const [rentalSettingsLoaded, setRentalSettingsLoaded] = useState(false)
+  const [realEstateManagementEnabled, setRealEstateManagementEnabled] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -66,6 +67,7 @@ export function DashboardLayout() {
         if (active) {
           setBranding(response.data.data.settings)
           setRentalManagementEnabled(Boolean(response.data.data.settings.rental_management_enabled))
+          setRealEstateManagementEnabled(Boolean(response.data.data.settings.real_estate_management_enabled))
           setRentalSettingsLoaded(true)
           persistBranding(response.data.data.settings)
           applyBranding({ ...getPersistedUserTheme(), brand_color: response.data.data.settings.brand_color })
@@ -75,6 +77,7 @@ export function DashboardLayout() {
           const persisted = getPersistedBranding()
           setBranding(persisted)
           setRentalManagementEnabled(false)
+          setRealEstateManagementEnabled(false)
           setRentalSettingsLoaded(true)
           applyBranding({ ...getPersistedUserTheme(), ...persisted })
         }
@@ -99,7 +102,9 @@ export function DashboardLayout() {
     }
   }, [location.pathname])
 
-  const visibleNavItems = navItems.filter((item) => item.roles.includes(user?.role))
+  const visibleNavItems = realEstateManagementEnabled
+    ? navItems.filter((item) => item.roles.includes(user?.role))
+    : []
   const visibleRentalNavItems = rentalManagementEnabled
     ? rentalNavItems.filter((item) => item.roles.includes(user?.role))
     : []
@@ -108,11 +113,11 @@ export function DashboardLayout() {
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-line bg-panel transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-line/80 bg-panel shadow-xl shadow-ink/[0.04] transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-          <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
+          <div className="flex h-[76px] shrink-0 items-center justify-between border-b border-line/80 px-5">
           <div className="flex items-center">
             {branding?.company_logo ? (
               <img src={assetUrl(branding.company_logo)} alt={branding.company_name || 'Logo'} className="h-12 w-[100px] rounded-sm object-contain" />
@@ -132,13 +137,14 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5">
+          <p className="px-3 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted/75">Workspace</p>
           {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                   isActive
                     ? 'bg-brand text-white'
                     : 'text-muted hover:bg-canvas hover:text-ink'
@@ -154,7 +160,7 @@ export function DashboardLayout() {
             <div>
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted transition hover:bg-canvas hover:text-ink"
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition-all duration-150 hover:bg-canvas hover:text-ink"
                 aria-expanded={rentalMenuOpen}
                 onClick={() => setRentalMenuOpen((open) => !open)}
               >
@@ -168,7 +174,7 @@ export function DashboardLayout() {
                       key={item.to}
                       to={item.to}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                        `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150 ${
                           isActive ? 'bg-brand text-white' : 'text-muted hover:bg-canvas hover:text-ink'
                         }`
                       }
@@ -223,7 +229,7 @@ export function DashboardLayout() {
       ) : null}
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-line bg-panel/95 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-line/80 bg-panel/90 px-4 shadow-sm shadow-ink/[0.02] backdrop-blur-xl md:px-7">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -249,8 +255,8 @@ export function DashboardLayout() {
           </button>
         </header>
 
-        <main className="px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
-          <Outlet context={{ rentalManagementEnabled, rentalSettingsLoaded }} />
+        <main className="mx-auto w-full max-w-[1680px] px-3 py-5 sm:px-5 sm:py-7 md:px-7 lg:px-9">
+          <Outlet context={{ rentalManagementEnabled, rentalSettingsLoaded, realEstateManagementEnabled, realEstateSettingsLoaded: realEstateManagementEnabled !== null }} />
           <footer className="mt-6 rounded-2xl border border-line bg-panel/90 p-3 text-sm text-muted shadow-sm sm:mt-10 sm:rounded-3xl sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="hidden sm:block">
@@ -271,12 +277,14 @@ export function DashboardLayout() {
                     Settings
                   </NavLink>
                 ) : null}
-                <NavLink
-                  to="/realtors"
-                  className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
-                >
-                  Realtors
-                </NavLink>
+                {realEstateManagementEnabled ? (
+                  <NavLink
+                    to="/realtors"
+                    className="rounded-full border border-line bg-canvas px-3 py-2 text-sm text-ink hover:bg-brand/5"
+                  >
+                    Realtors
+                  </NavLink>
+                ) : null}
               </div>
             </div>
           </footer>

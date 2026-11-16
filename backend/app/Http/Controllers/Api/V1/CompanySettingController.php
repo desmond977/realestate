@@ -43,6 +43,7 @@ class CompanySettingController extends Controller
             'theme_mode' => 'system',
             'brand_color' => '#166534',
             'rental_management_enabled' => true,
+            'real_estate_management_enabled' => true,
         ]);
     }
 }
